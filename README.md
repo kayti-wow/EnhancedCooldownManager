@@ -1,1 +1,29 @@
-# EnhancedCooldownManager
+# EnhancedCooldownManager ⚔️
+
+Standalone resource bars anchored to Blizzard's Cooldown Manager viewers for World of Warcraft.
+
+## ✨ Features
+
+- **Power Bar** — Displays primary resources (mana, rage, energy, focus, runic power) with optional text overlay and tick marks for combo points, holy power, chi, etc.
+- **Segment Bar** — Fragmented resource display for Death Knight runes, Demon Hunter souls, and Fury Warrior Whirlwind stacks
+- **Buff Bars** — Restyles Blizzard's BuffBarCooldownViewer with custom textures, colors, fonts, and layout
+- **Buff Icons** — Customizable buff icon styling and proc overlays
+- **Highly Configurable** — Per-bar settings for height, texture, font, colors, and dynamic per-spell overrides
+- **Edit Mode Compatible** — Integrates with WoW's native Edit Mode system
+
+## 📦 Installation
+
+1. Download and extract to `Interface/AddOns/EnhancedCooldownManager`
+2. Reload UI or restart WoW
+
+## ⚙️ Configuration
+
+Type `/ecm` in-game to open the options panel.
+
+## 👤 Author
+
+**Solär**
+
+## 📄 License
+
+[GPL-3.0](LICENSE)
