@@ -22,6 +22,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify TOC version matches tag
+        run: |
+          TAG_VERSION="${{ github.ref_name }}"
+          TOC_VERSION=$(grep -oP '## Version: \K.*' ${ADDON_NAME}.toc | tr -d '[:space:]')
+
+          echo "Tag version: $TAG_VERSION"
+          echo "TOC version: $TOC_VERSION"
+
+          if [ "$TAG_VERSION" != "$TOC_VERSION" ]; then
+            echo "::error::Version mismatch! Tag is '$TAG_VERSION' but TOC file has '$TOC_VERSION'. Please update the TOC file version before releasing."
+            exit 1
+          fi
+
+          echo "✓ Version check passed"
+
       - name: Get version and changelog
         id: version
         run: |
