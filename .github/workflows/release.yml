@@ -13,6 +13,8 @@ jobs:
   package:
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -148,16 +150,35 @@ jobs:
           )
 
           # Upload to CurseForge
-          curl -X POST \
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             -H "X-Api-Token: ${CF_TOKEN}" \
             -F "metadata=${METADATA}" \
             -F "file=@${ADDON_NAME}-${{ steps.version.outputs.version }}.zip" \
-            "https://wow.curseforge.com/api/projects/${{ env.CF_PROJECT_ID }}/upload-file"
+            "https://wow.curseforge.com/api/projects/${{ env.CF_PROJECT_ID }}/upload-file")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "CurseForge response: $BODY"
+          
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::CurseForge upload failed with HTTP $HTTP_CODE: $BODY"
+            exit 1
+          fi
+          
+          echo "Successfully uploaded to CurseForge (HTTP $HTTP_CODE)"
 
       - name: Create GitHub Release
         run: |
-          gh release create "${{ steps.version.outputs.version }}" \
-            "${ADDON_NAME}-${{ steps.version.outputs.version }}.zip" \
-            --generate-notes
+          VERSION="${{ steps.version.outputs.version }}"
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" == *"-beta"* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          
+          gh release create "$VERSION" \
+            "${ADDON_NAME}-${VERSION}.zip" \
+            --generate-notes \
+            $PRERELEASE_FLAG
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
