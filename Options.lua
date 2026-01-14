@@ -1610,7 +1610,7 @@ local function GetOptionsTable()
             powerBar = PowerBarOptionsTable(),
             segmentBar = SegmentBarOptionsTable(),
             auraBars = AuraBarsOptionsTable(),
-            procOverlay = ProcOverlayOptionsTable(),
+            -- procOverlay = ProcOverlayOptionsTable(),
             profile = ProfileOptionsTable(),
             about = AboutOptionsTable(),
         },

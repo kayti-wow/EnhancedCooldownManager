@@ -10,6 +10,10 @@ on:
         description: 'Version override (e.g., v0.2.1)'
         required: false
 
+env:
+  ADDON_NAME: EnhancedCooldownManager
+  CF_PROJECT_ID: 1427906
+
 jobs:
   package:
     runs-on: ubuntu-latest
@@ -18,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Get version
         id: version
@@ -27,18 +33,43 @@ jobs:
           elif [ -n "${{ github.ref_name }}" ] && [[ "${{ github.ref_name }}" == v* ]]; then
             VERSION="${{ github.ref_name }}"
           else
-            VERSION=$(grep -oP '## Version: \K.*' EnhancedCooldownManager.toc | tr -d '[:space:]')
+            VERSION=$(grep -oP '## Version: \K.*' ${ADDON_NAME}.toc | tr -d '[:space:]')
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Packaging version: $VERSION"
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          CURRENT_TAG="${{ steps.version.outputs.version }}"
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "${CURRENT_TAG}^" 2>/dev/null || echo "")
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Generating changelog from $PREVIOUS_TAG to $CURRENT_TAG"
+            CHANGELOG=$(git log --pretty=format:"- %s" "${PREVIOUS_TAG}..${CURRENT_TAG}" 2>/dev/null || echo "")
+          else
+            echo "No previous tag found, using all commits"
+            CHANGELOG=$(git log --pretty=format:"- %s" "${CURRENT_TAG}" 2>/dev/null || echo "")
+          fi
+
+          # Handle empty changelog
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- Release ${CURRENT_TAG}"
+          fi
+
+          # Write to file to preserve newlines
+          echo "$CHANGELOG" > changelog.txt
+          echo "Changelog:"
+          cat changelog.txt
+
       - name: Create package directory
         run: |
-          mkdir -p package/EnhancedCooldownManager
+          mkdir -p package/${ADDON_NAME}
 
       - name: Copy addon files
         run: |
-          rsync -av --progress . package/EnhancedCooldownManager/ \
+          rsync -av --progress . package/${ADDON_NAME}/ \
             --exclude '.*' \
             --exclude 'TODO.md' \
             --exclude 'CLAUDE.md' \
@@ -50,11 +81,98 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: EnhancedCooldownManager-${{ steps.version.outputs.version }}
+          name: ${{ env.ADDON_NAME }}-${{ steps.version.outputs.version }}
           path: package
+
+      - name: Create zip for CurseForge
+        run: |
+          cd package
+          zip -r ../${ADDON_NAME}-${{ steps.version.outputs.version }}.zip ${ADDON_NAME}
+
+      - name: Upload to CurseForge
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          CF_TOKEN: ${{ secrets.CF_TOKEN }}
+        run: |
+          # Determine release type from version string
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$VERSION" == *"-alpha"* ]]; then
+            RELEASE_TYPE="alpha"
+          elif [[ "$VERSION" == *"-beta"* ]]; then
+            RELEASE_TYPE="beta"
+          else
+            RELEASE_TYPE="release"
+          fi
+
+          # Extract Interface versions from .toc file (e.g., "120000, 120001, 110207")
+          TOC_INTERFACES=$(grep -oP '## Interface: \K.*' ${ADDON_NAME}.toc | tr -d '[:space:]')
+          echo "TOC Interface versions: $TOC_INTERFACES"
+
+          # Fetch game versions from CurseForge API
+          CF_VERSIONS=$(curl -s "https://wow.curseforge.com/api/game/versions")
+
+          # Match by apiVersion and verify all TOC versions are mapped
+          RESULT=$(echo "$CF_VERSIONS" | jq -c --arg interfaces "$TOC_INTERFACES" '
+            # Split the comma-separated interface versions into an array
+            ($interfaces | split(",") | map(tonumber)) as $toc_versions |
+            # Get matched versions
+            ([.[] | select(.apiVersion as $api | $toc_versions | index($api))]) as $matched |
+            # Get the apiVersions that were matched
+            ([$matched[].apiVersion]) as $matched_apis |
+            # Find unmatched TOC versions
+            ([$toc_versions[] | select(. as $v | $matched_apis | index($v) | not)]) as $unmatched |
+            {
+              gameVersions: [$matched[].id],
+              unmatchedInterfaces: $unmatched
+            }
+          ')
+
+          GAME_VERSIONS=$(echo "$RESULT" | jq -c '.gameVersions')
+          UNMATCHED=$(echo "$RESULT" | jq -c '.unmatchedInterfaces')
+
+          echo "Matched CurseForge game version IDs: $GAME_VERSIONS"
+
+          # Fail if any TOC interface versions weren't mapped
+          if [ "$UNMATCHED" != "[]" ]; then
+            echo "::error::The following TOC interface versions have no matching CurseForge game version: $UNMATCHED"
+            exit 1
+          fi
+
+          # Fail if no versions matched at all
+          if [ "$GAME_VERSIONS" == "[]" ] || [ -z "$GAME_VERSIONS" ]; then
+            echo "::error::No game versions matched from TOC interfaces: $TOC_INTERFACES"
+            exit 1
+          fi
+
+          # Read changelog from file
+          CHANGELOG=$(cat changelog.txt)
+
+          # Create metadata JSON - escape the changelog for JSON
+          CHANGELOG_JSON=$(echo "$CHANGELOG" | jq -Rs .)
+          METADATA=$(jq -n \
+            --argjson changelog "$CHANGELOG_JSON" \
+            --arg displayName "${ADDON_NAME} ${{ steps.version.outputs.version }}" \
+            --argjson gameVersions "$GAME_VERSIONS" \
+            --arg releaseType "$RELEASE_TYPE" \
+            '{
+              changelog: $changelog,
+              changelogType: "markdown",
+              displayName: $displayName,
+              gameVersions: $gameVersions,
+              releaseType: $releaseType
+            }'
+          )
+
+          # Upload to CurseForge
+          curl -X POST \
+            -H "X-Api-Token: ${CF_TOKEN}" \
+            -F "metadata=${METADATA}" \
+            -F "file=@${ADDON_NAME}-${{ steps.version.outputs.version }}.zip" \
+            "https://wow.curseforge.com/api/projects/${{ env.CF_PROJECT_ID }}/upload-file"
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          files: ${{ env.ADDON_NAME }}-${{ steps.version.outputs.version }}.zip
