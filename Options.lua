@@ -794,6 +794,21 @@ local function AuraBarsOptionsTable()
                 name = "Settings for Blizzard's BuffBarCooldownViewer bars restyled by ECM.",
                 order = 2,
             },
+            independentAnchor = {
+                type = "toggle",
+                name = "Independent Anchor",
+                desc = "When enabled, aura bars anchor directly to the Essential Cooldown Viewer instead of below the ECM bar chain (Power Bar → Segment Bar). This allows the aura bars to be positioned independently of other ECM bars.",
+                order = 5,
+                width = "full",
+                get = function() return db.profile.buffBars and db.profile.buffBars.independentAnchor or false end,
+                set = function(_, val)
+                    if not db.profile.buffBars then
+                        db.profile.buffBars = {}
+                    end
+                    db.profile.buffBars.independentAnchor = val
+                    RefreshAllBars()
+                end,
+            },
             showIcon = {
                 type = "toggle",
                 name = "Show Icon",

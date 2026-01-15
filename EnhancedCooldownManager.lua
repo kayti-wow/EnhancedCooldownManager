@@ -88,6 +88,9 @@ local ADDON_NAME, ns = ...
 ---@field opacity number Opacity percentage (0-100) when faded out of combat
 ---@field exceptInInstance boolean When true, don't fade in raids, dungeons, battlegrounds, or PVP
 
+---@class ECM_BuffBarsConfig
+---@field independentAnchor boolean When true, anchors directly to EssentialCooldownViewer instead of the ECM bar chain
+
 ---@class ECM_Profile
 ---@field enabled boolean
 ---@field hideWhenMounted number
@@ -102,6 +105,7 @@ local ADDON_NAME, ns = ...
 ---@field powerTypeColors ECM_PowerTypeColorsConfig
 ---@field dynamicBars ECM_DynamicBarsConfig|ECM_DynamicBarConfig[]
 ---@field buffBarColors ECM_BuffBarColorsConfig
+---@field buffBars ECM_BuffBarsConfig
 ---@field procOverlay ECM_ProcOverlayConfig
 ---@field powerBarTicks ECM_PowerBarTicksConfig
 
@@ -187,6 +191,9 @@ local defaults = {
             colors = {},
             cache = {},
             defaultColor = { 0.85, 0.75, 0.55 },
+        },
+        buffBars = {
+            independentAnchor = false,
         },
         procOverlay = {
             enabled = false,
