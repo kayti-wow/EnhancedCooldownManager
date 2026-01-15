@@ -7,6 +7,7 @@ Standalone resource bars anchored to Blizzard's Cooldown Manager viewers for Wor
 - **Power Bar** — Displays primary resources (mana, rage, energy, focus, runic power) with optional text overlay and tick marks for combo points, holy power, chi, etc.
 - **Special Resource Bar** — Display for special resources such as Death Knight runes, Demon Hunter souls. and combo points.
 - **Buff Bars** — Restyles Blizzard's BuffBarCooldownViewer with custom textures, colors, fonts, and layout
+  - **Independent Anchor** — Option to anchor buff bars directly to the Essential Cooldown Viewer, allowing them to be positioned independently of other ECM bars
 
 ## 📦 Installation
 
