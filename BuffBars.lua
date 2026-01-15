@@ -683,9 +683,6 @@ function BuffBars:UpdateLayout()
     if profile.buffBars and profile.buffBars.independentAnchor then
         -- Independent mode: anchor directly to EssentialCooldownViewer
         anchor = Util.GetViewerAnchor()
-        Util.Log("BuffBars", "UpdateLayout - using independent anchor", {
-            anchorName = anchor and anchor.GetName and anchor:GetName() or "unknown"
-        })
     else
         -- Default mode: anchor to bottom of ECM bar chain
         anchor = Util.GetPreferredAnchor(EnhancedCooldownManager, nil)
@@ -695,6 +692,8 @@ function BuffBars:UpdateLayout()
         Util.Log("BuffBars", "UpdateLayout skipped - no anchor")
         return
     end
+
+    local anchorName = anchor.GetName and anchor:GetName() or "unknown"
 
     -- Position viewer under anchor. Use both TOPLEFT and TOPRIGHT anchor points
     -- so the viewer width automatically matches the anchor. Do NOT set explicit width
@@ -724,7 +723,7 @@ function BuffBars:UpdateLayout()
     self:LayoutBars()
 
     Util.Log("BuffBars", "UpdateLayout complete", {
-        anchorName = anchor.GetName and anchor:GetName() or "unknown",
+        anchorName = anchorName,
         visibleCount = #visibleChildren,
         independentAnchor = profile.buffBars and profile.buffBars.independentAnchor or false,
     })
