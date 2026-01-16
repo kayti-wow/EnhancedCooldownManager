@@ -69,6 +69,10 @@ local ADDON_NAME, ns = ...
 ---@field cache table<number, table<number, table<number, ECM_BarCacheEntry>>> [classID][specID][barIndex] = metadata
 ---@field defaultColor number[] Default RGB color for buff bars
 
+---@class ECM_BuffBarsConfig
+---@field autoPosition boolean When true, automatically position below other ECM bars
+---@field barWidth number Width of buff bars when autoPosition is false
+
 ---@class ECM_ProcOverlayConfig
 ---@field enabled boolean Master toggle for proc overlay feature
 ---@field mappings table<number, table<number, table<number, number>>> [classID][specID][buffIconIndex] = targetIconIndex
@@ -101,6 +105,7 @@ local ADDON_NAME, ns = ...
 ---@field segmentBar ECM_SegmentBarConfig
 ---@field powerTypeColors ECM_PowerTypeColorsConfig
 ---@field dynamicBars ECM_DynamicBarsConfig|ECM_DynamicBarConfig[]
+---@field buffBars ECM_BuffBarsConfig
 ---@field buffBarColors ECM_BuffBarColorsConfig
 ---@field procOverlay ECM_ProcOverlayConfig
 ---@field powerBarTicks ECM_PowerBarTicksConfig
@@ -182,6 +187,10 @@ local defaults = {
             showIcon = false,
             showSpellName = true,
             showDuration = true,
+        },
+        buffBars = {
+            autoPosition = true,
+            barWidth = 300,
         },
         buffBarColors = {
             colors = {},

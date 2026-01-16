@@ -675,20 +675,30 @@ function BuffBars:UpdateLayout()
         return
     end
 
-    local anchor = Util.GetPreferredAnchor(EnhancedCooldownManager, nil)
-    if not anchor then
-        Util.Log("BuffBars", "UpdateLayout skipped - no anchor")
-        return
-    end
+    local buffBarsConfig = profile.buffBars or {}
+    local autoPosition = buffBarsConfig.autoPosition ~= false -- Default to true
 
-    -- Position viewer under anchor. Use both TOPLEFT and TOPRIGHT anchor points
-    -- so the viewer width automatically matches the anchor. Do NOT set explicit width
-    -- as this conflicts with anchor-based sizing and causes offset issues after zone changes.
-    if viewer._lastAnchor ~= anchor then
-        viewer:ClearAllPoints()
-        viewer:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, 0)
-        viewer:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, 0)
-        viewer._lastAnchor = anchor
+    if autoPosition then
+        local anchor = Util.GetPreferredAnchor(EnhancedCooldownManager, nil)
+        if not anchor then
+            Util.Log("BuffBars", "UpdateLayout skipped - no anchor")
+            return
+        end
+
+        -- Position viewer under anchor. Use both TOPLEFT and TOPRIGHT anchor points
+        -- so the viewer width automatically matches the anchor. Do NOT set explicit width
+        -- as this conflicts with anchor-based sizing and causes offset issues after zone changes.
+        if viewer._lastAnchor ~= anchor then
+            viewer:ClearAllPoints()
+            viewer:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, 0)
+            viewer:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, 0)
+            viewer._lastAnchor = anchor
+        end
+    else
+        -- When autoPosition is disabled, apply the configured barWidth.
+        -- The user controls positioning via Blizzard's edit mode.
+        viewer:SetWidth(buffBarsConfig.barWidth)
+        viewer._lastAnchor = nil -- Clear cached anchor so re-enabling autoPosition works
     end
 
     -- Hook all children for anchor change detection
@@ -709,7 +719,8 @@ function BuffBars:UpdateLayout()
     self:LayoutBars()
 
     Util.Log("BuffBars", "UpdateLayout complete", {
-        anchorName = anchor.GetName and anchor:GetName() or "unknown",
+        autoPosition = autoPosition,
+        barWidth = not autoPosition and buffBarsConfig.barWidth or nil,
         visibleCount = #visibleChildren,
     })
 end

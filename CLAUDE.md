@@ -14,8 +14,6 @@ Enhanced Cooldown Manager (ECM) is a World of Warcraft addon that displays custo
 - **Slash commands:** `/ecm on|off|toggle|debug`
 - **API docs:** https://www.townlong-yak.com/framexml/beta/Blizzard_APIDocumentation
 
-## Architecture
-
 ### File Structure
 - `EnhancedCooldownManager.lua` – Ace3 addon bootstrap, defaults, config type definitions, slash commands
 - `Utilities.lua` – Shared helpers: `ns.Util.*` (PixelSnap, GetBgColor, GetBarHeight, GetTexture, GetFontPath, ApplyBarAppearance, ApplyBarLayout, ApplyFont, GetViewerAnchor, GetPreferredAnchor)
@@ -33,6 +31,9 @@ EssentialCooldownViewer (Blizzard icons)
     ↓ BuffBarCooldownViewer (Blizzard, restyled by BuffBars)
 ```
 Use `Util.GetPreferredAnchor(addon, excludeModule)` to find the bottom-most visible ECM bar.
+
+The user can turn off BuffBarCooldownViewer auto-snapping to the segment bar, allowing it to be moved normally through Blizzard's built-in edit mode. In this case, the user can configure the width of the bars because they will still be styled.
+
 
 ### Common Module Interface
 All bar modules expose:

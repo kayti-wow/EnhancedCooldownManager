@@ -184,15 +184,6 @@ local function GeneralOptionsTable()
                     AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
                 end,
             },
-            debug = {
-                type = "toggle",
-                name = "Debug Mode",
-                desc = "Enable trace logging for /ecm bug reports.",
-                order = 20,
-                width = "double",
-                get = function() return db.profile.debug end,
-                set = function(_, val) db.profile.debug = val end,
-            },
             hideWhenMounted = {
                 type = "toggle",
                 name = "Hide When Mounted",
@@ -829,6 +820,50 @@ local function AuraBarsOptionsTable()
                     db.profile.dynamicBars.showDuration = val
                     RefreshAllBars()
                 end,
+            },
+
+            positionHeader = {
+                type = "header",
+                name = "Positioning",
+                order = 40,
+            },
+            autoPosition = {
+                type = "toggle",
+                name = "Automatically Position Below Other Bars",
+                desc = "When enabled, the buff bar viewer is automatically anchored below the other ECM bars. When disabled, you can position it freely using Blizzard's Edit Mode.",
+                order = 50,
+                width = "double",
+                get = function() return db.profile.buffBars.autoPosition end,
+                set = function(_, val)
+                    db.profile.buffBars.autoPosition = val
+                    RefreshAllBars()
+                end,
+            },
+            barWidth = {
+                type = "range",
+                name = "Buff Bar Width",
+                desc = "Width of the buff bars when automatic positioning is disabled.",
+                order = 60,
+                width = "double",
+                min = 100,
+                max = 600,
+                step = 10,
+                disabled = function() return db.profile.buffBars.autoPosition end,
+                get = function() return db.profile.buffBars.barWidth end,
+                set = function(_, val)
+                    db.profile.buffBars.barWidth = val
+                    RefreshAllBars()
+                end,
+            },
+            barWidthReset = {
+                type = "execute",
+                name = "X",
+                desc = "Reset to default",
+                order = 61,
+                width = 0.3,
+                hidden = function() return not IsValueChanged("buffBars.barWidth") end,
+                disabled = function() return db.profile.buffBars.autoPosition end,
+                func = MakeResetHandler("buffBars.barWidth"),
             },
 
             coloursSpacer = {
@@ -1599,8 +1634,9 @@ local function ProcOverlayOptionsTable()
 end
 
 local function AboutOptionsTable()
+    local db = EnhancedCooldownManager.db
     local authorColored = "|cffa855f7S|r|cff7a84f7o|r|cff6b9bf7l|r|cff4cc9f0ä|r|cff22c55er|r"
-    local version = C_AddOns.GetAddOnMetadata("EnhancedCooldownManager", "Version")  or "unknown"
+    local version = C_AddOns.GetAddOnMetadata("EnhancedCooldownManager", "Version") or "unknown"
     return {
         type = "group",
         name = "About",
@@ -1623,22 +1659,42 @@ local function AboutOptionsTable()
                 name = " ",
                 order = 3,
             },
-            linksHeader = {
+            debugHeader = {
                 type = "header",
-                name = "Other Addons",
-                order = 4,
+                name = "Troubleshooting",
+                order = 10,
             },
-            -- Add links to other addons here
-            -- Example:
-            -- addonLink1 = {
-            --     type = "description",
-            --     name = "|cff4cc9f0My Other Addon|r - Description here",
-            --     order = 11,
-            -- },
-            placeholder = {
+            debug = {
+                type = "toggle",
+                name = "Debug Mode",
+                desc = "Enable trace logging for /ecm bug reports.",
+                order = 11,
+                width = "double",
+                get = function() return db.profile.debug end,
+                set = function(_, val) db.profile.debug = val end,
+            },
+            spacer2 = {
                 type = "description",
-                name = "|cffaaaaaa(Coming soon)|r",
-                order = 5,
+                name = " ",
+                order = 20,
+            },
+            resetHeader = {
+                type = "header",
+                name = "Reset",
+                order = 30,
+            },
+            resetAll = {
+                type = "execute",
+                name = "Reset Everything to Default",
+                desc = "Reset all settings to their default values and reload the UI.",
+                order = 31,
+                width = "double",
+                confirm = true,
+                confirmText = "This will reset ALL Enhanced Cooldown Manager settings to their defaults and reload the UI. This cannot be undone. Are you sure?",
+                func = function()
+                    db:ResetProfile()
+                    ReloadUI()
+                end,
             },
         },
     }
