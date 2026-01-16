@@ -562,6 +562,4 @@ function EnhancedCooldownManager:OnEnable()
     pcall(C_CVar.SetCVar, "cooldownViewerEnabled", "1")
 
     -- AceAddon enables modules automatically; ResourceBars registers events in its OnEnable.
-    local gradientName = ns.SparkleUtil.GradientText("EnhancedCooldownManager")
-    print(gradientName .. ": Thank you for helping me launch this addon. <3 If you encounter issues, please type |cffffcc00/ecm bug|r to collect information for bug reports.")
 end
