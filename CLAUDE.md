@@ -34,8 +34,8 @@ Use `Util.GetPreferredAnchor(addon, excludeModule)` to find the bottom-most visi
 
 The user can turn off BuffBarCooldownViewer auto-snapping to the segment bar, allowing it to be moved normally through Blizzard's built-in edit mode. In this case, the user can configure the width of the bars because they will still be styled.
 
-
 ### Common Module Interface
+
 All bar modules expose:
 | Method | Description |
 |--------|-------------|

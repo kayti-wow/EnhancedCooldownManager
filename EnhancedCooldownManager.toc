@@ -25,8 +25,8 @@ EnhancedCooldownManager.lua
 SparkleUtil.lua
 Utilities.lua
 Options.lua
-PowerBars.lua
-SegmentBar.lua
-BuffBars.lua
-ProcOverlay.lua
-ViewerHook.lua
+Modules\PowerBar.lua
+Modules\SegmentBar.lua
+Modules\BuffBars.lua
+Modules\ProcOverlay.lua
+Modules\ViewerHook.lua
