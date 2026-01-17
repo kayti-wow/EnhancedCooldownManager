@@ -72,11 +72,22 @@ end
 --- Returns the discrete power type for the current player, if any.
 ---@return Enum.PowerType|nil powerType
 local function GetDiscretePowerType()
+    local _, class = UnitClass("player")
+
     -- Check all discrete power types to find one the player has
     for powerType in pairs(discretePowerTypes) do
         local max = UnitPowerMax("player", powerType)
         if max and max > 0 then
-            return powerType
+            -- Special case: Druids only show combo points in Cat Form
+            if class == "DRUID" then
+                local formIndex = GetShapeshiftForm()
+                if formIndex == 2 then
+                    return powerType
+                end
+                -- Not in cat form, skip combo points
+            else
+                return powerType
+            end
         end
     end
     return nil
@@ -658,6 +669,7 @@ function SegmentBar:OnEnable()
     Util.Log("SegmentBar", "OnEnable - module starting")
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED", "UpdateLayout")
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "UpdateLayout")
+    self:RegisterEvent("UPDATE_SHAPESHIFT_FORM", "UpdateLayout")
 
     C_Timer.After(0.1, function()
         self:UpdateLayout()
