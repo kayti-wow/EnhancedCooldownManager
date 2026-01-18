@@ -730,7 +730,6 @@ end
 function BuffBars:SetExternallyHidden(hidden)
     self._externallyHidden = hidden and true or false
     -- BuffBars doesn't own the viewer, so we don't hide it directly.
-    -- ViewerHook manages visibility of the entire viewer stack.
 end
 
 --- Updates values for buff bars.

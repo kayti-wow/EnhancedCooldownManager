@@ -195,12 +195,13 @@ local EVENT_CONFIG = {
     PLAYER_MOUNT_DISPLAY_CHANGED = { delay = 0 },
     PLAYER_SPECIALIZATION_CHANGED = { delay = 0 },
     -- Delayed updates with BuffBars reset (zone/world transitions)
+    PLAYER_LEVEL_UP = { delay = 0.05, resetBuffBars = true },
     PLAYER_ENTERING_WORLD = { delay = 0.4, resetBuffBars = true },
-    PLAYER_REGEN_ENABLED = { delay = 0.4, resetBuffBars = true, combatChange = true },
+    PLAYER_REGEN_ENABLED = { delay = 0.1, resetBuffBars = true, combatChange = true },
     PLAYER_REGEN_DISABLED = { delay = 0, combatChange = true },
-    ZONE_CHANGED_NEW_AREA = { delay = 0.3, resetBuffBars = true },
-    ZONE_CHANGED = { delay = 0.3, resetBuffBars = true },
-    ZONE_CHANGED_INDOORS = { delay = 0.3, resetBuffBars = true },
+    ZONE_CHANGED_NEW_AREA = { delay = 0.1, resetBuffBars = true },
+    ZONE_CHANGED = { delay = 0.1, resetBuffBars = true },
+    ZONE_CHANGED_INDOORS = { delay = 0.1, resetBuffBars = true },
 }
 
 local f = CreateFrame("Frame")
