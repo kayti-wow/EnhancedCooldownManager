@@ -585,15 +585,7 @@ local function BarDefaultsArgs()
                         db.profile.global.fontShadow = val
                         RefreshAllBars()
                     end,
-                },
-                fontShadowReset = {
-                    type = "execute",
-                    name = "X",
-                    order = 10,
-                    width = 0.3,
-                    hidden = function() return not IsValueChanged("global.fontShadow") end,
-                    func = MakeResetHandler("global.fontShadow"),
-                },
+                }
             },
         },
     }
