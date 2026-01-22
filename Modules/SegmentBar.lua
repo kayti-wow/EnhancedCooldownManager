@@ -20,7 +20,6 @@ local discretePowerTypes = {
     [Enum.PowerType.Chi] = true,
     [Enum.PowerType.HolyPower] = true,
     [Enum.PowerType.SoulShards] = true,
-    [Enum.PowerType.ArcaneCharges] = true,
     [Enum.PowerType.Essence] = true,
 }
 

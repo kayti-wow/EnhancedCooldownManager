@@ -26,16 +26,11 @@ local function GetPrimaryResourceValue(resource, cfg)
         return nil, nil, nil, nil
     end
 
-    local current = UnitPower("player", resource) or 0
-    local max = UnitPowerMax("player", resource) or 0
-
-    if max <= 0 then
-        return nil, nil, nil, nil
-    end
+    local current = UnitPower("player", resource)
+    local max = UnitPowerMax("player", resource)
 
     if cfg and cfg.showManaAsPercent and resource == Enum.PowerType.Mana then
-        local percent = (current / max) * 100
-        return max, current, percent, "percent"
+        return max, current, UnitPowerPercent("player", resource, false, CurveConstants.ScaleTo100), "percent"
     end
 
     return max, current, current, "number"
