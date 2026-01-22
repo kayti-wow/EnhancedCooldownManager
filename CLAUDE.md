@@ -21,6 +21,18 @@ Use `Util.GetPreferredAnchor(addon, excludeModule)` for anchor chaining.
 
 **Module interface**: `:GetFrame()`, `:GetFrameIfShown()`, `:SetExternallyHidden(bool)`, `:UpdateLayout()`, `:Refresh()`, `:Enable()`/`:Disable()`
 
+## Mixins (`Modules/Mixins/`)
+
+Bar modules use shared mixins (function-based, not object-based):
+
+- **BarFrame**: Frame creation, appearance, text/value display
+- **ModuleLifecycle**: Enable/Disable, event registration, throttled refresh
+- **TickRenderer**: Tick pooling and positioning (segment dividers, value markers)
+
+Usage: `local BarFrame = ns.Mixins.BarFrame` then `BarFrame.Create(name, parent, height)`
+
+New bar modules should use these mixins. Domain-specific logic (value sources, colors, visibility) stays in the module.
+
 ## Secret Values
 
 In combat/instances, many Blizzard API returns are restricted. Cannot compare, convert type, or concatenate.

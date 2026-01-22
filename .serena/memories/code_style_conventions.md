@@ -10,6 +10,14 @@
 - No upvalue caching (`local math_floor = math.floor`)
 - Remove unused code
 
+## Mixins (Modules/Mixins/)
+Bar modules should use the shared mixins:
+- **BarFrame**: Frame creation (`Create`), appearance (`ApplyAppearance`), text/value (`SetValue`, `SetText`)
+- **ModuleLifecycle**: Enable/Disable, event registration, throttling (`ThrottledRefresh`)
+- **TickRenderer**: Tick pooling (`EnsureTicks`), positioning (`LayoutSegmentTicks`, `LayoutValueTicks`)
+
+Usage: `local BarFrame = ns.Mixins.BarFrame` then call as functions, e.g., `BarFrame.Create(name, parent, height)`
+
 ## Secret Values (WoW-specific)
 Many Blizzard API returns are restricted in combat/instances. Cannot compare, convert, or concatenate.
 - `issecretvalue(v)` - check if secret
