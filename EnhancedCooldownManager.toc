@@ -34,5 +34,6 @@ Modules\Mixins\TickRenderer.lua
 
 Modules\PowerBar.lua
 Modules\SegmentBar.lua
+Modules\RuneBar.lua
 Modules\BuffBars.lua
 Modules\ViewerHook.lua

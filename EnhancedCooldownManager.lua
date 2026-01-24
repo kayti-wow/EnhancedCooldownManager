@@ -22,11 +22,12 @@ local ADDON_NAME, ns = ...
 ---@class ECM_SegmentBarConfig : ECM_BarConfigBase
 ---@field demonHunterSoulsSpellId number
 ---@field demonHunterSoulsMax number
----@field deathKnightRunesMax number
----@field colorDkBlood number[]
----@field colorDkFrost number[]
----@field colorDkUnholy number[]
 ---@field colorDemonHunterSouls number[]
+---@field colorComboPoints number[]|nil
+
+---@class ECM_RuneBarConfig : ECM_BarConfigBase
+---@field deathKnightRunesMax number
+---@field colorDkRunes number[]
 
 ---@alias ECM_ResourceType number|string
 
@@ -96,6 +97,7 @@ local ADDON_NAME, ns = ...
 ---@field global ECM_GlobalConfig
 ---@field powerBar ECM_PowerBarConfig
 ---@field segmentBar ECM_SegmentBarConfig
+---@field runeBar ECM_RuneBarConfig
 ---@field powerTypeColors ECM_PowerTypeColorsConfig
 ---@field dynamicBars ECM_DynamicBarsConfig|ECM_DynamicBarConfig[]
 ---@field buffBars ECM_BuffBarsConfig
@@ -174,9 +176,15 @@ local defaults = {
             demonHunterSoulsSpellId = 203720,
             demonHunterSoulsMax = 6,
             colorDemonHunterSouls = { 0.46, 0.98, 1.00 },
+            colorComboPoints = { 0.75, 0.15, 0.15 },
+        },
+        runeBar = {
+            enabled = true,
+            height = nil,
+            texture = nil,
+            bgColor = nil,
             deathKnightRunesMax = 6,
             colorDkRunes = { 0.87, 0.10, 0.22 },
-            colorComboPoints = { 0.75, 0.15, 0.15 },
         },
         dynamicBars = {
             showIcon = false,

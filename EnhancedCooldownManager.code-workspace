@@ -182,7 +182,8 @@
             "SettingsDropdownControlMixin",
             "ButtonStateBehaviorMixin",
             "DefaultTooltipMixin",
-            "MenuConstants"
+            "MenuConstants",
+            "class"
         ],
         "Lua.type.weakUnionCheck": true
 	}

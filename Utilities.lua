@@ -404,8 +404,8 @@ end
 function Util.GetPreferredAnchor(addon, excludeModule)
     local viewer = Util.GetViewerAnchor()
 
-    -- Chain: PowerBars -> SegmentBar (in order)
-    local chain = { "PowerBars", "SegmentBar" }
+    -- Chain: PowerBars -> SegmentBar -> RuneBar (in order)
+    local chain = { "PowerBars", "SegmentBar", "RuneBar" }
     local bottomMost = nil
 
     for _, modName in ipairs(chain) do
