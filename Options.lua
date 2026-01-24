@@ -198,6 +198,27 @@ local function GeneralOptionsTable()
                             RefreshAllBars()
                         end,
                     },
+                    texture = {
+                        type = "select",
+                        name = "Bar Texture",
+                        order = 6,
+                        width = "double",
+                        dialogControl = "LSM30_Statusbar",
+                        values = GetLSMStatusbarValues,
+                        get = function() return db.profile.global.texture end,
+                        set = function(_, val)
+                            db.profile.global.texture = val
+                            RefreshAllBars()
+                        end,
+                    },
+                    textureReset = {
+                        type = "execute",
+                        name = "X",
+                        order = 7,
+                        width = 0.3,
+                        hidden = function() return not IsValueChanged("global.texture") end,
+                        func = MakeResetHandler("global.texture"),
+                    },
                 },
             },
             layoutSettings = {
@@ -233,23 +254,10 @@ local function GeneralOptionsTable()
                         hidden = function() return not IsValueChanged("offsetY") end,
                         func = MakeResetHandler("offsetY"),
                     },
-                },
-            },
-            widthSettings = {
-                type = "group",
-                name = "Width",
-                inline = true,
-                order = 3,
-                args = {
-                    autoWidthDesc = {
-                        type = "description",
-                        name = "Automatically resize bars to match the cooldown manager width.",
-                        order = 1,
-                    },
                     autoWidth = {
                         type = "toggle",
                         name = "Automatically resize to match cooldown manager",
-                        order = 2,
+                        order = 5,
                         width = "full",
                         get = function() return db.profile.width.auto end,
                         set = function(_, val)
@@ -260,12 +268,12 @@ local function GeneralOptionsTable()
                     widthDesc = {
                         type = "description",
                         name = "\nWidth of bars when automatic resizing is disabled.",
-                        order = 3,
+                        order = 6,
                     },
                     widthValue = {
                         type = "range",
                         name = "Width",
-                        order = 4,
+                        order = 7,
                         width = "double",
                         min = 150,
                         max = 600,
