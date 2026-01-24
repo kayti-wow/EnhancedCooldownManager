@@ -26,7 +26,7 @@ local ADDON_NAME, ns = ...
 ---@field colorComboPoints number[]|nil
 
 ---@class ECM_RuneBarConfig : ECM_BarConfigBase
----@field deathKnightRunesMax number
+---@field max number
 ---@field colorDkRunes number[]
 
 ---@alias ECM_ResourceType number|string
@@ -87,7 +87,6 @@ local ADDON_NAME, ns = ...
 ---@field exceptInInstance boolean When true, don't fade in raids, dungeons, battlegrounds, or PVP
 
 ---@class ECM_Profile
----@field enabled boolean
 ---@field hideWhenMounted number
 ---@field updateFrequency number
 ---@field schemaVersion number
@@ -136,7 +135,6 @@ ns.GetDefaultTexture = GetDefaultTexture
 
 local defaults = {
     profile = {
-        enabled = true,
         debug = false,
         hideWhenMounted = true,
         updateFrequency = 0.04,
@@ -183,8 +181,8 @@ local defaults = {
             height = nil,
             texture = nil,
             bgColor = nil,
-            deathKnightRunesMax = 6,
-            colorDkRunes = { 0.87, 0.10, 0.22 },
+            max = 6,
+            color = { 0.87, 0.10, 0.22 },
         },
         dynamicBars = {
             showIcon = false,
@@ -564,23 +562,6 @@ function EnhancedCooldownManager:ShowImportDialog()
     StaticPopup_Show(POPUP_IMPORT_PROFILE)
 end
 
---- Prompts the user to confirm disabling ECM and reloading the UI.
---- Reloading is required to fully undo all hooks/styling (especially BuffBars reskins).
----@param onCancel fun()|nil Called if the user cancels (e.g. to refresh options UI state).
-function EnhancedCooldownManager:ConfirmDisableAndReload(onCancel)
-    self:ConfirmReloadUI(
-        "Disable Enhanced Cooldown Manager and reload the UI?",
-        function()
-            if self.db and self.db.profile then
-                self.db.profile.enabled = false
-            end
-            if self.PowerBars then self.PowerBars:Disable() end
-            if self.SegmentBar then self.SegmentBar:Disable() end
-        end,
-        onCancel
-    )
-end
-
 --- Parses on/off/toggle argument and returns the new boolean value.
 ---@param arg string The argument ("on", "off", "toggle", or "")
 ---@param current boolean The current value
@@ -639,20 +620,6 @@ function EnhancedCooldownManager:ChatCommand(input)
         end
         profile.debug = newVal
         self:Print("Debug:", profile.debug and "ON" or "OFF")
-        return
-    end
-
-    -- Handle on/off/toggle for main enabled state
-    if cmd == "off" or (cmd == "toggle" and profile.enabled) then
-        self:ConfirmDisableAndReload()
-        return
-    end
-
-    if cmd == "on" or cmd == "toggle" then
-        profile.enabled = true
-        self.PowerBars:Refresh()
-        self.SegmentBar:Refresh()
-        self:Print("Enabled:", profile.enabled and "ON" or "OFF")
         return
     end
 

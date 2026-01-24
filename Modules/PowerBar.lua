@@ -175,7 +175,7 @@ function PowerBars:UpdateLayout()
 
     local profile, cfg = result.profile, result.cfg
     local bar = self:GetFrame()
-    local anchor = Util.GetViewerAnchor() or UIParent
+    local anchor = Util.GetViewerAnchor()
 
     local desiredHeight = Util.GetBarHeight(cfg, profile, Util.DEFAULT_POWER_BAR_HEIGHT)
     local desiredOffsetY = -Util.GetTopGapOffset(cfg, profile)
@@ -204,16 +204,8 @@ end
 
 --- Updates values: status bar value, text, colors, ticks.
 function PowerBars:Refresh()
-    if self._externallyHidden then
-        return
-    end
-
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not profile then
-        return
-    end
-
-    if not (profile.powerBar and profile.powerBar.enabled) then
+    if self._externallyHidden or not (profile and profile.powerBar and profile.powerBar.enabled) then
         return
     end
 
@@ -264,16 +256,8 @@ end
 --------------------------------------------------------------------------------
 
 function PowerBars:OnUnitPower(_, unit)
-    if unit ~= "player" then
-        return
-    end
-
-    if self._externallyHidden then
-        return
-    end
-
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not (profile and profile.powerBar and profile.powerBar.enabled) then
+    if unit ~= "player" or self._externallyHidden or not (profile and profile.powerBar and profile.powerBar.enabled) then
         return
     end
 

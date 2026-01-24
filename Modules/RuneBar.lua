@@ -14,48 +14,11 @@ EnhancedCooldownManager.RuneBar = RuneBar
 -- Domain Logic (DK rune-specific value/config handling)
 --------------------------------------------------------------------------------
 
---- Returns fractional rune progress (ready + partial recharge).
----@param maxRunes number
----@return number
-local function GetDkRuneProgressValue(maxRunes)
-    maxRunes = tonumber(maxRunes) or 6
-    if not GetRuneCooldown then
-        return 0
-    end
-
-    local sum = 0
-    local now = GetTime()
-
-    for i = 1, maxRunes do
-        local start, duration, runeReady = GetRuneCooldown(i)
-        if runeReady or (not start or start == 0) or (not duration or duration == 0) then
-            sum = sum + 1
-        else
-            local elapsed = now - (tonumber(start) or now)
-            local dur = tonumber(duration) or 0
-            if dur > 0 then
-                local pct = math.max(0, math.min(1, elapsed / dur))
-                sum = sum + pct
-            end
-        end
-    end
-
-    return sum
-end
-
 local function ShouldShowRuneBar()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not profile or profile.enabled == false then
-        return false
-    end
-
     local cfg = profile.runeBar
-    if not (cfg and cfg.enabled) then
-        return false
-    end
-
     local _, class = UnitClass("player")
-    return class == "DEATHKNIGHT"
+    return cfg and cfg.enabled and class == "DEATHKNIGHT"
 end
 
 --- Returns rune bar values.
@@ -63,28 +26,30 @@ end
 ---@return number maxRunes
 ---@return number currentValue
 ---@return string kind
-local function GetRuneBarValues(profile)
+local function GetResourceValue(profile)
     local cfg = profile and profile.runeBar
-    local maxRunes = (cfg and cfg.deathKnightRunesMax) or 6
-    local v = GetDkRuneProgressValue(maxRunes)
-    return maxRunes, v, "runes"
-end
+    local maxRunes = (cfg and cfg.max)
+    assert(maxRunes ~= nil, "Expected max config to be present.")
+    assert(type(maxRunes) == "number", "Expected max to be a number.")
 
---- Extracts RGB from a color table or returns fallback.
-local function ExtractColor(c, fallbackR, fallbackG, fallbackB)
-    if type(c) == "table" then
-        return c[1] or 1, c[2] or 1, c[3] or 1
+    local current = 0
+    local now = GetTime()
+
+    for i = 1, maxRunes do
+        local start, duration, runeReady = GetRuneCooldown(i)
+        if runeReady or (not start or start == 0) or (not duration or duration == 0) then
+            current = current + 1
+        else
+            local elapsed = now - (tonumber(start) or now)
+            local dur = tonumber(duration) or 0
+            if dur > 0 then
+                local pct = math.max(0, math.min(1, elapsed / dur))
+                current = current + pct
+            end
+        end
     end
-    return fallbackR or 1, fallbackG or 1, fallbackB or 1
-end
 
---- Returns the color for the rune bar.
----@param profile table
----@return number r, number g, number b
-local function GetRuneBarColor(profile)
-    local cfg = profile and profile.runeBar
-    local colorCfg = cfg and cfg.colorDkRunes
-    return ExtractColor(colorCfg, 0.87, 0.10, 0.22)
+    return maxRunes, current, "runes"
 end
 
 --------------------------------------------------------------------------------
@@ -133,6 +98,7 @@ local function UpdateFragmentedRuneDisplay(bar, maxRunes)
     end
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
+    local cfg = profile and profile.runeBar
 
     local barWidth = bar:GetWidth()
     local barHeight = bar:GetHeight()
@@ -142,8 +108,7 @@ local function UpdateFragmentedRuneDisplay(bar, maxRunes)
 
     bar.StatusBar:SetAlpha(0)
 
-    local r, g, b = GetRuneBarColor(profile)
-
+    local r, g, b = cfg.color[1], cfg.color[2], cfg.color[3]
     local readySet = {}
     local cdLookup = {}
     local now = GetTime()
@@ -233,19 +198,6 @@ end
 -- Frame Management (uses BarFrame mixin)
 --------------------------------------------------------------------------------
 
---- Returns the base viewer anchor frame.
----@return Frame|nil
-function RuneBar:GetViewerAnchor()
-    return Util.GetViewerAnchor()
-end
-
---- Computes the preferred anchor for RuneBar.
----@return Frame anchor
----@return boolean isFirstBar
-function RuneBar:GetPreferredAnchor()
-    return Util.GetPreferredAnchor(EnhancedCooldownManager, "RuneBar")
-end
-
 --- Returns or creates the rune bar frame.
 ---@return Frame
 function RuneBar:GetFrame()
@@ -306,8 +258,8 @@ function RuneBar:UpdateLayout()
 
     local profile, cfg = result.profile, result.cfg
     local bar = self:GetFrame()
-    local anchor, isFirstBar = self:GetPreferredAnchor()
-    local viewer = Util.GetViewerAnchor() or UIParent
+    local anchor, isFirstBar = Util.GetPreferredAnchor(EnhancedCooldownManager, "RuneBar")
+    local viewer = Util.GetViewerAnchor()
 
     local desiredHeight = Util.GetBarHeight(cfg, profile, Util.DEFAULT_SEGMENT_BAR_HEIGHT)
     local desiredOffsetY = isFirstBar and anchor == viewer
@@ -324,7 +276,7 @@ function RuneBar:UpdateLayout()
     bar._lastTexture = tex
 
     -- Get rune info
-    local maxRunes, currentValue, kind = GetRuneBarValues(profile)
+    local maxRunes, currentValue, kind = GetResourceValue(profile)
     Util.Log("RuneBar", "UpdateLayout - GetRuneBarValues", {
         maxRunes = maxRunes,
         currentValue = currentValue,
@@ -371,12 +323,8 @@ end
 
 --- Updates values: rune status and colors.
 function RuneBar:Refresh()
-    if self._externallyHidden then
-        return
-    end
-
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not (profile and profile.runeBar and profile.runeBar.enabled) then
+    if self._externallyHidden or not (profile and profile.runeBar and profile.runeBar.enabled) then
         return
     end
 
@@ -389,7 +337,7 @@ function RuneBar:Refresh()
         return
     end
 
-    local maxRunes, _, _ = GetRuneBarValues(profile)
+    local maxRunes, _, _ = GetResourceValue(profile)
     if not maxRunes or maxRunes <= 0 then
         return
     end

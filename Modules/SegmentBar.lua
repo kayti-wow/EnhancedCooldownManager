@@ -46,24 +46,10 @@ end
 
 local function ShouldShowSegmentBar()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not profile or profile.enabled == false then
-        return false
-    end
-
     local cfg = profile.segmentBar
-    if not (cfg and cfg.enabled) then
-        return false
-    end
-
     local _, class = UnitClass("player")
-
-    if class == "DEMONHUNTER" then
-        return true
-    end
-
     local discretePower = GetDiscretePowerType()
-    Util.Log("SegmentBar", "ShouldShowSegmentBar - discrete power fallback", { discretePower = discretePower })
-    return discretePower ~= nil
+    return cfg and cfg.enabled and (class == "DEMONHUNTER" or discretePower ~= nil)
 end
 
 --- Returns segment bar values based on class/power type.
@@ -71,13 +57,14 @@ end
 ---@return number|nil maxSegments
 ---@return number|nil currentValue
 ---@return Enum.PowerType|string|nil kind
-local function GetSegmentBarValues(profile)
+local function GetValues(profile)
     local cfg = profile and profile.segmentBar
     local _, class = UnitClass("player")
 
     -- Special: DH Souls (aura-based stacks)
     if class == "DEMONHUNTER" then
         if GetSpecialization() == 3 then
+            -- Devourer is tracked by two spells. One is while not in void meta, and the second is while in it.
             local voidFragments = C_UnitAuras.GetUnitAuraBySpellID("player", 1225789)
             local collapsingStar = C_UnitAuras.GetUnitAuraBySpellID("player", 1227702)
             if collapsingStar then
@@ -88,13 +75,14 @@ local function GetSegmentBarValues(profile)
             end
             return nil, nil, nil
         else
+            -- Havoc and vengeance use the same type of soul fragments
             local maxSouls = (cfg and cfg.demonHunterSoulsMax) or 5
             local count = C_Spell.GetSpellCastCount(247454) or 0
             return maxSouls, count, "souls"
         end
     end
 
-    -- Generic discrete power types
+    -- Everything else that's supported is a first-class resource
     local powerType = GetDiscretePowerType()
     if powerType then
         local max = UnitPowerMax("player", powerType) or 0
@@ -105,14 +93,6 @@ local function GetSegmentBarValues(profile)
     return nil, nil, nil
 end
 
---- Extracts RGB from a color table or returns fallback.
-local function ExtractColor(c, fallbackR, fallbackG, fallbackB)
-    if type(c) == "table" then
-        return c[1] or 1, c[2] or 1, c[3] or 1
-    end
-    return fallbackR or 1, fallbackG or 1, fallbackB or 1
-end
-
 --- Returns the color for the segment bar based on kind (string or power type).
 ---@param profile table
 ---@param kind string|Enum.PowerType
@@ -120,24 +100,18 @@ end
 local function GetSegmentBarColor(profile, kind)
     local cfg = profile and profile.segmentBar
 
-    local kindColors = {
-        souls = { cfg and cfg.colorDemonHunterSouls, 0.64, 0.19, 0.79 },
+    local colorsFromProfile = {
+        souls = cfg.colorDemonHunterSouls,
+        [Enum.PowerType.ComboPoints] = cfg.colorComboPoints,
+        [Enum.PowerType.Chi] = cfg.colorChi,
+        [Enum.PowerType.HolyPower] = cfg.colorHolyPower,
+        [Enum.PowerType.SoulShards] = cfg.colorSoulShards,
+        [Enum.PowerType.Essence] = cfg.colorEssence
     }
 
-    local kindEntry = kindColors[kind]
-    if kindEntry then
-        return ExtractColor(kindEntry[1], kindEntry[2], kindEntry[3], kindEntry[4])
-    end
-
-    if kind == Enum.PowerType.ComboPoints and cfg and cfg.colorComboPoints then
-        return ExtractColor(cfg.colorComboPoints)
-    end
-
-    if type(kind) == "number" then
-        local c = profile.powerTypeColors and profile.powerTypeColors.colors and profile.powerTypeColors.colors[kind]
-        if c then
-            return ExtractColor(c)
-        end
+    local colors = colorsFromProfile[kind]
+    if colors then
+        return colors[1], colors[2], colors[3]
     end
 
     return 1, 1, 1
@@ -146,19 +120,6 @@ end
 --------------------------------------------------------------------------------
 -- Frame Management (uses BarFrame mixin)
 --------------------------------------------------------------------------------
-
---- Returns the base viewer anchor frame.
----@return Frame|nil
-function SegmentBar:GetViewerAnchor()
-    return Util.GetViewerAnchor()
-end
-
---- Computes the preferred anchor for SegmentBar.
----@return Frame anchor
----@return boolean isFirstBar
-function SegmentBar:GetPreferredAnchor()
-    return Util.GetPreferredAnchor(EnhancedCooldownManager, "SegmentBar")
-end
 
 --- Returns or creates the segment bar frame.
 ---@return ECM_SegmentBarFrame
@@ -217,8 +178,8 @@ function SegmentBar:UpdateLayout()
 
     local profile, cfg = result.profile, result.cfg
     local bar = self:GetFrame()
-    local anchor, isFirstBar = self:GetPreferredAnchor()
-    local viewer = Util.GetViewerAnchor() or UIParent
+    local anchor, isFirstBar = Util.GetPreferredAnchor(EnhancedCooldownManager, "SegmentBar")
+    local viewer = Util.GetViewerAnchor()
 
     local desiredHeight = Util.GetBarHeight(cfg, profile, Util.DEFAULT_SEGMENT_BAR_HEIGHT)
     local desiredOffsetY = isFirstBar and anchor == viewer
@@ -235,7 +196,7 @@ function SegmentBar:UpdateLayout()
     bar._lastTexture = tex
 
     -- Get segment info
-    local maxSegments, currentValue, kind = GetSegmentBarValues(profile)
+    local maxSegments, currentValue, kind = GetValues(profile)
     Util.Log("SegmentBar", "UpdateLayout - GetSegmentBarValues", {
         maxSegments = maxSegments,
         currentValue = currentValue,
@@ -269,12 +230,8 @@ end
 
 --- Updates values: status bar value, colors.
 function SegmentBar:Refresh()
-    if self._externallyHidden then
-        return
-    end
-
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not (profile and profile.segmentBar and profile.segmentBar.enabled) then
+    if self._externallyHidden or not (profile and profile.runeBar and profile.runeBar.enabled) then
         return
     end
 
@@ -287,7 +244,7 @@ function SegmentBar:Refresh()
         return
     end
 
-    local maxSegments, currentValue, kind = GetSegmentBarValues(profile)
+    local maxSegments, currentValue, kind = GetValues(profile)
     if not maxSegments or maxSegments <= 0 then
         return
     end
@@ -304,12 +261,8 @@ end
 --------------------------------------------------------------------------------
 
 function SegmentBar:OnUpdateThrottled()
-    if self._externallyHidden then
-        return
-    end
-
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not (profile and profile.segmentBar and profile.segmentBar.enabled) then
+    if self._externallyHidden or not (profile and profile.runeBar and profile.runeBar.enabled) then
         return
     end
 

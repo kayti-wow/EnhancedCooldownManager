@@ -13,19 +13,6 @@ local _cachedDynamicStyleProfile = nil
 -- Default bar color (soft gold/tan)
 local FALLBACK_BAR_COLOR = { 0.85, 0.75, 0.55 }
 
---- Returns true if ECM should be styling BuffBars right now.
----
---- We treat ECM as disabled if the profile master toggle is off.
----@param profile ECM_Profile|table|nil
----@return boolean
-local function ShouldStyle(profile)
-    if not profile or profile.enabled == false then
-        return false
-    end
-
-    return true
-end
-
 --- Returns current class ID and spec ID.
 ---@return number|nil classID, number|nil specID
 local function GetCurrentClassSpec()
@@ -430,12 +417,6 @@ function BuffBars:HookViewer()
         return
     end
 
-    local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not ShouldStyle(profile) then
-        EnhancedCooldownManager.Util.Log("BuffBars", "HookViewer skipped - disabled")
-        return
-    end
-
     if viewer.__ecmHooked then
         return
     end
@@ -478,10 +459,6 @@ function BuffBars:ScheduleLayoutUpdate()
     end
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not ShouldStyle(profile) then
-        EnhancedCooldownManager.Util.Log("BuffBars", "ScheduleLayoutUpdate skipped - disabled")
-        return
-    end
     self._layoutPending = true
 
     assert(profile and profile.updateFrequency, "ECM: profile.updateFrequency missing")
@@ -502,10 +479,6 @@ function BuffBars:ScheduleRescan()
     end
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not ShouldStyle(profile) then
-        EnhancedCooldownManager.Util.Log("BuffBars", "ScheduleRescan skipped - disabled")
-        return
-    end
     self._rescanPending = true
 
     assert(profile and profile.updateFrequency, "ECM: profile.updateFrequency missing")
@@ -527,10 +500,6 @@ function BuffBars:RescanBars()
     end
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not ShouldStyle(profile) then
-        EnhancedCooldownManager.Util.Log("BuffBars", "RescanBars skipped - disabled")
-        return
-    end
 
     -- Hook all children for anchor change detection
     for _, child in ipairs({ viewer:GetChildren() }) do
@@ -670,11 +639,6 @@ function BuffBars:UpdateLayout()
     end
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if not ShouldStyle(profile) then
-        Util.Log("BuffBars", "UpdateLayout skipped - disabled")
-        return
-    end
-
     local buffBarsConfig = profile.buffBars or {}
     local autoPosition = buffBarsConfig.autoPosition ~= false -- Default to true
 
@@ -737,7 +701,6 @@ end
 function BuffBars:Refresh()
     self:ScheduleRescan()
 end
-
 
 --- Returns cached bars for current class/spec for Options UI.
 ---@return table<number, ECM_BarCacheEntry> bars Indexed by bar position
@@ -854,11 +817,6 @@ function BuffBars:OnEnable()
     Util.Log("BuffBars", "OnEnable - module starting")
     -- Delayed initialization with retry to ensure frames exist
     local function TryInitialize()
-        local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-        if not ShouldStyle(profile) then
-            EnhancedCooldownManager.Util.Log("BuffBars", "OnEnable - module disabled in profile")
-            return
-        end
         self:HookViewer()
         self:HookEditMode()
         if self:GetViewer() then
@@ -867,7 +825,7 @@ function BuffBars:OnEnable()
     end
 
     C_Timer.After(0.1, TryInitialize)
-    C_Timer.After(1.0, TryInitialize)  -- Retry in case frames weren't ready
+    -- C_Timer.After(1.0, TryInitialize)  -- Retry in case frames weren't ready
 end
 
 function BuffBars:OnDisable()

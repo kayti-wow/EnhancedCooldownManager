@@ -209,12 +209,6 @@ function Util.CheckUpdateLayoutPreconditions(module, configKey, shouldShowFn, mo
         return nil
     end
 
-    if profile.enabled == false then
-        Util.Log(moduleName, "UpdateLayout - addon disabled")
-        module:Disable()
-        return nil
-    end
-
     local cfg = profile[configKey]
     if not (cfg and cfg.enabled) then
         Util.Log(moduleName, "UpdateLayout - " .. configKey .. " disabled in config")
