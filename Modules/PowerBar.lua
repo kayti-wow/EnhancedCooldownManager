@@ -270,30 +270,14 @@ end
 -- Module Lifecycle
 --------------------------------------------------------------------------------
 
-local LAYOUT_EVENTS = {
-    "PLAYER_SPECIALIZATION_CHANGED",
-    "UPDATE_SHAPESHIFT_FORM",
-    "PLAYER_ENTERING_WORLD",
-}
-
-local REFRESH_EVENTS = {
-    { event = "UNIT_POWER_UPDATE", handler = "OnUnitPower" },
-}
-
-local REFRESH_EVENT_NAMES = { "UNIT_POWER_UPDATE" }
-
-function PowerBars:Enable()
-    Lifecycle.Enable(self, "PowerBars", REFRESH_EVENTS)
-end
-
-function PowerBars:Disable()
-    Lifecycle.Disable(self, "PowerBars", REFRESH_EVENT_NAMES)
-end
-
-function PowerBars:OnEnable()
-    Lifecycle.OnEnable(self, "PowerBars", LAYOUT_EVENTS)
-end
-
-function PowerBars:OnDisable()
-    Lifecycle.OnDisable(self, "PowerBars", LAYOUT_EVENTS, REFRESH_EVENT_NAMES)
-end
+Lifecycle.Setup(PowerBars, {
+    name = "PowerBars",
+    layoutEvents = {
+        "PLAYER_SPECIALIZATION_CHANGED",
+        "UPDATE_SHAPESHIFT_FORM",
+        "PLAYER_ENTERING_WORLD",
+    },
+    refreshEvents = {
+        { event = "UNIT_POWER_UPDATE", handler = "OnUnitPower" },
+    },
+})

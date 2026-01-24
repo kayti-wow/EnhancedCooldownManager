@@ -231,7 +231,7 @@ end
 --- Updates values: status bar value, colors.
 function SegmentBar:Refresh()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if self._externallyHidden or not (profile and profile.runeBar and profile.runeBar.enabled) then
+    if self._externallyHidden or not (profile and profile.segmentBar and profile.segmentBar.enabled) then
         return
     end
 
@@ -262,7 +262,7 @@ end
 
 function SegmentBar:OnUpdateThrottled()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if self._externallyHidden or not (profile and profile.runeBar and profile.runeBar.enabled) then
+    if self._externallyHidden or not (profile and profile.segmentBar and profile.segmentBar.enabled) then
         return
     end
 
@@ -281,34 +281,15 @@ end
 -- Module Lifecycle
 --------------------------------------------------------------------------------
 
-local LAYOUT_EVENTS = {
-    "PLAYER_SPECIALIZATION_CHANGED",
-    "PLAYER_ENTERING_WORLD",
-    "UPDATE_SHAPESHIFT_FORM",
-}
-
-local REFRESH_EVENTS = {
-    { event = "UNIT_POWER_UPDATE", handler = "OnUnitEvent" },
-    { event = "UNIT_AURA", handler = "OnUnitEvent" },
-}
-
-local REFRESH_EVENT_NAMES = {
-    "UNIT_POWER_UPDATE",
-    "UNIT_AURA",
-}
-
-function SegmentBar:Enable()
-    Lifecycle.Enable(self, "SegmentBar", REFRESH_EVENTS)
-end
-
-function SegmentBar:Disable()
-    Lifecycle.Disable(self, "SegmentBar", REFRESH_EVENT_NAMES)
-end
-
-function SegmentBar:OnEnable()
-    Lifecycle.OnEnable(self, "SegmentBar", LAYOUT_EVENTS)
-end
-
-function SegmentBar:OnDisable()
-    Lifecycle.OnDisable(self, "SegmentBar", LAYOUT_EVENTS, REFRESH_EVENT_NAMES)
-end
+Lifecycle.Setup(SegmentBar, {
+    name = "SegmentBar",
+    layoutEvents = {
+        "PLAYER_SPECIALIZATION_CHANGED",
+        "PLAYER_ENTERING_WORLD",
+        "UPDATE_SHAPESHIFT_FORM",
+    },
+    refreshEvents = {
+        { event = "UNIT_POWER_UPDATE", handler = "OnUnitEvent" },
+        { event = "UNIT_AURA", handler = "OnUnitEvent" },
+    },
+})

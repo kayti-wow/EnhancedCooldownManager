@@ -173,6 +173,10 @@ local defaults = {
             demonHunterSoulsMax = 6,
             colorDemonHunterSouls = { 0.46, 0.98, 1.00 },
             colorComboPoints = { 0.75, 0.15, 0.15 },
+            colorChi = { 0.00, 1.00, 0.59 },
+            colorHolyPower = { 1.00, 0.82, 0.00 },
+            colorSoulShards = { 0.58, 0.51, 0.79 },
+            colorEssence = { 0.20, 0.58, 0.50 },
         },
         runeBar = {
             enabled = true,

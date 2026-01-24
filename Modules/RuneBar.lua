@@ -375,40 +375,20 @@ end
 -- Module Lifecycle
 --------------------------------------------------------------------------------
 
-local LAYOUT_EVENTS = {
-    "PLAYER_SPECIALIZATION_CHANGED",
-    "PLAYER_ENTERING_WORLD",
-}
-
-local REFRESH_EVENTS = {
-    { event = "RUNE_POWER_UPDATE", handler = "OnUpdateThrottled" },
-    { event = "RUNE_TYPE_UPDATE", handler = "OnUpdateThrottled" },
-}
-
-local REFRESH_EVENT_NAMES = {
-    "RUNE_POWER_UPDATE",
-    "RUNE_TYPE_UPDATE",
-}
-
-function RuneBar:Enable()
-    Lifecycle.Enable(self, "RuneBar", REFRESH_EVENTS)
-end
-
-function RuneBar:Disable()
-    if self._frame then
-        if self._frame._onUpdateAttached then
+Lifecycle.Setup(RuneBar, {
+    name = "RuneBar",
+    layoutEvents = {
+        "PLAYER_SPECIALIZATION_CHANGED",
+        "PLAYER_ENTERING_WORLD",
+    },
+    refreshEvents = {
+        { event = "RUNE_POWER_UPDATE", handler = "OnUpdateThrottled" },
+        { event = "RUNE_TYPE_UPDATE", handler = "OnUpdateThrottled" },
+    },
+    onDisable = function(self)
+        if self._frame and self._frame._onUpdateAttached then
             self._frame._onUpdateAttached = nil
             self._frame:SetScript("OnUpdate", nil)
         end
-    end
-
-    Lifecycle.Disable(self, "RuneBar", REFRESH_EVENT_NAMES)
-end
-
-function RuneBar:OnEnable()
-    Lifecycle.OnEnable(self, "RuneBar", LAYOUT_EVENTS)
-end
-
-function RuneBar:OnDisable()
-    Lifecycle.OnDisable(self, "RuneBar", LAYOUT_EVENTS, REFRESH_EVENT_NAMES)
-end
+    end,
+})

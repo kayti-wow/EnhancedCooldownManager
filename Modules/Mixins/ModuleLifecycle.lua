@@ -8,6 +8,102 @@ local Lifecycle = {}
 ns.Mixins = ns.Mixins or {}
 ns.Mixins.Lifecycle = Lifecycle
 
+--------------------------------------------------------------------------------
+-- Module Setup (configures and injects lifecycle methods)
+--------------------------------------------------------------------------------
+
+--- Configures a module with lifecycle event handling.
+--- Injects Enable, Disable, OnEnable, OnDisable methods onto the module.
+---@param module table AceModule to configure
+---@param config table Configuration table with:
+---   - name: string - Module name for logging
+---   - layoutEvents: string[] - Events that trigger UpdateLayout
+---   - refreshEvents: table[] - Events that trigger refresh: { { event = "NAME", handler = "method" }, ... }
+---   - onDisable: function|nil - Optional cleanup callback called before standard disable
+function Lifecycle.Setup(module, config)
+    assert(config.name, "Lifecycle.Setup requires config.name")
+    assert(config.layoutEvents, "Lifecycle.Setup requires config.layoutEvents")
+    assert(config.refreshEvents, "Lifecycle.Setup requires config.refreshEvents")
+
+    -- Store config for later use
+    module._lifecycleConfig = config
+
+    -- Build refresh event names list for unregistration
+    local refreshEventNames = {}
+    for _, cfg in ipairs(config.refreshEvents) do
+        table.insert(refreshEventNames, cfg.event)
+    end
+    module._lifecycleConfig.refreshEventNames = refreshEventNames
+
+    -- Inject Enable method
+    function module:Enable()
+        if self._enabled then
+            return
+        end
+
+        self._enabled = true
+        self._lastUpdate = GetTime()
+
+        for _, cfg in ipairs(self._lifecycleConfig.refreshEvents) do
+            self:RegisterEvent(cfg.event, cfg.handler)
+        end
+
+        Util.Log(self._lifecycleConfig.name, "Enabled")
+    end
+
+    -- Inject Disable method
+    function module:Disable()
+        -- Call custom cleanup if provided
+        if self._lifecycleConfig.onDisable then
+            self._lifecycleConfig.onDisable(self)
+        end
+
+        if self._frame then
+            self._frame:Hide()
+        end
+
+        if not self._enabled then
+            return
+        end
+
+        self._enabled = false
+
+        for _, eventName in ipairs(self._lifecycleConfig.refreshEventNames) do
+            self:UnregisterEvent(eventName)
+        end
+
+        Util.Log(self._lifecycleConfig.name, "Disabled")
+    end
+
+    -- Inject OnEnable method (AceAddon lifecycle hook)
+    function module:OnEnable()
+        Util.Log(self._lifecycleConfig.name, "OnEnable - module starting")
+
+        for _, eventName in ipairs(self._lifecycleConfig.layoutEvents) do
+            self:RegisterEvent(eventName, "UpdateLayout")
+        end
+
+        C_Timer.After(0.1, function()
+            self:UpdateLayout()
+        end)
+    end
+
+    -- Inject OnDisable method (AceAddon lifecycle hook)
+    function module:OnDisable()
+        Util.Log(self._lifecycleConfig.name, "OnDisable - module stopping")
+
+        for _, eventName in ipairs(self._lifecycleConfig.layoutEvents) do
+            self:UnregisterEvent(eventName)
+        end
+
+        self:Disable()
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Layout Preconditions
+--------------------------------------------------------------------------------
+
 --- Checks UpdateLayout preconditions and returns config if successful.
 --- Handles externally hidden state, addon disabled, module disabled, and shouldShow check.
 ---@param module table Module with _externallyHidden, _frame, :Disable()
@@ -18,6 +114,10 @@ ns.Mixins.Lifecycle = Lifecycle
 function Lifecycle.CheckLayoutPreconditions(module, configKey, shouldShowFn, moduleName)
     return Util.CheckUpdateLayoutPreconditions(module, configKey, shouldShowFn, moduleName)
 end
+
+--------------------------------------------------------------------------------
+-- External Visibility
+--------------------------------------------------------------------------------
 
 --- Marks a module as externally hidden (e.g., when mounted).
 ---@param module table Module with _externallyHidden, _frame
@@ -34,82 +134,9 @@ function Lifecycle.GetFrameIfShown(module)
     return Util.GetFrameIfShown(module)
 end
 
---- Enables a module: sets _enabled flag, timestamp, registers events.
---- Modules should call this with their specific event configuration.
----@param module table Module to enable (AceModule with RegisterEvent)
----@param moduleName string Module name for logging
----@param events table Event configuration: { { event = "NAME", handler = "method" }, ... }
-function Lifecycle.Enable(module, moduleName, events)
-    if module._enabled then
-        return
-    end
-
-    module._enabled = true
-    module._lastUpdate = GetTime()
-
-    if events then
-        for _, cfg in ipairs(events) do
-            module:RegisterEvent(cfg.event, cfg.handler)
-        end
-    end
-
-    Util.Log(moduleName, "Enabled")
-end
-
---- Disables a module: hides frame, clears _enabled flag, unregisters events.
----@param module table Module to disable (AceModule with UnregisterEvent)
----@param moduleName string Module name for logging
----@param events table Event names to unregister: { "EVENT1", "EVENT2", ... }
-function Lifecycle.Disable(module, moduleName, events)
-    if module._frame then
-        module._frame:Hide()
-    end
-
-    if not module._enabled then
-        return
-    end
-
-    module._enabled = false
-
-    if events then
-        for _, eventName in ipairs(events) do
-            module:UnregisterEvent(eventName)
-        end
-    end
-
-    Util.Log(moduleName, "Disabled")
-end
-
---- Standard OnEnable handler: registers layout events and schedules initial UpdateLayout.
----@param module table Module (AceModule with RegisterEvent)
----@param moduleName string Module name for logging
----@param layoutEvents table Layout event names: { "PLAYER_ENTERING_WORLD", ... }
-function Lifecycle.OnEnable(module, moduleName, layoutEvents)
-    Util.Log(moduleName, "OnEnable - module starting")
-
-    for _, eventName in ipairs(layoutEvents) do
-        module:RegisterEvent(eventName, "UpdateLayout")
-    end
-
-    C_Timer.After(0.1, function()
-        module:UpdateLayout()
-    end)
-end
-
---- Standard OnDisable handler: unregisters layout events and calls Disable.
----@param module table Module (AceModule with UnregisterEvent)
----@param moduleName string Module name for logging
----@param layoutEvents table Layout event names to unregister
----@param refreshEvents table Refresh event names to unregister
-function Lifecycle.OnDisable(module, moduleName, layoutEvents, refreshEvents)
-    Util.Log(moduleName, "OnDisable - module stopping")
-
-    for _, eventName in ipairs(layoutEvents) do
-        module:UnregisterEvent(eventName)
-    end
-
-    Lifecycle.Disable(module, moduleName, refreshEvents)
-end
+--------------------------------------------------------------------------------
+-- Throttled Refresh
+--------------------------------------------------------------------------------
 
 --- Checks if enough time has passed for a throttled refresh.
 --- Uses profile.updateFrequency as the throttle interval.

@@ -2,6 +2,7 @@
 local _, ns = ...
 
 local EnhancedCooldownManager = ns.Addon
+local Util = ns.Util
 local Options = EnhancedCooldownManager:NewModule("Options")
 
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
@@ -181,29 +182,6 @@ local function GeneralOptionsTable()
                 inline = true,
                 order = 1,
                 args = {
-                    -- enabledDesc = {
-                    --     type = "description",
-                    --     name = "Enable or disable the entire addon.",
-                    --     order = 1,
-                    -- },
-                    -- enabled = {
-                    --     type = "toggle",
-                    --     name = "Enable Addon",
-                    --     order = 2,
-                    --     width = "full",
-                    --     get = function() return db.profile.enabled end,
-                    --     set = function(_, val)
-                    --         if val then
-                    --             db.profile.enabled = true
-                    --             RefreshAllBars()
-                    --             return
-                    --         end
-                    --         EnhancedCooldownManager:ConfirmDisableAndReload(function()
-                    --             AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
-                    --         end)
-                    --         AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
-                    --     end,
-                    -- },
                     hideWhenMountedDesc = {
                         type = "description",
                         name = "Automatically hide icons and bars when mounted and show them when dismounted.",
@@ -777,28 +755,6 @@ local function SegmentBarOptionsTable()
                         order = 1,
                         fontSize = "medium",
                     },
-                    colorDkRunes = {
-                        type = "color",
-                        name = "Death Knight Runes",
-                        order = 3,
-                        width = "double",
-                        get = function()
-                            local c = db.profile.segmentBar.colorDkRunes
-                            return c[1], c[2], c[3]
-                        end,
-                        set = function(_, r, g, b)
-                            db.profile.segmentBar.colorDkRunes = { r, g, b }
-                            RefreshAllBars()
-                        end,
-                    },
-                    colorDkRunesReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 4,
-                        width = 0.3,
-                        hidden = function() return not IsValueChanged("segmentBar.colorDkRunes") end,
-                        func = MakeResetHandler("segmentBar.colorDkRunes"),
-                    },
                     colorDemonHunterSouls = {
                         type = "color",
                         name = "Demon Hunter Souls",
@@ -842,6 +798,94 @@ local function SegmentBarOptionsTable()
                         width = 0.3,
                         hidden = function() return not IsValueChanged("segmentBar.colorComboPoints") end,
                         func = MakeResetHandler("segmentBar.colorComboPoints"),
+                    },
+                    colorChi = {
+                        type = "color",
+                        name = "Chi",
+                        order = 12,
+                        width = "double",
+                        get = function()
+                            local c = db.profile.segmentBar.colorChi
+                            return c[1], c[2], c[3]
+                        end,
+                        set = function(_, r, g, b)
+                            db.profile.segmentBar.colorChi = { r, g, b }
+                            RefreshAllBars()
+                        end,
+                    },
+                    colorChiReset = {
+                        type = "execute",
+                        name = "X",
+                        order = 13,
+                        width = 0.3,
+                        hidden = function() return not IsValueChanged("segmentBar.colorChi") end,
+                        func = MakeResetHandler("segmentBar.colorChi"),
+                    },
+                    colorHolyPower = {
+                        type = "color",
+                        name = "Holy Power",
+                        order = 15,
+                        width = "double",
+                        get = function()
+                            local c = db.profile.segmentBar.colorHolyPower
+                            return c[1], c[2], c[3]
+                        end,
+                        set = function(_, r, g, b)
+                            db.profile.segmentBar.colorHolyPower = { r, g, b }
+                            RefreshAllBars()
+                        end,
+                    },
+                    colorHolyPowerReset = {
+                        type = "execute",
+                        name = "X",
+                        order = 16,
+                        width = 0.3,
+                        hidden = function() return not IsValueChanged("segmentBar.colorHolyPower") end,
+                        func = MakeResetHandler("segmentBar.colorHolyPower"),
+                    },
+                    colorSoulShards = {
+                        type = "color",
+                        name = "Soul Shards",
+                        order = 18,
+                        width = "double",
+                        get = function()
+                            local c = db.profile.segmentBar.colorSoulShards
+                            return c[1], c[2], c[3]
+                        end,
+                        set = function(_, r, g, b)
+                            db.profile.segmentBar.colorSoulShards = { r, g, b }
+                            RefreshAllBars()
+                        end,
+                    },
+                    colorSoulShardsReset = {
+                        type = "execute",
+                        name = "X",
+                        order = 19,
+                        width = 0.3,
+                        hidden = function() return not IsValueChanged("segmentBar.colorSoulShards") end,
+                        func = MakeResetHandler("segmentBar.colorSoulShards"),
+                    },
+                    colorEssence = {
+                        type = "color",
+                        name = "Essence",
+                        order = 21,
+                        width = "double",
+                        get = function()
+                            local c = db.profile.segmentBar.colorEssence
+                            return c[1], c[2], c[3]
+                        end,
+                        set = function(_, r, g, b)
+                            db.profile.segmentBar.colorEssence = { r, g, b }
+                            RefreshAllBars()
+                        end,
+                    },
+                    colorEssenceReset = {
+                        type = "execute",
+                        name = "X",
+                        order = 22,
+                        width = 0.3,
+                        hidden = function() return not IsValueChanged("segmentBar.colorEssence") end,
+                        func = MakeResetHandler("segmentBar.colorEssence"),
                     },
                 },
             },
@@ -1131,89 +1175,6 @@ ColoursOptionsTable = function()
     return result
 end
 
-local function StyleOptionsTable()
-    local db = EnhancedCooldownManager.db
-    local powerTypes = {
-        [Enum.PowerType.Mana] = "Mana",
-        [Enum.PowerType.Rage] = "Rage",
-        [Enum.PowerType.Focus] = "Focus",
-        [Enum.PowerType.Energy] = "Energy",
-        [Enum.PowerType.RunicPower] = "Runic Power",
-        [Enum.PowerType.LunarPower] = "Lunar Power",
-        [Enum.PowerType.Fury] = "Fury",
-        [Enum.PowerType.Maelstrom] = "Maelstrom",
-        [Enum.PowerType.Essence] = "Essence",
-        [Enum.PowerType.ArcaneCharges] = "Arcane Charges",
-        [Enum.PowerType.Chi] = "Chi",
-        [Enum.PowerType.HolyPower] = "Holy Power",
-        [Enum.PowerType.SoulShards] = "Soul Shards",
-    }
-
-    local args = BarDefaultsArgs()
-
-    local powerTypeArgs = {
-        desc = {
-            type = "description",
-            name = "Customize the color for each resource type displayed on the power bar.",
-            order = 1,
-        },
-    }
-
-    local order = 10
-    local sortedTypes = {}
-    for pt, name in pairs(powerTypes) do
-        table.insert(sortedTypes, { pt = pt, name = name })
-    end
-    table.sort(sortedTypes, function(a, b) return a.name < b.name end)
-
-    for _, entry in ipairs(sortedTypes) do
-        local pt = entry.pt
-        local name = entry.name
-        local key = tostring(pt)
-
-        powerTypeArgs["color" .. key] = {
-            type = "color",
-            name = name,
-            order = order,
-            width = "double",
-            get = function()
-                local c = db.profile.powerTypeColors.colors[pt]
-                if c then return c[1], c[2], c[3] end
-                return 1, 1, 1
-            end,
-            set = function(_, r, g, b)
-                db.profile.powerTypeColors.colors[pt] = { r, g, b }
-                RefreshAllBars()
-            end,
-        }
-        powerTypeArgs["color" .. key .. "Reset"] = {
-            type = "execute",
-            name = "X",
-            order = order + 1,
-            width = 0.3,
-            hidden = function()
-                return not IsValueChanged("powerTypeColors.colors." .. key)
-            end,
-            func = MakeResetHandler("powerTypeColors.colors." .. key),
-        }
-        order = order + 10
-    end
-
-    args.powerTypeColours = {
-        type = "group",
-        name = "Power Type Colours",
-        order = 100,
-        inline = true,
-        args = powerTypeArgs,
-    }
-
-    return {
-        type = "group",
-        name = "Style",
-        order = 2,
-        args = args,
-    }
-end
 
 local function ProfileOptionsTable()
     local db = EnhancedCooldownManager.db
@@ -1700,7 +1661,6 @@ local function GetOptionsTable()
         childGroups = "tree",
         args = {
             general = GeneralOptionsTable(),
-            globalStyle = StyleOptionsTable(),
             powerBar = PowerBarOptionsTable(),
             segmentBar = SegmentBarOptionsTable(),
             auraBars = AuraBarsOptionsTable(),
