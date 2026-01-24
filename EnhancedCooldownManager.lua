@@ -174,7 +174,7 @@ local defaults = {
                 souls = { 0.46, 0.98, 1.00 },
                 [Enum.PowerType.ComboPoints] = { 0.75, 0.15, 0.15 },
                 [Enum.PowerType.Chi] = { 0.00, 1.00, 0.59 },
-                [Enum.PowerType.HolyPower] = { 0.95, 0.89, 0.40 },
+                [Enum.PowerType.HolyPower] = { 0.8863, 0.8235, 0.2392 },
                 [Enum.PowerType.SoulShards] = { 0.58, 0.51, 0.79 },
                 [Enum.PowerType.Essence] = { 0.20, 0.58, 0.50 }
             },
