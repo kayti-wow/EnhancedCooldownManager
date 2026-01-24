@@ -10,6 +10,10 @@ local TickRenderer = ns.Mixins.TickRenderer
 local SegmentBar = EnhancedCooldownManager:NewModule("SegmentBar", "AceEvent-3.0")
 EnhancedCooldownManager.SegmentBar = SegmentBar
 
+local C_SPECID_DH_HAVOC = 1
+local C_SPECID_DH_VENG = 2
+local C_SPECID_DH_DEVOURER = 3
+
 --------------------------------------------------------------------------------
 -- Domain Logic (module-specific value/config handling)
 --------------------------------------------------------------------------------
@@ -49,7 +53,7 @@ local function ShouldShowSegmentBar()
     local cfg = profile.segmentBar
     local _, class = UnitClass("player")
     local discretePower = GetDiscretePowerType()
-    return cfg and cfg.enabled and (class == "DEMONHUNTER" or discretePower ~= nil)
+    return cfg and cfg.enabled and ((class == "DEMONHUNTER" and GetSpecialization() ~= C_SPECID_DH_HAVOC) or discretePower ~= nil)
 end
 
 --- Returns segment bar values based on class/power type.
@@ -63,7 +67,7 @@ local function GetValues(profile)
 
     -- Special: DH Souls (aura-based stacks)
     if class == "DEMONHUNTER" then
-        if GetSpecialization() == 3 then
+        if GetSpecialization() == C_SPECID_DH_DEVOURER then
             -- Devourer is tracked by two spells. One is while not in void meta, and the second is while in it.
             local voidFragments = C_UnitAuras.GetUnitAuraBySpellID("player", 1225789)
             local collapsingStar = C_UnitAuras.GetUnitAuraBySpellID("player", 1227702)
