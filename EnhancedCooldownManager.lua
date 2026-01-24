@@ -580,7 +580,7 @@ end
 function EnhancedCooldownManager:ChatCommand(input)
     local cmd, arg = (input or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
 
-    if cmd == "" or cmd == "help" then
+    if cmd == "help" then
         self:Print("Commands: /ecm on|off|toggle | /ecm debug [on|off|toggle] | /ecm bug | /ecm options")
         return
     end
@@ -595,13 +595,9 @@ function EnhancedCooldownManager:ChatCommand(input)
         return
     end
 
-    if cmd == "options" or cmd == "config" or cmd == "settings" or cmd == "o" then
+    if cmd == "" or cmd == "options" or cmd == "config" or cmd == "settings" or cmd == "o" then
         local optionsModule = self:GetModule("Options", true)
-        if optionsModule and optionsModule.OpenOptions then
-            optionsModule:OpenOptions()
-        else
-            Settings.OpenToCategory("Enhanced Cooldown Manager")
-        end
+        optionsModule:OpenOptions()
         return
     end
 

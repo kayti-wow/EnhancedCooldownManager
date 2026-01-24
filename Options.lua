@@ -1794,15 +1794,7 @@ end
 -- Slash command to open options
 --------------------------------------------------------------------------------
 function Options:OpenOptions()
-    -- Use the stored category from AceConfigDialog
     if self.optionsFrame then
-        -- Modern WoW: use the category stored by AceConfigDialog
-        local categoryID = self.optionsFrame.name or "Enhanced Cooldown Manager"
-        if Settings and Settings.OpenToCategory then
-            -- Try using the frame's registered category
-            pcall(Settings.OpenToCategory, categoryID)
-        end
+        Settings.OpenToCategory(self.optionsFrame.name)
     end
-    -- Fallback: use AceConfigDialog to open directly
-    AceConfigDialog:Open("EnhancedCooldownManager")
 end
