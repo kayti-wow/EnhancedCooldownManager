@@ -195,18 +195,19 @@ local function UpdateFragmentedRuneDisplay(bar, maxRunes)
         local cfg = profile and profile.runeBar
         local gbl = profile and profile.global
         local tex = Util.GetTexture((cfg and cfg.texture) or (gbl and gbl.texture))
-        local baseWidth = math.floor(barWidth / maxRunes)
-        local remainingWidth = barWidth - (baseWidth * maxRunes)
 
+        -- Use same positioning logic as TickRenderer to avoid sub-pixel gaps
+        local step = barWidth / maxRunes
         for pos, runeIndex in ipairs(bar._displayOrder) do
             local frag = bar.FragmentedBars[runeIndex]
             if frag then
                 frag:SetStatusBarTexture(tex)
                 frag:ClearAllPoints()
-                local x = (pos - 1) * baseWidth
-                local w = (pos == maxRunes) and (baseWidth + remainingWidth) or baseWidth
+                local leftX = Util.PixelSnap((pos - 1) * step)
+                local rightX = Util.PixelSnap(pos * step)
+                local w = rightX - leftX
                 frag:SetSize(w, barHeight)
-                frag:SetPoint("LEFT", bar, "LEFT", x, 0)
+                frag:SetPoint("LEFT", bar, "LEFT", leftX, 0)
                 frag:SetMinMaxValues(0, 1)
                 frag:Show()
             end
