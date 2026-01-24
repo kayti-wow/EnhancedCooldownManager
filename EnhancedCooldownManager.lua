@@ -20,7 +20,6 @@ local ADDON_NAME, ns = ...
 ---@field showManaAsPercent boolean
 
 ---@class ECM_SegmentBarConfig : ECM_BarConfigBase
----@field demonHunterSoulsSpellId number
 ---@field demonHunterSoulsMax number
 ---@field colorDemonHunterSouls number[]
 ---@field colorComboPoints number[]|nil
@@ -171,7 +170,6 @@ local defaults = {
             height = nil,
             texture = nil,
             bgColor = nil,
-            demonHunterSoulsSpellId = 203720,
             demonHunterSoulsMax = 6,
             colorDemonHunterSouls = { 0.46, 0.98, 1.00 },
             colorComboPoints = { 0.75, 0.15, 0.15 },
