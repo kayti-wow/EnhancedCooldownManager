@@ -40,6 +40,7 @@ local function SetHidden(hidden)
 
     EnhancedCooldownManager.PowerBars:SetExternallyHidden(hidden)
     EnhancedCooldownManager.SegmentBar:SetExternallyHidden(hidden)
+    EnhancedCooldownManager.RuneBar:SetExternallyHidden(hidden)
 end
 
 --- Checks if combat fade should be applied based on config and instance type.
