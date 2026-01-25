@@ -17,6 +17,7 @@ local SIDEBAR_BG_COLOR = { 0.1, 0.1, 0.1, 0.9 }
 -- Utility: Deep compare for detecting changes from defaults
 --------------------------------------------------------------------------------
 local function DeepEquals(a, b)
+    if a == b then return true end
     if type(a) ~= type(b) then return false end
     if type(a) ~= "table" then return a == b end
     for k, v in pairs(a) do
@@ -52,26 +53,36 @@ local function GetNestedValue(tbl, path)
     return current
 end
 
---------------------------------------------------------------------------------
--- Utility: Set nested value in table using dot-separated path
---------------------------------------------------------------------------------
-local function SetNestedValue(tbl, path, value)
+local function NormalizePathKey(key)
+    local numberKey = tonumber(key)
+    if numberKey then
+        return numberKey
+    end
+    return key
+end
+
+local function SplitPath(path)
     local segments = {}
     for segment in path:gmatch("[^.]+") do
         table.insert(segments, segment)
     end
+    return segments
+end
+
+--------------------------------------------------------------------------------
+-- Utility: Set nested value in table using dot-separated path
+--------------------------------------------------------------------------------
+local function SetNestedValue(tbl, path, value)
+    local segments = SplitPath(path)
     local current = tbl
     for i = 1, #segments - 1 do
-        local key = segments[i]
-        if tonumber(key) then key = tonumber(key) end
+        local key = NormalizePathKey(segments[i])
         if current[key] == nil then
             current[key] = {}
         end
         current = current[key]
     end
-    local lastKey = segments[#segments]
-    if tonumber(lastKey) then lastKey = tonumber(lastKey) end
-    current[lastKey] = value
+    current[NormalizePathKey(segments[#segments])] = value
 end
 
 --------------------------------------------------------------------------------
