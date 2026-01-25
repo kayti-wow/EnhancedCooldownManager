@@ -49,15 +49,12 @@ local function GetBarColor(barIndex, profile)
     EnsureColorStorage(profile)
 
     local classID, specID = GetCurrentClassSpec()
-    if not classID or not specID then
-        local dc = profile.buffBarColors.defaultColor or FALLBACK_BAR_COLOR
-        return dc[1], dc[2], dc[3]
-    end
-
     local colors = profile.buffBarColors.colors
-    if colors[classID] and colors[classID][specID] and colors[classID][specID][barIndex] then
+    if classID and specID and colors[classID] and colors[classID][specID] then
         local c = colors[classID][specID][barIndex]
-        return c[1], c[2], c[3]
+        if c then
+            return c[1], c[2], c[3]
+        end
     end
 
     local dc = profile.buffBarColors.defaultColor or FALLBACK_BAR_COLOR
@@ -122,15 +119,12 @@ end
 ---@param viewer Frame The BuffBarCooldownViewer frame
 ---@return table[] Array of {frame, top, order} sorted top-to-bottom
 local function GetSortedVisibleChildren(viewer)
-    local children = { viewer:GetChildren() }
     local result = {}
-    local insertOrder = 0
 
-    for _, child in ipairs(children) do
+    for insertOrder, child in ipairs({ viewer:GetChildren() }) do
         if child and child.Bar and child:IsShown() then
             local top = child.GetTop and child:GetTop()
-            insertOrder = insertOrder + 1
-            table.insert(result, { frame = child, top = top, order = insertOrder })
+            result[#result + 1] = { frame = child, top = top, order = insertOrder }
         end
     end
 
@@ -240,20 +234,16 @@ local function ApplyCooldownBarStyle(child, profile, barIndex)
 
     local iconFrame = child.Icon or child.IconFrame or child.IconButton
 
-    -- Apply visibility settings from buffBars config
-    local dynCfg = profile.buffBars
-    local showIcon = dynCfg == nil or dynCfg.showIcon ~= false
-    local showName = dynCfg == nil or dynCfg.showSpellName ~= false
-    local showDur = dynCfg == nil or dynCfg.showDuration ~= false
-
+    -- Apply visibility settings from buffBars config (default to shown)
+    local cfg = profile.buffBars or {}
     if iconFrame then
-        iconFrame:SetShown(showIcon)
+        iconFrame:SetShown(cfg.showIcon ~= false)
     end
     if bar.Name then
-        bar.Name:SetShown(showName)
+        bar.Name:SetShown(cfg.showSpellName ~= false)
     end
     if bar.Duration then
-        bar.Duration:SetShown(showDur)
+        bar.Duration:SetShown(cfg.showDuration ~= false)
     end
 
     if iconFrame and height and height > 0 then
@@ -605,18 +595,12 @@ function BuffBars:SetBarColor(barIndex, r, g, b)
     end
 
     local colors = profile.buffBarColors.colors
-    if not colors[classID] then
-        colors[classID] = {}
-    end
-    if not colors[classID][specID] then
-        colors[classID][specID] = {}
-    end
-
+    colors[classID] = colors[classID] or {}
+    colors[classID][specID] = colors[classID][specID] or {}
     colors[classID][specID][barIndex] = { r, g, b }
 
     Util.Log("BuffBars", "SetBarColor", { barIndex = barIndex, r = r, g = g, b = b })
 
-    -- Refresh bars to apply new color
     self:ResetStyledMarkers()
     self:ScheduleLayoutUpdate()
 end
@@ -676,17 +660,14 @@ end
 
 function BuffBars:OnEnable()
     Util.Log("BuffBars", "OnEnable - module starting")
-    -- Delayed initialization with retry to ensure frames exist
-    local function TryInitialize()
+
+    C_Timer.After(0.1, function()
         self:HookViewer()
         self:HookEditMode()
         if self:GetViewer() then
             self:UpdateLayout()
         end
-    end
-
-    C_Timer.After(0.1, TryInitialize)
-    -- C_Timer.After(1.0, TryInitialize)  -- Retry in case frames weren't ready
+    end)
 end
 
 function BuffBars:OnDisable()
