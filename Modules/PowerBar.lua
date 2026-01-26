@@ -1,3 +1,7 @@
+-- Enhanced Cooldown Manager addon for World of Warcraft
+-- Author: Solär
+-- Licensed under the GNU General Public License v3.0
+
 ---@class Frame
 ---@class FontString
 ---@class StatusBar : Frame

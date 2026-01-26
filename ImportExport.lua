@@ -1,3 +1,7 @@
+-- Enhanced Cooldown Manager addon for World of Warcraft
+-- Author: Solär
+-- Licensed under the GNU General Public License v3.0
+
 --------------------------------------------------------------------------------
 -- ImportExport.lua
 -- Profile import/export functionality for Enhanced Cooldown Manager

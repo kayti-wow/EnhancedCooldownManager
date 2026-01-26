@@ -1,3 +1,7 @@
+-- Enhanced Cooldown Manager addon for World of Warcraft
+-- Author: Solär
+-- Licensed under the GNU General Public License v3.0
+
 local _, ns = ...
 
 local Util = ns.Util or {}
