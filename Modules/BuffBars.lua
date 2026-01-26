@@ -20,6 +20,7 @@ local BarHelpers = EnhancedCooldownManager.BarHelpers
 
 ---@class ECM_BuffBarViewer : Frame
 ---@field _lastAnchor Frame|nil
+---@field _lastOffsetY number|nil
 ---@field __ecmHooked boolean|nil
 ---@field __ecmLayoutRunning boolean|nil
 
@@ -519,22 +520,26 @@ function BuffBars:UpdateLayout()
             return
         end
 
+        local offsetY = -((buffBarsConfig and buffBarsConfig.offsetY) or 0)
+
         -- Position viewer under anchor. Use both TOPLEFT and TOPRIGHT anchor points
         -- so the viewer width automatically matches the anchor. Do NOT set explicit width
         -- as this conflicts with anchor-based sizing and causes offset issues after zone changes.
         local _, rel1 = viewer:GetPoint(1)
         local _, rel2 = viewer:GetPoint(2)
-        if viewer._lastAnchor ~= anchor or rel1 ~= anchor or rel2 ~= anchor then
+        if viewer._lastAnchor ~= anchor or viewer._lastOffsetY ~= offsetY or rel1 ~= anchor or rel2 ~= anchor then
             viewer:ClearAllPoints()
-            viewer:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, 0)
-            viewer:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, 0)
+            viewer:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, offsetY)
+            viewer:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, offsetY)
             viewer._lastAnchor = anchor
+            viewer._lastOffsetY = offsetY
         end
     else
         -- When autoPosition is disabled, apply the configured barWidth.
         -- The user controls positioning via Blizzard's edit mode.
         viewer:SetWidth(buffBarsConfig.barWidth)
         viewer._lastAnchor = nil -- Clear cached anchor so re-enabling autoPosition works
+        viewer._lastOffsetY = nil
     end
 
     -- Hook all children for anchor change detection
@@ -556,6 +561,7 @@ function BuffBars:UpdateLayout()
     Util.Log("BuffBars", "UpdateLayout complete", {
         autoPosition = autoPosition,
         barWidth = not autoPosition and buffBarsConfig.barWidth or nil,
+        offsetY = autoPosition and (buffBarsConfig and buffBarsConfig.offsetY) or nil,
         visibleCount = #visibleChildren,
     })
 end

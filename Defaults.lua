@@ -61,6 +61,7 @@ local ADDON_NAME, ns = ...
 ---@class ECM_BuffBarsConfig
 ---@field autoPosition boolean
 ---@field barWidth number
+---@field offsetY number|nil
 ---@field showIcon boolean|nil
 ---@field showSpellName boolean|nil
 ---@field showDuration boolean|nil
@@ -128,12 +129,12 @@ local defaults = {
             enabled           = true,
             -- width             = nil,
             -- height            = nil,
-            offsetX           = -150,
-            offsetY           = nil,
+            -- offsetX           = -350,
+            -- offsetY           = 200,
             -- texture           = nil,
             -- bgColor           = nil,
-            -- anchorMode        = "viewer",
-            anchorMode        = "independent",
+            anchorMode        = "viewer",
+            -- anchorMode        = "independent",
             showText          = true,
             showManaAsPercent = true,
             border            = {
@@ -192,6 +193,7 @@ local defaults = {
         buffBars = {
             autoPosition = true,
             barWidth = 300,
+            offsetY = 0,
             showIcon = false,
             showSpellName = true,
             showDuration = true,

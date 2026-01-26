@@ -74,15 +74,14 @@ function BarFrame.GetBgColor(cfg, profile)
 end
 
 --- Returns the top gap offset for the first bar anchored to the viewer.
+--- Combines profile-level gap (chain offset) with module-level offset.
 ---@param cfg table|nil Module-specific config
 ---@param profile table|nil Full profile table
 ---@return number
 function BarFrame.GetTopGapOffset(cfg, profile)
-    local offset = cfg and cfg.offsetY
-    if offset ~= nil then
-        return offset
-    end
-    return (profile and profile.offsetY) or 6
+    local profileOffset = (profile and profile.offsetY) or 6
+    local moduleOffset = (cfg and cfg.offsetY) or 0
+    return profileOffset + moduleOffset
 end
 
 --- Returns a statusbar texture path (LSM-resolved when available).
@@ -384,6 +383,15 @@ function BarFrame.Create(frameName, parent, defaultHeight)
 
     --- Applies complete configuration from profile.
     --- Handles preconditions internally - no coupling to Lifecycle.
+    ---
+    --- Anchor mode behavior (ApplyConfig + SetLayout):
+    --- - independent: offsetX/offsetY apply, width applies (config/default width).
+    --- - viewer: offsetX ignored (0), width ignored (match anchor), offsetY is the
+    ---   negative sum of profile.offsetY and cfg.offsetY (gap below viewer).
+    --- - chain: offsetX ignored (0), width ignored (match anchor), offsetY is the
+    ---   negative of cfg.offsetY (gap below previous bar).
+    ---
+    --- offsetY sign convention: positive config values create a gap below the anchor.
     ---@param self ECMBarFrame Bar instance
     ---@param module table Module reference
     ---@return boolean success True if layout applied, false if preconditions failed
@@ -427,16 +435,21 @@ function BarFrame.Create(frameName, parent, defaultHeight)
         elseif isAnchoredToViewer and anchor == viewer then
             offsetY = -BarFrame.GetTopGapOffset(cfg, profile)
         else
-            offsetY = 0
+            offsetY = -((cfg and cfg.offsetY) or 0)
         end
-        local offsetX = (cfg and cfg.offsetX) or 0
+        local offsetX = isIndependent and ((cfg and cfg.offsetX) or 0) or 0
 
         -- 4. Calculate dimensions (uses stored defaultHeight)
         local height = BarFrame.GetBarHeight(cfg, profile, self._defaultHeight)
         local widthCfg = profile.width or {}
-        local width = widthCfg.auto == false and Util.PixelSnap(widthCfg.value or BarFrame.DEFAULT_BAR_WIDTH) or nil
-        if isIndependent and width == nil then
-            width = BarFrame.DEFAULT_BAR_WIDTH
+        local width
+        if isIndependent then
+            width = widthCfg.auto == false and Util.PixelSnap(widthCfg.value or BarFrame.DEFAULT_BAR_WIDTH) or nil
+            if width == nil then
+                width = BarFrame.DEFAULT_BAR_WIDTH
+            end
+        else
+            width = nil
         end
 
         Util.Log(barConfig.name, "Applying layout", {

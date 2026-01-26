@@ -86,11 +86,11 @@ function Util.Log(moduleName, message, data)
             if type(data) == "table" then
                 local parts = {}
                 for k, v in pairs(data) do
-                    parts[#parts + 1] = tostring(k) .. "=" .. addon:SafeGetDebugValue(v)
+                    parts[#parts + 1] = tostring(k) .. "=" .. Util.SafeGetDebugValue(v)
                 end
                 logLine = logLine .. ": {" .. table.concat(parts, ", ") .. "}"
             else
-                logLine = logLine .. ": " .. addon:SafeGetDebugValue(data)
+                logLine = logLine .. ": " .. Util.SafeGetDebugValue(data)
             end
         end
         ns.AddToTraceLog(logLine)
@@ -128,4 +128,20 @@ function Util.Print(...)
     else
         print(coloredPrefix)
     end
+end
+
+function Util.SafeGetDebugValue(v)
+    if v == nil then
+        return "<nil>"
+    end
+
+    -- Handle Blizzard secret values
+    if type(issecretvalue) == "function" and issecretvalue(v) then
+        return (type(canaccessvalue) == "function" and canaccessvalue(v)) and ("s|" .. tostring(v)) or "<secret>"
+    end
+    if type(issecrettable) == "function" and issecrettable(v) then
+        return (type(canaccesstable) == "function" and canaccesstable(v)) and "s|<table>" or "<secrettable>"
+    end
+
+    return type(v) == "table" and "<table>" or tostring(v)
 end

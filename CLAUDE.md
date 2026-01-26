@@ -108,14 +108,26 @@ function MyBar:OnLayoutComplete(bar, cfg, profile)
 end
 ```
 
+**Anchor mode rules**
+
+- `anchorMode = "viewer"` or `"chain"`: `offsetX` and `width` are ignored (bars match anchor width). `offsetY` creates a gap below the anchor.
+- `anchorMode = "independent"`: `offsetX`, `offsetY`, and `width` apply directly to the bar.
+- `profile.offsetY` is the base gap between the viewer and the top-most bar in the chain. It is added to the top bar's `offsetY`.
+
+**Buff Bars**
+
+- When `buffBars.autoPosition` is enabled, the BuffBar viewer anchors below the chain and matches anchor width.
+- `buffBars.offsetY` adds a vertical gap below the anchor while auto-positioning is enabled.
+
 **Profile config** (in `EnhancedCooldownManager.lua` defaults):
 ```lua
 myBar = {
     enabled = true,
     height = nil,  -- defaults to global.barHeight
     texture = nil,  -- defaults to global.texture
-    anchorMode = "chain",  -- "viewer" or "chain"
-    offsetX = 0,  -- horizontal offset from anchor
+    anchorMode = "chain",  -- "viewer" | "chain" | "independent"
+    offsetX = 0,  -- horizontal offset (independent only)
+    offsetY = 0,  -- vertical gap below anchor (viewer/chain) or offset from center (independent)
     -- module-specific config...
 },
 ```
