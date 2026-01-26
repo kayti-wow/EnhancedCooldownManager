@@ -99,8 +99,6 @@ local ADDON_NAME, ns = ...
 ---@field buffBarColors ECM_BuffBarColorsConfig
 ---@field powerBarTicks ECM_PowerBarTicksConfig
 
--- END Configuration
-
 local EnhancedCooldownManager = LibStub("AceAddon-3.0"):NewAddon(ADDON_NAME, "AceEvent-3.0", "AceConsole-3.0")
 ns.Addon = EnhancedCooldownManager
 local Util = ns.Util
