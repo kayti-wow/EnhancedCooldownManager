@@ -556,19 +556,6 @@ function BuffBars:UpdateLayout()
     })
 end
 
---- Marks the buff bars as externally hidden.
----@param hidden boolean
-function BuffBars:SetExternallyHidden(hidden)
-    self._externallyHidden = hidden and true or false
-    -- BuffBars doesn't own the viewer, so we don't hide it directly.
-end
-
---- Updates values for buff bars.
---- BuffBars primarily reflect Blizzard-managed buff states, so this triggers a rescan.
-function BuffBars:Refresh()
-    self:ScheduleRescan()
-end
-
 --- Returns cached bars for current class/spec for Options UI.
 ---@return table<number, ECM_BarCacheEntry> bars Indexed by bar position
 function BuffBars:GetCachedBars()
@@ -680,9 +667,7 @@ function BuffBars:OnEnable()
     C_Timer.After(0.1, function()
         self:HookViewer()
         self:HookEditMode()
-        if self:GetViewer() then
-            self:UpdateLayout()
-        end
+        self:UpdateLayout()
     end)
 end
 
