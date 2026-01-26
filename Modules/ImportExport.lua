@@ -2,27 +2,14 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
---------------------------------------------------------------------------------
--- ImportExport.lua
--- Profile import/export functionality for Enhanced Cooldown Manager
---------------------------------------------------------------------------------
-
 local _, ns = ...
 local EnhancedCooldownManager = ns.Addon
 
 local ImportExport = {}
 ns.ImportExport = ImportExport
 
---------------------------------------------------------------------------------
--- Constants
---------------------------------------------------------------------------------
-
 local EXPORT_PREFIX = "EnhancedCooldownManager"
 local EXPORT_VERSION = 1
-
---------------------------------------------------------------------------------
--- Library Dependencies
---------------------------------------------------------------------------------
 
 local LibSerialize = LibStub("LibSerialize")
 local LibDeflate = LibStub("LibDeflate")

@@ -20,9 +20,12 @@ Libs\AceConfig-3.0\AceConfig-3.0.xml
 Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
 
 SparkleUtil.lua
+Modules\TraceLog.lua
+Modules\BugReports.lua
 Utilities.lua
+Defaults.lua
 EnhancedCooldownManager.lua
-ImportExport.lua
+Modules\ImportExport.lua
 Options.lua
 
 Modules\Mixins\BarFrame.lua
