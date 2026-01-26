@@ -26,12 +26,13 @@ local LSM = LibStub("LibSharedMedia-3.0", true)
 ---@field _lastOffsetX number
 ---@field _lastOffsetY number
 ---@field _lastMatchAnchorWidth boolean
+---@field _lastIsIndependent boolean
 ---@field _lastHeight number
 ---@field _lastWidth number
 ---@field _lastBorderThickness number
 ---@field SetValue fun(self: ECMBarFrame, minVal: number, maxVal: number, currentVal: number, r: number, g: number, b: number)
 ---@field SetAppearance fun(self: ECMBarFrame, cfg: table|nil, profile: table|nil): string|nil
----@field SetLayout fun(self: ECMBarFrame, anchor: Frame, offsetX: number|nil, offsetY: number, height: number, width: number|nil)
+---@field SetLayout fun(self: ECMBarFrame, anchor: Frame, offsetX: number|nil, offsetY: number, height: number, width: number|nil, isIndependent: boolean|nil)
 ---@field ApplyConfig fun(self: ECMBarFrame, module: table): boolean
 ---@field SetText fun(self: ECMBarFrame, text: string)
 ---@field SetTextVisible fun(self: ECMBarFrame, shown: boolean)
@@ -49,6 +50,7 @@ ns.Mixins.BarFrame = BarFrame
 
 BarFrame.DEFAULT_POWER_BAR_HEIGHT = 20
 BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT = 13
+BarFrame.DEFAULT_BAR_WIDTH = 250
 BarFrame.DEFAULT_BG_COLOR = { 0.08, 0.08, 0.08, 0.65 }
 BarFrame.DEFAULT_STATUSBAR_TEXTURE = "Interface\\TARGETINGFRAME\\UI-StatusBar"
 BarFrame.VIEWER_ANCHOR_NAME = "EssentialCooldownViewer"
@@ -176,11 +178,15 @@ function BarFrame.GetPreferredAnchor(addon, excludeModule)
     local viewer = BarFrame.GetViewerAnchor()
     local chain = { "PowerBar", "ResourceBar", "RuneBar" }
     local bottomMost
+    local profile = addon and addon.db and addon.db.profile
 
     for _, modName in ipairs(chain) do
         if modName ~= excludeModule then
             local mod = addon[modName]
-            if mod and mod.GetFrameIfShown then
+            local configKey = mod and mod._barConfig and mod._barConfig.configKey
+            local cfg = configKey and profile and profile[configKey]
+            local isIndependent = cfg and cfg.anchorMode == "independent"
+            if not isIndependent and mod and mod.GetFrameIfShown then
                 local f = mod:GetFrameIfShown()
                 if f then
                     bottomMost = f
@@ -202,12 +208,17 @@ end
 ---@param moduleName string Module name for chain exclusion
 ---@return Frame anchor The frame to anchor to
 ---@return boolean isAnchoredToViewer True if anchoring directly to the viewer (for top gap offset)
+---@return boolean isIndependent True if module should be anchored to screen center
 function BarFrame.ResolveAnchor(addon, cfg, moduleName)
     local anchorMode = (cfg and cfg.anchorMode) or "chain"
     if anchorMode == "viewer" then
-        return BarFrame.GetViewerAnchor(), true
+        return BarFrame.GetViewerAnchor(), true, false
     end
-    return BarFrame.GetPreferredAnchor(addon, moduleName)
+    if anchorMode == "independent" then
+        return UIParent, false, true
+    end
+    local anchor, isAnchoredToViewer = BarFrame.GetPreferredAnchor(addon, moduleName)
+    return anchor, isAnchoredToViewer, false
 end
 
 BarFrame.Helpers = {
@@ -329,27 +340,33 @@ function BarFrame.Create(frameName, parent, defaultHeight)
     ---@param offsetY number Vertical offset from anchor
     ---@param height number Desired bar height
     ---@param width number|nil Desired bar width. If nil, width matches viewer width.
-    function bar:SetLayout(anchor, offsetX, offsetY, height, width)
-        local shouldMatchWidth = width == nil
+    --- @param isIndependent boolean|nil Whether the bar is positioned relative to screen center
+        function bar:SetLayout(anchor, offsetX, offsetY, height, width, isIndependent)
+            local shouldMatchWidth = width == nil and not isIndependent
         offsetX = offsetX or 0
+            isIndependent = isIndependent == true
 
         local layoutChanged = self._lastAnchor ~= anchor
             or self._lastOffsetX ~= offsetX
             or self._lastOffsetY ~= offsetY
             or self._lastMatchAnchorWidth ~= shouldMatchWidth
+            or self._lastIsIndependent ~= isIndependent
 
         if layoutChanged then
             self:ClearAllPoints()
-            if shouldMatchWidth then
+            if isIndependent then
+                self:SetPoint("CENTER", UIParent, "CENTER", offsetX, offsetY)
+            elseif shouldMatchWidth then
                 self:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", offsetX, offsetY)
                 self:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", offsetX, offsetY)
             else
                 self:SetPoint("TOP", anchor, "BOTTOM", offsetX, offsetY)
             end
-            self._lastAnchor = anchor
+            self._lastAnchor = isIndependent and UIParent or anchor
             self._lastOffsetX = offsetX
             self._lastOffsetY = offsetY
             self._lastMatchAnchorWidth = shouldMatchWidth
+            self._lastIsIndependent = isIndependent
         end
 
         if self._lastHeight ~= height then
@@ -400,17 +417,27 @@ function BarFrame.Create(frameName, parent, defaultHeight)
         end
 
         -- 2. Calculate anchor (reads cfg.anchorMode)
-        local anchor, isAnchoredToViewer = BarFrame.ResolveAnchor(addon, cfg, barConfig.name)
+        local anchor, isAnchoredToViewer, isIndependent = BarFrame.ResolveAnchor(addon, cfg, barConfig.name)
 
         -- 3. Calculate offsets
         local viewer = BarFrame.GetViewerAnchor()
-        local offsetY = (isAnchoredToViewer and anchor == viewer) and -BarFrame.GetTopGapOffset(cfg, profile) or 0
+        local offsetY
+        if isIndependent then
+            offsetY = (cfg and cfg.offsetY) or 0
+        elseif isAnchoredToViewer and anchor == viewer then
+            offsetY = -BarFrame.GetTopGapOffset(cfg, profile)
+        else
+            offsetY = 0
+        end
         local offsetX = (cfg and cfg.offsetX) or 0
 
         -- 4. Calculate dimensions (uses stored defaultHeight)
         local height = BarFrame.GetBarHeight(cfg, profile, self._defaultHeight)
         local widthCfg = profile.width or {}
-        local width = widthCfg.auto == false and Util.PixelSnap(widthCfg.value or 200) or nil
+        local width = widthCfg.auto == false and Util.PixelSnap(widthCfg.value or BarFrame.DEFAULT_BAR_WIDTH) or nil
+        if isIndependent and width == nil then
+            width = BarFrame.DEFAULT_BAR_WIDTH
+        end
 
         Util.Log(barConfig.name, "Applying layout", {
             anchor = anchor:GetName() or tostring(anchor),
@@ -421,7 +448,7 @@ function BarFrame.Create(frameName, parent, defaultHeight)
         })
 
         -- 5. Apply layout and appearance
-        self:SetLayout(anchor, offsetX, offsetY, height, width)
+        self:SetLayout(anchor, offsetX, offsetY, height, width, isIndependent)
         self:SetAppearance(cfg, profile)
 
         -- 6. Call module override if defined
