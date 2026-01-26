@@ -32,14 +32,15 @@ function Lifecycle.Setup(module, config)
 
     -- Build refresh event names list for unregistration
     local refreshEventNames = {}
-    for _, cfg in ipairs(config.refreshEvents) do
-        table.insert(refreshEventNames, cfg.event)
+    for i = 1, #config.refreshEvents do
+        refreshEventNames[i] = config.refreshEvents[i].event
     end
     module._lifecycleConfig.refreshEventNames = refreshEventNames
 
     -- Inject OnEnable method (AceAddon lifecycle hook)
     function module:OnEnable()
-        Util.Log(self._lifecycleConfig.name, "OnEnable - module starting")
+        local cfg = self._lifecycleConfig
+        Util.Log(cfg.name, "OnEnable - module starting")
 
         if self._enabled then
             return
@@ -48,11 +49,11 @@ function Lifecycle.Setup(module, config)
         self._enabled = true
         self._lastUpdate = GetTime()
 
-        for _, cfg in ipairs(self._lifecycleConfig.refreshEvents) do
-            self:RegisterEvent(cfg.event, cfg.handler)
+        for _, eventConfig in ipairs(cfg.refreshEvents) do
+            self:RegisterEvent(eventConfig.event, eventConfig.handler)
         end
 
-        for _, eventName in ipairs(self._lifecycleConfig.layoutEvents) do
+        for _, eventName in ipairs(cfg.layoutEvents) do
             self:RegisterEvent(eventName, "UpdateLayout")
         end
 
@@ -66,9 +67,9 @@ function Lifecycle.Setup(module, config)
 
     -- Inject SetExternallyHidden method (can be overridden by modules)
     function module:SetExternallyHidden(hidden)
-        local wasHidden = self._externallyHidden
-        self._externallyHidden = hidden and true or false
-        if wasHidden ~= self._externallyHidden then
+        local isHidden = not not hidden
+        if self._externallyHidden ~= isHidden then
+            self._externallyHidden = isHidden
             Util.Log(config.name, "SetExternallyHidden", { hidden = self._externallyHidden })
         end
         if self._externallyHidden and self._frame then
@@ -79,24 +80,29 @@ function Lifecycle.Setup(module, config)
     -- Inject GetFrameIfShown method
     function module:GetFrameIfShown()
         local f = self._frame
-        return (not self._externallyHidden and f and f:IsShown()) and f or nil
+        if self._externallyHidden or not f or not f:IsShown() then
+            return nil
+        end
+        return f
     end
 
     -- Inject OnDisable method (AceAddon lifecycle hook)
     function module:OnDisable()
-        Util.Log(self._lifecycleConfig.name, "OnDisable - module stopping")
+        local cfg = self._lifecycleConfig
+        Util.Log(cfg.name, "OnDisable - module stopping")
 
-        for _, eventName in ipairs(self._lifecycleConfig.layoutEvents) do
+        for _, eventName in ipairs(cfg.layoutEvents) do
             self:UnregisterEvent(eventName)
         end
 
         -- Call custom cleanup if provided
-        if self._lifecycleConfig.onDisable then
-            self._lifecycleConfig.onDisable(self)
+        if cfg.onDisable then
+            cfg.onDisable(self)
         end
 
-        if self._frame then
-            self._frame:Hide()
+        local frame = self._frame
+        if frame then
+            frame:Hide()
         end
 
         if not self._enabled then
@@ -105,11 +111,11 @@ function Lifecycle.Setup(module, config)
 
         self._enabled = false
 
-        for _, eventName in ipairs(self._lifecycleConfig.refreshEventNames) do
+        for _, eventName in ipairs(cfg.refreshEventNames) do
             self:UnregisterEvent(eventName)
         end
 
-        Util.Log(self._lifecycleConfig.name, "Disabled")
+        Util.Log(cfg.name, "Disabled")
     end
 end
 
@@ -123,11 +129,8 @@ end
 ---@param profile table Profile with updateFrequency
 ---@return boolean shouldRefresh True if enough time has passed
 function Lifecycle.ShouldRefresh(module, profile)
-    local now = GetTime()
-    local last = module._lastUpdate or 0
     local freq = (profile and profile.updateFrequency) or 0.066
-
-    return (now - last) >= freq
+    return (GetTime() - (module._lastUpdate or 0)) >= freq
 end
 
 --- Marks the module as having just refreshed.

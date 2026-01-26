@@ -137,10 +137,7 @@ end
 --------------------------------------------------------------------------------
 
 --- Gets current class and spec IDs.
----@return number|nil classID
----@return number|nil specID
----@return string className
----@return string specName
+---@return number|nil classID, number|nil specID, string className, string specName
 local function GetCurrentClassSpec()
     local localisedClassName, className, classID = UnitClass("player")
     local specIndex = GetSpecialization()
@@ -1006,7 +1003,7 @@ ColoursOptionsTable = function()
 end
 
 --- Generates dynamic per-bar color options based on cached bars.
----@return table args AceConfig args table
+---@return table args
 local function GenerateBarColorArgs()
     local args = {}
     local buffBars = EnhancedCooldownManager.BuffBars

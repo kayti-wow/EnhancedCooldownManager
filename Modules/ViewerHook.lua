@@ -1,3 +1,18 @@
+---@diagnostic disable: undefined-global
+---@diagnostic disable: undefined-field
+
+---@class Frame
+
+---@class ECM_HookedFrame : Frame
+---@field _ecmHidden boolean|nil
+
+---@class ECM_BarModule
+---@field GetFrame fun(self: ECM_BarModule): Frame
+---@field GetFrameIfShown fun(self: ECM_BarModule): Frame|nil
+---@field SetExternallyHidden fun(self: ECM_BarModule, hidden: boolean)
+---@field UpdateLayout fun(self: ECM_BarModule)
+---@field _lifecycleConfig table
+
 local _, ns = ...
 local EnhancedCooldownManager = ns.Addon
 local Util = ns.Util
@@ -39,6 +54,7 @@ local function ForEachBlizzardFrame(fn)
     for _, name in ipairs(COOLDOWN_MANAGER_FRAME_NAMES) do
         local frame = _G[name]
         if frame then
+            ---@cast frame ECM_HookedFrame
             fn(frame, name)
         end
     end
@@ -46,6 +62,7 @@ end
 
 local function ForEachBarModule(fn)
     for _, module in ipairs(_registeredBars) do
+        ---@cast module ECM_BarModule
         fn(module, module:GetFrame())
     end
 end

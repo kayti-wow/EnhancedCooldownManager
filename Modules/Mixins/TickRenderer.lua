@@ -2,6 +2,19 @@ local _, ns = ...
 
 local Util = ns.Util
 
+---@class Frame
+---@class Texture
+---@class StatusBar : Frame
+
+---@class ECMBarFrame : Frame
+---@field TicksFrame Frame
+---@field ticks table
+---@field tickPool table
+---@field EnsureTicks fun(self: ECMBarFrame, count: number, parentFrame: Frame, poolKey: string|nil)
+---@field HideAllTicks fun(self: ECMBarFrame, poolKey: string|nil)
+---@field LayoutResourceTicks fun(self: ECMBarFrame, maxResources: number, color: table|nil, tickWidth: number|nil, poolKey: string|nil)
+---@field LayoutValueTicks fun(self: ECMBarFrame, statusBar: StatusBar, ticks: table, maxValue: number, defaultColor: table, defaultWidth: number, poolKey: string|nil)
+
 --- TickRenderer mixin: Tick pooling and positioning.
 --- Handles resource dividers (ResourceBar) and value ticks (PowerBar).
 --- Methods are attached directly to bars via AttachTo().
@@ -11,15 +24,27 @@ ns.Mixins.TickRenderer = TickRenderer
 
 --- Attaches tick functionality to a bar frame.
 --- Creates TicksFrame container and attaches tick methods to the bar.
----@param bar Frame Bar frame to attach tick functionality to
+---@param bar ECMBarFrame Bar frame to attach tick functionality to
 function TickRenderer.AttachTo(bar)
     assert(bar, "bar frame required")
+
+    ---@cast bar ECMBarFrame
 
     -- Create ticks frame container
     bar.TicksFrame = CreateFrame("Frame", nil, bar)
     bar.TicksFrame:SetAllPoints(bar)
     bar.TicksFrame:SetFrameLevel(bar:GetFrameLevel() + 2)
     bar.ticks = {}
+
+    local function GetTickPool(self, poolKey)
+        poolKey = poolKey or "tickPool"
+        local pool = self[poolKey]
+        if not pool then
+            pool = {}
+            self[poolKey] = pool
+        end
+        return pool
+    end
 
     --- Ensures the tick pool has the required number of ticks.
     --- Creates new ticks as needed, shows required ticks, hides extras.
@@ -30,9 +55,7 @@ function TickRenderer.AttachTo(bar)
     function bar:EnsureTicks(count, parentFrame, poolKey)
         assert(parentFrame, "parentFrame required for tick creation")
 
-        poolKey = poolKey or "tickPool"
-        self[poolKey] = self[poolKey] or {}
-        local pool = self[poolKey]
+        local pool = GetTickPool(self, poolKey)
 
         -- Create/show required ticks
         for i = 1, count do
@@ -55,14 +78,13 @@ function TickRenderer.AttachTo(bar)
     ---@param self Frame
     ---@param poolKey string|nil Key for tick pool (default "tickPool")
     function bar:HideAllTicks(poolKey)
-        poolKey = poolKey or "tickPool"
-        local pool = self[poolKey]
+        local pool = self[poolKey or "tickPool"]
         if not pool then
             return
         end
 
-        for _, tick in ipairs(pool) do
-            tick:Hide()
+        for i = 1, #pool do
+            pool[i]:Hide()
         end
     end
 
@@ -86,8 +108,7 @@ function TickRenderer.AttachTo(bar)
             return
         end
 
-        poolKey = poolKey or "tickPool"
-        local pool = self[poolKey]
+        local pool = self[poolKey or "tickPool"]
         if not pool then
             return
         end
@@ -98,8 +119,9 @@ function TickRenderer.AttachTo(bar)
         local step = barWidth / maxResources
         local tr, tg, tb, ta = color[1] or 0, color[2] or 0, color[3] or 0, color[4] or 1
 
-        for i, tick in ipairs(pool) do
-            if tick:IsShown() then
+        for i = 1, #pool do
+            local tick = pool[i]
+            if tick and tick:IsShown() then
                 tick:ClearAllPoints()
                 local x = Util.PixelSnap(step * i)
                 tick:SetPoint("LEFT", self, "LEFT", x, 0)
@@ -134,8 +156,7 @@ function TickRenderer.AttachTo(bar)
             return
         end
 
-        poolKey = poolKey or "tickPool"
-        local pool = self[poolKey]
+        local pool = self[poolKey or "tickPool"]
         if not pool then
             return
         end
@@ -143,9 +164,10 @@ function TickRenderer.AttachTo(bar)
         defaultColor = defaultColor or { 0, 0, 0, 0.5 }
         defaultWidth = defaultWidth or 1
 
-        for i, tickData in ipairs(ticks) do
+        for i = 1, #ticks do
             local tick = pool[i]
-            if tick then
+            local tickData = ticks[i]
+            if tick and tickData then
                 local value = tickData.value
                 if value and value > 0 and value < maxValue then
                     local tickColor = tickData.color or defaultColor

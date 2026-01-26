@@ -3,6 +3,22 @@ local EnhancedCooldownManager = ns.Addon
 local Util = ns.Util
 local BarHelpers = EnhancedCooldownManager.BarHelpers
 
+---@class Frame
+---@class StatusBar : Frame
+
+---@class ECM_BuffBarChild : Frame
+---@field Bar StatusBar
+---@field Icon Frame
+---@field IconFrame Frame
+---@field IconButton Frame
+---@field __ecmAnchorHooked boolean|nil
+---@field __ecmStyled boolean|nil
+
+---@class ECM_BuffBarViewer : Frame
+---@field _lastAnchor Frame|nil
+---@field __ecmHooked boolean|nil
+---@field __ecmLayoutRunning boolean|nil
+
 ---@class ECM_BuffBarsModule
 local BuffBars = EnhancedCooldownManager:NewModule("BuffBars", "AceEvent-3.0")
 EnhancedCooldownManager.BuffBars = BuffBars
@@ -80,12 +96,8 @@ local function UpdateBarCache(barIndex, spellName, profile)
     end
 
     local cache = profile.buffBarColors.cache
-    if not cache[classID] then
-        cache[classID] = {}
-    end
-    if not cache[classID][specID] then
-        cache[classID][specID] = {}
-    end
+    cache[classID] = cache[classID] or {}
+    cache[classID][specID] = cache[classID][specID] or {}
 
     cache[classID][specID][barIndex] = {
         spellName = spellName,
@@ -145,7 +157,7 @@ local function GetSortedVisibleChildren(viewer)
 end
 
 --- Hooks a child frame to re-layout when Blizzard changes its anchors.
----@param child Frame
+---@param child ECM_BuffBarChild
 ---@param module ECM_BuffBarsModule
 local function HookChildAnchoring(child, module)
     if child.__ecmAnchorHooked then
@@ -173,7 +185,7 @@ local function HookChildAnchoring(child, module)
 end
 
 --- Applies styling to a single cooldown bar child.
----@param child Frame
+---@param child ECM_BuffBarChild
 ---@param profile table
 ---@param barIndex number|nil 1-based index in layout order (for per-bar colors)
 local function ApplyCooldownBarStyle(child, profile, barIndex)
@@ -273,7 +285,7 @@ local function ApplyCooldownBarStyle(child, profile, barIndex)
 end
 
 --- Returns the BuffBarCooldownViewer frame.
----@return Frame|nil
+---@return ECM_BuffBarViewer|nil
 function BuffBars:GetViewer()
     return _G["BuffBarCooldownViewer"]
 end

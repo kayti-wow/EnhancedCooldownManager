@@ -1,3 +1,15 @@
+---@class Frame
+---@class FontString
+---@class StatusBar : Frame
+---@class Enum.PowerType
+
+---@class ECM_PowerBarFrame : Frame
+---@field StatusBar StatusBar
+---@field TextValue FontString
+---@field EnsureTicks fun(self: ECM_PowerBarFrame, count: number, parentFrame: Frame)
+---@field HideAllTicks fun(self: ECM_PowerBarFrame)
+---@field LayoutValueTicks fun(self: ECM_PowerBarFrame, statusBar: StatusBar, ticks: table, maxValue: number, defaultColor: table, defaultWidth: number)
+
 local ADDON_NAME, ns = ...
 local EnhancedCooldownManager = ns.Addon
 local Util = ns.Util
@@ -172,7 +184,8 @@ function PowerBar:Refresh()
     current = current or 0
     displayValue = displayValue or 0
 
-    bar:SetValue(0, max, current, cfg.colors[resource][1] or 1, cfg.colors[resource][2] or 1, cfg.colors[resource][3] or 1)
+    local color = cfg.colors[resource] or {}
+    bar:SetValue(0, max, current, color[1] or 1, color[2] or 1, color[3] or 1)
 
     -- Update text
     if valueType == "percent" then

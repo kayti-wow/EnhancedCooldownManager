@@ -3,6 +3,35 @@ local _, ns = ...
 local Util = ns.Util
 local LSM = LibStub("LibSharedMedia-3.0", true)
 
+---@class Frame
+---@class FontString
+---@field SetFont fun(self: FontString, fontPath: string, size: number, flags: string)
+---@field SetShadowOffset fun(self: FontString, x: number, y: number)
+---@field SetShadowColor fun(self: FontString, r: number, g: number, b: number, a: number)
+---@class Texture
+---@class StatusBar : Frame
+
+---@class ECMBarFrame : Frame
+---@field Background Texture
+---@field Border Frame
+---@field StatusBar StatusBar
+---@field TextFrame Frame
+---@field TextValue FontString
+---@field _defaultHeight number
+---@field _lastAnchor Frame
+---@field _lastOffsetX number
+---@field _lastOffsetY number
+---@field _lastMatchAnchorWidth boolean
+---@field _lastHeight number
+---@field _lastWidth number
+---@field _lastBorderThickness number
+---@field SetValue fun(self: ECMBarFrame, minVal: number, maxVal: number, currentVal: number, r: number, g: number, b: number)
+---@field SetAppearance fun(self: ECMBarFrame, cfg: table|nil, profile: table|nil): string|nil
+---@field SetLayout fun(self: ECMBarFrame, anchor: Frame, offsetX: number|nil, offsetY: number, height: number, width: number|nil)
+---@field ApplyConfig fun(self: ECMBarFrame, module: table): boolean
+---@field SetText fun(self: ECMBarFrame, text: string)
+---@field SetTextVisible fun(self: ECMBarFrame, shown: boolean)
+
 --- BarFrame mixin: Frame creation, layout, appearance, and text overlay.
 --- Provides shared frame structure and styling for all bar modules.
 --- Methods are attached directly to created frames.
@@ -17,11 +46,17 @@ ns.Mixins.BarFrame = BarFrame
 BarFrame.DEFAULT_POWER_BAR_HEIGHT = 20
 BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT = 13
 BarFrame.DEFAULT_BG_COLOR = { 0.08, 0.08, 0.08, 0.65 }
+BarFrame.DEFAULT_STATUSBAR_TEXTURE = "Interface\\TARGETINGFRAME\\UI-StatusBar"
 BarFrame.VIEWER_ANCHOR_NAME = "EssentialCooldownViewer"
 
---------------------------------------------------------------------------------
 -- Layout Helpers (module-level)
---------------------------------------------------------------------------------
+
+local function FetchLSM(mediaType, key)
+    if LSM and LSM.Fetch and key and type(key) == "string" then
+        return LSM:Fetch(mediaType, key, true)
+    end
+    return nil
+end
 
 --- Returns the resolved background color from config or defaults.
 ---@param cfg table|nil Module-specific config
@@ -37,11 +72,11 @@ end
 ---@param profile table|nil Full profile table
 ---@return number
 function BarFrame.GetTopGapOffset(cfg, profile)
-    local defaultOffset = (profile and profile.offsetY) or 6
-    if cfg and cfg.offsetY ~= nil then
-        return cfg.offsetY
+    local offset = cfg and cfg.offsetY
+    if offset ~= nil then
+        return offset
     end
-    return defaultOffset
+    return (profile and profile.offsetY) or 6
 end
 
 --- Returns a statusbar texture path (LSM-resolved when available).
@@ -49,26 +84,17 @@ end
 ---@return string
 function BarFrame.GetTexture(textureOverride)
     if textureOverride and type(textureOverride) == "string" then
-        if LSM and LSM.Fetch then
-            local fetched = LSM:Fetch("statusbar", textureOverride, true)
-            if fetched then
-                return fetched
-            end
+        local fetched = FetchLSM("statusbar", textureOverride)
+        if fetched then
+            return fetched
         end
         if not textureOverride:find("\\") then
-            return "Interface\\TARGETINGFRAME\\UI-StatusBar"
+            return BarFrame.DEFAULT_STATUSBAR_TEXTURE
         end
         return textureOverride
     end
 
-    if LSM and LSM.Fetch then
-        local fetched = LSM:Fetch("statusbar", "Blizzard", true)
-        if fetched then
-            return fetched
-        end
-    end
-
-    return "Interface\\TARGETINGFRAME\\UI-StatusBar"
+    return FetchLSM("statusbar", "Blizzard") or BarFrame.DEFAULT_STATUSBAR_TEXTURE
 end
 
 --- Returns a font file path (LSM-resolved when available).
@@ -78,14 +104,7 @@ end
 function BarFrame.GetFontPath(fontKey, fallback)
     local fallbackPath = fallback or "Interface\\AddOns\\EnhancedCooldownManager\\media\\Fonts\\Expressway.ttf"
 
-    if LSM and LSM.Fetch and fontKey and type(fontKey) == "string" then
-        local fetched = LSM:Fetch("font", fontKey, true)
-        if fetched then
-            return fetched
-        end
-    end
-
-    return fallbackPath
+    return FetchLSM("font", fontKey) or fallbackPath
 end
 
 --- Applies font settings to a FontString.
@@ -101,10 +120,15 @@ function BarFrame.ApplyFont(fontString, profile)
     local fontSize = (gbl and gbl.fontSize) or 11
     local fontOutline = (gbl and gbl.fontOutline) or "OUTLINE"
 
-    fontString:SetFont(fontPath, fontSize, fontOutline ~= "NONE" and fontOutline or "")
+    if fontOutline == "NONE" then
+        fontOutline = ""
+    end
+
+    fontString:SetFont(fontPath, fontSize, fontOutline)
 
     if fontString.SetShadowOffset then
-        if gbl and gbl.fontShadow then
+        local hasShadow = gbl and gbl.fontShadow
+        if hasShadow then
             fontString:SetShadowColor(0, 0, 0, 1)
             fontString:SetShadowOffset(1, -1)
         else
@@ -119,7 +143,9 @@ end
 ---@param defaultHeight number Default height if not configured
 ---@return number
 function BarFrame.GetBarHeight(cfg, profile, defaultHeight)
-    return Util.PixelSnap(cfg and cfg.height or profile and profile.global and profile.global.barHeight or defaultHeight)
+    local gbl = profile and profile.global
+    local height = (cfg and cfg.height) or (gbl and gbl.barHeight) or defaultHeight
+    return Util.PixelSnap(height)
 end
 
 --------------------------------------------------------------------------------
@@ -129,8 +155,11 @@ end
 --- Returns the base viewer anchor frame (even if it's currently hidden).
 ---@return Frame
 function BarFrame.GetViewerAnchor()
-    local f = _G[BarFrame.VIEWER_ANCHOR_NAME]
-    return (f and f:GetPoint(1)) and f or UIParent
+    local viewer = _G[BarFrame.VIEWER_ANCHOR_NAME]
+    if viewer and viewer:GetPoint(1) then
+        return viewer
+    end
+    return UIParent
 end
 
 --- Returns the bottom-most visible ECM bar frame for anchoring.
@@ -141,9 +170,8 @@ end
 ---@return boolean isFirstBar True if anchoring directly to the viewer
 function BarFrame.GetPreferredAnchor(addon, excludeModule)
     local viewer = BarFrame.GetViewerAnchor()
-
     local chain = { "PowerBar", "ResourceBar", "RuneBar" }
-    local bottomMost = nil
+    local bottomMost
 
     for _, modName in ipairs(chain) do
         if modName ~= excludeModule then
@@ -171,12 +199,11 @@ end
 ---@return Frame anchor The frame to anchor to
 ---@return boolean isAnchoredToViewer True if anchoring directly to the viewer (for top gap offset)
 function BarFrame.ResolveAnchor(addon, cfg, moduleName)
-    local anchorMode = cfg and cfg.anchorMode or "chain"
+    local anchorMode = (cfg and cfg.anchorMode) or "chain"
     if anchorMode == "viewer" then
         return BarFrame.GetViewerAnchor(), true
-    else
-        return BarFrame.GetPreferredAnchor(addon, moduleName)
     end
+    return BarFrame.GetPreferredAnchor(addon, moduleName)
 end
 
 BarFrame.Helpers = {
@@ -211,11 +238,13 @@ function BarFrame.Create(frameName, parent, defaultHeight)
     assert(type(frameName) == "string", "frameName must be a string")
 
     local bar = CreateFrame("Frame", frameName, parent or UIParent)
+    ---@cast bar ECMBarFrame
     bar:SetFrameStrata("MEDIUM")
-    bar:SetHeight(Util.PixelSnap(defaultHeight or 20))
+    local resolvedDefaultHeight = defaultHeight or BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT
+    bar:SetHeight(Util.PixelSnap(resolvedDefaultHeight))
 
     -- Store default height for ApplyConfig to use
-    bar._defaultHeight = defaultHeight or BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT
+    bar._defaultHeight = resolvedDefaultHeight
 
     -- Background texture
     bar.Background = bar:CreateTexture(nil, "BACKGROUND")
@@ -234,7 +263,7 @@ function BarFrame.Create(frameName, parent, defaultHeight)
     -- Attach methods directly to bar
 
     --- Updates the StatusBar value and color.
-    ---@param self Frame
+    ---@param self ECMBarFrame
     ---@param minVal number Minimum value
     ---@param maxVal number Maximum value
     ---@param currentVal number Current value
@@ -248,7 +277,7 @@ function BarFrame.Create(frameName, parent, defaultHeight)
     end
 
     --- Applies appearance settings (background color, statusbar texture) to a bar.
-    ---@param self Frame
+    ---@param self ECMBarFrame
     ---@param cfg table|nil Module-specific config
     ---@param profile table|nil Full profile
     ---@return string|nil texture The applied texture path
@@ -264,24 +293,25 @@ function BarFrame.Create(frameName, parent, defaultHeight)
             self.StatusBar:SetStatusBarTexture(tex)
         end
 
+        local border = self.Border
         local borderCfg = cfg and cfg.border
-        if self.Border and borderCfg and borderCfg.enabled then
+        if border and borderCfg and borderCfg.enabled then
             local thickness = borderCfg.thickness or 1
             local color = borderCfg.color or {}
             if self._lastBorderThickness ~= thickness then
-                self.Border:SetBackdrop({
+                border:SetBackdrop({
                     edgeFile = "Interface\\Buttons\\WHITE8X8",
                     edgeSize = thickness,
                 })
                 self._lastBorderThickness = thickness
             end
-            self.Border:ClearAllPoints()
-            self.Border:SetPoint("TOPLEFT", -thickness, thickness)
-            self.Border:SetPoint("BOTTOMRIGHT", thickness, -thickness)
-            self.Border:SetBackdropBorderColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
-            self.Border:Show()
-        elseif self.Border then
-            self.Border:Hide()
+            border:ClearAllPoints()
+            border:SetPoint("TOPLEFT", -thickness, thickness)
+            border:SetPoint("BOTTOMRIGHT", thickness, -thickness)
+            border:SetBackdropBorderColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
+            border:Show()
+        elseif border then
+            border:Hide()
         end
 
         return tex
@@ -289,7 +319,7 @@ function BarFrame.Create(frameName, parent, defaultHeight)
 
     --- Applies layout (anchor, position, size) only if changed.
     --- Caches layout state to avoid unnecessary frame updates.
-    ---@param self Frame
+    ---@param self ECMBarFrame
     ---@param anchor Frame Frame to anchor to (for vertical position)
     ---@param offsetX number|nil Horizontal offset (default 0)
     ---@param offsetY number Vertical offset from anchor
@@ -299,10 +329,12 @@ function BarFrame.Create(frameName, parent, defaultHeight)
         local shouldMatchWidth = width == nil
         offsetX = offsetX or 0
 
-        if self._lastAnchor ~= anchor
+        local layoutChanged = self._lastAnchor ~= anchor
             or self._lastOffsetX ~= offsetX
             or self._lastOffsetY ~= offsetY
-            or self._lastMatchAnchorWidth ~= shouldMatchWidth then
+            or self._lastMatchAnchorWidth ~= shouldMatchWidth
+
+        if layoutChanged then
             self:ClearAllPoints()
             if shouldMatchWidth then
                 self:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", offsetX, offsetY)
@@ -331,7 +363,7 @@ function BarFrame.Create(frameName, parent, defaultHeight)
 
     --- Applies complete configuration from profile.
     --- Handles preconditions internally - no coupling to Lifecycle.
-    ---@param self Frame Bar instance
+    ---@param self ECMBarFrame Bar instance
     ---@param module table Module reference
     ---@return boolean success True if layout applied, false if preconditions failed
     function bar:ApplyConfig(module)
@@ -374,10 +406,7 @@ function BarFrame.Create(frameName, parent, defaultHeight)
         -- 4. Calculate dimensions (uses stored defaultHeight)
         local height = BarFrame.GetBarHeight(cfg, profile, self._defaultHeight)
         local widthCfg = profile.width or {}
-        local width = nil
-        if widthCfg.auto == false then
-            width = Util.PixelSnap(widthCfg.value or 200)
-        end
+        local width = widthCfg.auto == false and Util.PixelSnap(widthCfg.value or 200) or nil
 
         Util.Log(barConfig.name, "Applying layout", {
             anchor = anchor:GetName() or tostring(anchor),
@@ -409,21 +438,25 @@ end
 --- Adds a text overlay to an existing bar frame.
 --- Creates TextFrame container and TextValue FontString.
 --- Text methods (SetText, SetTextVisible) are attached to the bar.
----@param bar Frame Bar frame to add text overlay to
+---@param bar ECMBarFrame Bar frame to add text overlay to
 ---@param profile table|nil Profile for font settings
 ---@return FontString textValue The created FontString
 function BarFrame.AddTextOverlay(bar, profile)
     assert(bar, "bar frame required")
 
-    bar.TextFrame = CreateFrame("Frame", nil, bar)
-    bar.TextFrame:SetAllPoints(bar)
-    bar.TextFrame:SetFrameLevel(bar.StatusBar:GetFrameLevel() + 10)
+    ---@cast bar ECMBarFrame
 
-    bar.TextValue = bar.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.TextValue:SetPoint("CENTER", bar.TextFrame, "CENTER", 0, 0)
-    bar.TextValue:SetJustifyH("CENTER")
-    bar.TextValue:SetJustifyV("MIDDLE")
-    bar.TextValue:SetText("0")
+    local textFrame = CreateFrame("Frame", nil, bar)
+    textFrame:SetAllPoints(bar)
+    textFrame:SetFrameLevel(bar.StatusBar:GetFrameLevel() + 10)
+    bar.TextFrame = textFrame
+
+    local textValue = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    textValue:SetPoint("CENTER", textFrame, "CENTER", 0, 0)
+    textValue:SetJustifyH("CENTER")
+    textValue:SetJustifyV("MIDDLE")
+    textValue:SetText("0")
+    bar.TextValue = textValue
 
     if profile then
         BarFrame.ApplyFont(bar.TextValue, profile)
@@ -432,7 +465,7 @@ function BarFrame.AddTextOverlay(bar, profile)
     -- Attach text methods
 
     --- Sets the text value on a bar with text overlay.
-    ---@param self Frame
+    ---@param self ECMBarFrame
     ---@param text string Text to display
     function bar:SetText(text)
         if self.TextValue then
@@ -441,7 +474,7 @@ function BarFrame.AddTextOverlay(bar, profile)
     end
 
     --- Shows or hides the text overlay.
-    ---@param self Frame
+    ---@param self ECMBarFrame
     ---@param shown boolean Whether to show the text
     function bar:SetTextVisible(shown)
         if self.TextFrame then
@@ -487,8 +520,7 @@ function BarFrame.Setup(module, config)
     function module:UpdateLayout()
         self:Enable()
         local bar = self:GetFrame()
-        local success = bar:ApplyConfig(self)
-        if success then
+        if bar:ApplyConfig(self) then
             bar:Show()
             self:Refresh()
         end

@@ -1,3 +1,13 @@
+---@class Frame
+---@class StatusBar : Frame
+---@class Enum.PowerType
+
+---@class ECM_ResourceBarFrame : Frame
+---@field StatusBar StatusBar
+---@field TicksFrame Frame
+---@field EnsureTicks fun(self: ECM_ResourceBarFrame, count: number, parentFrame: Frame, poolKey: string|nil)
+---@field LayoutResourceTicks fun(self: ECM_ResourceBarFrame, maxResources: number, color: table|nil, tickWidth: number|nil, poolKey: string|nil)
+
 local ADDON_NAME, ns = ...
 local EnhancedCooldownManager = ns.Addon
 local Util = ns.Util
@@ -157,7 +167,8 @@ function ResourceBar:Refresh()
     end
 
     bar.StatusBar:SetValue(currentValue or 0)
-    bar.StatusBar:SetStatusBarColor(cfg.colors[kind][1] or 1, cfg.colors[kind][2] or 1, cfg.colors[kind][3] or 1)
+    local color = cfg.colors[kind] or {}
+    bar.StatusBar:SetStatusBarColor(color[1] or 1, color[2] or 1, color[3] or 1)
 
     bar:LayoutResourceTicks(maxResources, { 0, 0, 0, 1 }, 1, "ticks")
 end

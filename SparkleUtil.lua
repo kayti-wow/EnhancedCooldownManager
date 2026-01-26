@@ -11,7 +11,7 @@ local function Clamp(v, minV, maxV)
     return math.max(minV, math.min(maxV, v))
 end
 
----@param v any
+---@param v number|string
 ---@return number
 local function ToNumberOrError(v)
     local n = tonumber(v)
@@ -19,7 +19,7 @@ local function ToNumberOrError(v)
     return n
 end
 
----@param color any
+---@param color string|table
 ---@return number r 0..1
 ---@return number g 0..1
 ---@return number b 0..1
@@ -63,9 +63,7 @@ end
 ---@param r2 number
 ---@param g2 number
 ---@param b2 number
----@return number r
----@return number g
----@return number b
+---@return number r, number g, number b
 local function LerpRGB(t, r1, g1, b1, r2, g2, b2)
     return (r1 + (r2 - r1) * t), (g1 + (g2 - g1) * t), (b1 + (b2 - b1) * t)
 end
@@ -80,9 +78,7 @@ end
 ---@param er number
 ---@param eg number
 ---@param eb number
----@return number r
----@return number g
----@return number b
+---@return number r, number g, number b
 local function ThreeStopGradient(t, sr, sg, sb, mr, mg, mb, er, eg, eb)
     if t <= 0 then
         return sr, sg, sb
@@ -100,7 +96,7 @@ end
 ---@param r number 0..1
 ---@param g number 0..1
 ---@param b number 0..1
----@return string hex RRGGBB
+---@return string hex
 local function RGBToHex(r, g, b)
     local ri = Clamp(math.floor((r * 255) + 0.5), 0, 255)
     local gi = Clamp(math.floor((g * 255) + 0.5), 0, 255)
@@ -117,9 +113,9 @@ end
 --- - Designed for 4..60 characters; longer strings are mapped onto a 60-step gradient.
 --- - Colors can be provided as "RRGGBB" / "#RRGGBB" strings or {r,g,b} arrays (0..1 or 0..255).
 ---@param text string
----@param startColor any|nil Default: purple ("a855f7")
----@param midColor any|nil Default: blue ("4cc9f0")
----@param endColor any|nil Default: green ("22c55e")
+---@param startColor string|table
+---@param midColor string|table
+---@param endColor string|table
 ---@return string
 function SparkleUtil.GradientText(text, startColor, midColor, endColor)
     assert(type(text) == "string", "ECM.Util.GradientText: text must be a string")

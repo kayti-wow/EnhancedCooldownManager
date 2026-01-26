@@ -1,3 +1,17 @@
+---@class Frame
+---@class StatusBar : Frame
+
+---@class ECM_RuneBarFrame : Frame
+---@field StatusBar StatusBar
+---@field TicksFrame Frame
+---@field FragmentedBars table
+---@field _lastReadySet table|nil
+---@field _displayOrder table|nil
+---@field _maxResources number|nil
+---@field _onUpdateAttached boolean|nil
+---@field EnsureTicks fun(self: ECM_RuneBarFrame, count: number, parentFrame: Frame, poolKey: string|nil)
+---@field LayoutResourceTicks fun(self: ECM_RuneBarFrame, maxResources: number, color: table|nil, tickWidth: number|nil, poolKey: string|nil)
+
 local ADDON_NAME, ns = ...
 local EnhancedCooldownManager = ns.Addon
 local Util = ns.Util
@@ -57,9 +71,10 @@ end
 --------------------------------------------------------------------------------
 
 --- Creates or returns fragmented sub-bars for runes.
----@param bar Frame
+---@param bar ECM_RuneBarFrame
 ---@param maxResources number
 local function EnsureFragmentedBars(bar, maxResources)
+    ---@cast bar ECM_RuneBarFrame
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
     local cfg = profile and profile.runeBar
     local gbl = profile and profile.global
@@ -86,9 +101,10 @@ end
 
 --- Updates fragmented rune display (individual bars per rune).
 --- Only repositions bars when rune ready states change to avoid flickering.
----@param bar Frame
+---@param bar ECM_RuneBarFrame
 ---@param maxRunes number
 local function UpdateFragmentedRuneDisplay(bar, maxRunes)
+    ---@cast bar ECM_RuneBarFrame
     if not GetRuneCooldown then
         return
     end

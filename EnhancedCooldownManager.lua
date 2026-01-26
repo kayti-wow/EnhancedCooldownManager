@@ -15,7 +15,7 @@ local ADDON_NAME, ns = ...
 ---@field texture string|nil
 ---@field showText boolean|nil
 ---@field bgColor number[]|nil
----@field anchorMode string|nil "viewer" | "chain"
+---@field anchorMode "viewer"|"chain"|nil
 
 ---@class ECM_PowerBarConfig : ECM_BarConfigBase
 ---@field showManaAsPercent boolean
@@ -39,17 +39,17 @@ local ADDON_NAME, ns = ...
 ---@field texture string|nil
 ---@field font string
 ---@field fontSize number
----@field fontOutline string Font outline style: "NONE", "OUTLINE", "THICKOUTLINE", "MONOCHROME"
----@field fontShadow boolean Whether to show font shadow
+---@field fontOutline "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"
+---@field fontShadow boolean
 
 ---@class ECM_BorderConfig
 ---@field enabled boolean
----@field thickness number Border thickness in pixels
----@field color ECM_Color Border color
+---@field thickness number
+---@field color ECM_Color
 
 ---@class ECM_BarCacheEntry
----@field spellName string|nil Display name (safe string, not secret)
----@field lastSeen number Timestamp of last appearance
+---@field spellName string|nil
+---@field lastSeen number
 
 ---@class ECM_BuffBarColorsConfig
 ---@field colors table<number, table<number, table<number, number[]>>> [classID][specID][barIndex] = {r, g, b}
@@ -57,27 +57,27 @@ local ADDON_NAME, ns = ...
 ---@field defaultColor number[] Default RGB color for buff bars
 
 ---@class ECM_BuffBarsConfig
----@field autoPosition boolean When true, automatically position below other ECM bars
----@field barWidth number Width of buff bars when autoPosition is false
----@field showIcon boolean|nil When nil, defaults to showing the icon.
----@field showSpellName boolean|nil When nil, defaults to showing the spell name.
----@field showDuration boolean|nil When nil, defaults to showing the duration.
+---@field autoPosition boolean
+---@field barWidth number
+---@field showIcon boolean|nil
+---@field showSpellName boolean|nil
+---@field showDuration boolean|nil
 
 ---@class ECM_TickMark
----@field value number The resource value at which to display the tick
----@field color number[] RGBA color for this tick mark
----@field width number Width of the tick mark in pixels
+---@field value number
+---@field color number[]
+---@field width number
 
 ---@class ECM_PowerBarTicksConfig
----@field mappings table<number, table<number, ECM_TickMark[]>> [classID][specID] = array of tick marks
----@field defaultColor ECM_Color Default RGBA color for tick marks
----@field defaultWidth number Default width for tick marks
+---@field mappings table<number, table<number, ECM_TickMark[]>>
+---@field defaultColor ECM_Color
+---@field defaultWidth number
 
 ---@class ECM_CombatFadeConfig
----@field enabled boolean Master toggle for combat fade feature
----@field opacity number Opacity percentage (0-100) when faded out of combat
----@field exceptIfTargetCanBeAttacked boolean When true, don't fade while targeting an attackable unit
----@field exceptInInstance boolean When true, don't fade in raids, dungeons, battlegrounds, or PVP
+---@field enabled boolean
+---@field opacity number
+---@field exceptIfTargetCanBeAttacked boolean
+---@field exceptInInstance boolean
 
 ---@class ECM_Profile
 ---@field hideWhenMounted boolean
@@ -138,8 +138,8 @@ local defaults = {
             enabled           = true,
             width             = nil,
             height            = nil,
-            offsetX           = 0,
-            offsetY           = 0,
+            offsetX           = nil,
+            offsetY           = nil,
             texture           = nil,
             bgColor           = nil,
             anchorMode        = "viewer",
@@ -166,8 +166,8 @@ local defaults = {
             enabled             = true,
             width               = nil,
             height              = nil,
-            offsetX             = 0,
-            offsetY             = 0,
+            offsetX             = nil,
+            offsetY             = nil,
             bgColor             = nil,
             texture             = nil,
             anchorMode          = "chain",
@@ -190,8 +190,8 @@ local defaults = {
             enabled    = true,
             width      = nil,
             height     = nil,
-            offsetX    = 0,
-            offsetY    = 0,
+            offsetX    = nil,
+            offsetY    = nil,
             texture    = nil,
             bgColor    = nil,
             anchorMode = "chain",
@@ -402,9 +402,9 @@ end
 
 --- Shows a confirmation popup and reloads the UI on accept.
 --- ReloadUI is blocked in combat.
----@param text string Popup message.
----@param onAccept fun()|nil Optional accept callback (runs before ReloadUI).
----@param onCancel fun()|nil Optional cancel callback.
+---@param text string
+---@param onAccept fun()|nil
+---@param onCancel fun()|nil
 function EnhancedCooldownManager:ConfirmReloadUI(text, onAccept, onCancel)
     if InCombatLockdown() then
         self:Print("Cannot reload the UI right now: UI reload is blocked during combat.")
@@ -444,15 +444,15 @@ function EnhancedCooldownManager:ConfirmReloadUI(text, onAccept, onCancel)
 end
 
 --- Safely gets the edit box from a StaticPopup dialog.
----@param dialog table The StaticPopup dialog frame
----@return EditBox editBox The edit box widget
+---@param dialog table
+---@return EditBox editBox
 local function GetDialogEditBox(dialog)
     return dialog.editBox or dialog:GetEditBox()
 end
 
 --- Creates or retrieves a StaticPopup dialog with common settings for editbox dialogs.
----@param key string The dialog key (e.g., "ECM_EXPORT_PROFILE")
----@param config table Dialog-specific configuration overrides
+---@param key string
+---@param config table
 local function EnsureEditBoxDialog(key, config)
     if StaticPopupDialogs[key] then
         return
@@ -480,7 +480,7 @@ local function EnsureEditBoxDialog(key, config)
 end
 
 --- Shows a dialog with the export string for copying.
----@param exportString string The export string to display
+---@param exportString string
 function EnhancedCooldownManager:ShowExportDialog(exportString)
     if not exportString or exportString == "" then
         self:Print("Invalid export string provided")
@@ -559,8 +559,8 @@ function EnhancedCooldownManager:ShowImportDialog()
 end
 
 --- Parses on/off/toggle argument and returns the new boolean value.
----@param arg string The argument ("on", "off", "toggle", or "")
----@param current boolean The current value
+---@param arg string
+---@param current boolean
 ---@return boolean|nil newValue, string|nil error
 local function ParseToggleArg(arg, current)
     if arg == "" or arg == "toggle" then

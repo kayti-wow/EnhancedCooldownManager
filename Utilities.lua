@@ -26,9 +26,9 @@ local function SafeCopyValue(v)
 end
 
 --- Creates a deep copy of a table with cycle detection and depth limit.
----@param tbl any Value to copy
----@param seen table|nil Table tracking visited tables (for recursion)
----@param depth number|nil Current depth (for recursion)
+---@param tbl any
+---@param seen table|nil
+---@param depth number|nil
 ---@return any
 function Util.DeepCopy(tbl, seen, depth)
     if type(tbl) ~= "table" then
@@ -63,9 +63,9 @@ function Util.DeepCopy(tbl, seen, depth)
 end
 
 --- Unified debug logging: sends to DevTool and trace buffer when debug mode is ON.
----@param moduleName string Module name for prefix (e.g., "PowerBar", "ResourceBar")
----@param message string Log message describing the event
----@param data any|nil Optional data to log (tables are deep-copied for DevTool)
+---@param moduleName string
+---@param message string
+---@param data any|nil
 function Util.Log(moduleName, message, data)
     local addon = ns.Addon
     local profile = addon and addon.db and addon.db.profile
