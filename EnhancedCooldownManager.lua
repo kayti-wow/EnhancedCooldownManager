@@ -3,7 +3,6 @@
 -- Licensed under the GNU General Public License v3.0
 
 local ADDON_NAME, ns = ...
-local Util = ns.Util
 
 ---@class ECM_Color
 ---@field a number
@@ -20,7 +19,7 @@ local Util = ns.Util
 ---@field texture string|nil
 ---@field showText boolean|nil
 ---@field bgColor number[]|nil
----@field anchorMode "viewer"|"chain"|nil
+---@field anchorMode "viewer"|"chain"|"independent"|nil
 
 ---@class ECM_PowerBarConfig : ECM_BarConfigBase
 ---@field showManaAsPercent boolean
@@ -111,22 +110,21 @@ local POPUP_CONFIRM_RELOAD_UI = "ECM_CONFIRM_RELOAD_UI"
 local POPUP_EXPORT_PROFILE = "ECM_EXPORT_PROFILE"
 local POPUP_IMPORT_PROFILE = "ECM_IMPORT_PROFILE"
 
+local DEFAULT_BORDER_THICKNESS = 4
+local DEFAULT_BORDER_COLOR = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 }
+local DEMONHUNTER_MAX_SOULS = 6
+
 local defaults = {
     profile = {
         debug = false,
         hideWhenMounted = true,
         hideOutOfCombatInRestAreas = false,
         updateFrequency = 0.04,
-        schemaVersion = 1,
+        schemaVersion = 2,
         offsetY = 4,
-        width = {
-            auto = true,
-            value = 330,
-            min = 300,
-        },
         combatFade = {
             enabled = false,
-            opacity = 65,
+            opacity = 75,
             exceptIfTargetCanBeAttacked = true,
             exceptInInstance = true,
         },
@@ -141,19 +139,19 @@ local defaults = {
         },
         powerBar = {
             enabled           = true,
-            width             = nil,
-            height            = nil,
-            offsetX           = nil,
-            offsetY           = nil,
-            texture           = nil,
-            bgColor           = nil,
+            -- width             = nil,
+            -- height            = nil,
+            -- offsetX           = nil,
+            -- offsetY           = nil,
+            -- texture           = nil,
+            -- bgColor           = nil,
             anchorMode        = "viewer",
             showText          = true,
             showManaAsPercent = true,
             border            = {
                 enabled = true,
-                thickness = 4,
-                color = { r = 1, g = 0.5, b = 0.5, a = 0.5 },
+                thickness = DEFAULT_BORDER_THICKNESS,
+                color = DEFAULT_BORDER_COLOR,
             },
             colors            = {
                 [Enum.PowerType.Mana] = { 0.00, 0.00, 1.00 },
@@ -169,18 +167,18 @@ local defaults = {
         },
         resourceBar = {
             enabled             = true,
-            width               = nil,
-            height              = nil,
-            offsetX             = nil,
-            offsetY             = nil,
-            bgColor             = nil,
-            texture             = nil,
+            -- width               = nil,
+            -- height              = nil,
+            -- offsetX             = nil,
+            -- offsetY             = nil,
+            -- texture             = nil,
+            -- bgColor             = nil,
             anchorMode          = "chain",
-            demonHunterSoulsMax = 6,
+            demonHunterSoulsMax = DEMONHUNTER_MAX_SOULS,
             border              = {
                 enabled = false,
-                thickness = 1,
-                color = { r = 1, g = 1, b = 1, a = 1 },
+                thickness = DEFAULT_BORDER_THICKNESS,
+                color = DEFAULT_BORDER_COLOR,
             },
             colors              = {
                 souls = { 0.46, 0.98, 1.00 },
@@ -193,12 +191,12 @@ local defaults = {
         },
         runeBar = {
             enabled    = true,
-            width      = nil,
-            height     = nil,
-            offsetX    = nil,
-            offsetY    = nil,
-            texture    = nil,
-            bgColor    = nil,
+            -- width      = nil,
+            -- height     = nil,
+            -- offsetX    = nil,
+            -- offsetY    = nil,
+            -- texture    = nil,
+            -- bgColor    = nil,
             anchorMode = "chain",
             max        = 6,
             color      = { 0.87, 0.10, 0.22 },
