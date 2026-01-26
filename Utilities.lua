@@ -130,12 +130,12 @@ function Util.ApplyFont(fontString, profile)
 end
 
 --------------------------------------------------------------------------------
--- Shared module helpers (reduce duplication across PowerBars/SegmentBar)
+-- Shared module helpers (reduce duplication across PowerBar/ResourceBar)
 --------------------------------------------------------------------------------
 
 --- Default bar heights for each module type.
 Util.DEFAULT_POWER_BAR_HEIGHT = 20
-Util.DEFAULT_SEGMENT_BAR_HEIGHT = 13
+Util.DEFAULT_RESOURCE_BAR_HEIGHT = 13
 
 --- Applies layout (anchor, height, optional width) to a bar frame only if changed.
 --- Caches _lastAnchor, _lastOffsetY, _lastHeight, _lastWidth, _lastMatchAnchorWidth on the bar.
@@ -299,17 +299,17 @@ function Util.GetViewerAnchor()
 end
 
 --- Returns the bottom-most visible ECM bar frame for anchoring.
---- Chain order: Viewer -> PowerBar -> SegmentBar.
+--- Chain order: Viewer -> PowerBar -> ResourceBar.
 --- Modules that don't exist or aren't shown are skipped.
 ---@param addon table The EnhancedCooldownManager addon table
----@param excludeModule string|nil Module name to exclude from the chain (e.g., "SegmentBar" when SegmentBar is querying its own anchor)
+---@param excludeModule string|nil Module name to exclude from the chain (e.g., "ResourceBar" when ResourceBar is querying its own anchor)
 ---@return Frame anchor The frame to anchor to
 ---@return boolean isFirstBar True if anchoring directly to the viewer (no ECM bars above)
 function Util.GetPreferredAnchor(addon, excludeModule)
     local viewer = Util.GetViewerAnchor()
 
-    -- Chain: PowerBars -> SegmentBar -> RuneBar (in order)
-    local chain = { "PowerBars", "SegmentBar", "RuneBar" }
+    -- Chain: PowerBar -> ResourceBar -> RuneBar (in order)
+    local chain = { "PowerBar", "ResourceBar", "RuneBar" }
     local bottomMost = nil
 
     for _, modName in ipairs(chain) do
@@ -382,7 +382,7 @@ function Util.DeepCopy(tbl, seen, depth)
 end
 
 --- Unified debug logging: sends to DevTool and trace buffer when debug mode is ON.
----@param moduleName string Module name for prefix (e.g., "PowerBars", "SegmentBar")
+---@param moduleName string Module name for prefix (e.g., "PowerBar", "ResourceBar")
 ---@param message string Log message describing the event
 ---@param data any|nil Optional data to log (tables are deep-copied for DevTool)
 function Util.Log(moduleName, message, data)

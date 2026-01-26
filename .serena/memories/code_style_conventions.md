@@ -1,6 +1,6 @@
 # Code Style
 
-**Format**: 4-space indent, UTF-8, trim trailing whitespace  
+**Format**: 4-space indent, UTF-8, trim trailing whitespace
 **Naming**: PascalCase modules/methods, camelCase locals, UPPER_SNAKE constants, `_prefix` private fields
 
 ## Guidelines
@@ -14,7 +14,7 @@
 Bar modules should use the shared mixins:
 - **BarFrame**: Frame creation (`Create`), appearance (`ApplyAppearance`), text/value (`SetValue`, `SetText`)
 - **ModuleLifecycle**: Enable/Disable, event registration, throttling (`ThrottledRefresh`)
-- **TickRenderer**: Tick pooling (`EnsureTicks`), positioning (`LayoutSegmentTicks`, `LayoutValueTicks`)
+- **TickRenderer**: Tick pooling (`EnsureTicks`), positioning (`LayoutResourceTicks`, `LayoutValueTicks`)
 
 Usage: `local BarFrame = ns.Mixins.BarFrame` then call as functions, e.g., `BarFrame.Create(name, parent, height)`
 

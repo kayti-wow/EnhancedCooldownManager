@@ -5,7 +5,7 @@
 - `Utilities.lua` - Debug logging (`Util.Log`), pixel snapping (`Util.PixelSnap`)
 - `Options.lua` - AceConfig options panel
 - `Modules/PowerBar.lua` - Primary resource bar (mana/rage/energy)
-- `Modules/SegmentBar.lua` - Segmented resources (combo points, Holy Power, Chi)
+- `Modules/ResourceBar.lua` - Resourceed resources (combo points, Holy Power, Chi)
 - `Modules/RuneBar.lua` - Death Knight runes with recharge animation
 - `Modules/BuffBars.lua` - Styles Blizzard's BuffBarCooldownViewer
 - `Modules/ViewerHook.lua` - Mount/spec change handler
@@ -15,7 +15,7 @@
 ### BarFrame (`Modules/Mixins/BarFrame.lua`)
 Frame creation, layout, appearance, text overlay. Uses object-based pattern (methods attached to bars).
 
-**Constants:** `DEFAULT_POWER_BAR_HEIGHT`, `DEFAULT_SEGMENT_BAR_HEIGHT`, `DEFAULT_BG_COLOR`
+**Constants:** `DEFAULT_POWER_BAR_HEIGHT`, `DEFAULT_RESOURCE_BAR_HEIGHT`, `DEFAULT_BG_COLOR`
 
 **Helpers (module-level):**
 - `BarFrame.GetBarHeight(cfg, profile, fallback)` - Resolved bar height
@@ -60,12 +60,12 @@ Tick pooling and positioning. Uses `TickRenderer.AttachTo(bar)` to attach method
 **Bar methods (attached via AttachTo):**
 - `bar:EnsureTicks(count, parentFrame, poolKey)`
 - `bar:HideAllTicks(poolKey)`
-- `bar:LayoutSegmentTicks(maxSegments, color, width, poolKey)`
+- `bar:LayoutResourceTicks(maxResources, color, width, poolKey)`
 - `bar:LayoutValueTicks(statusBar, ticks, max, defaultColor, defaultWidth, poolKey)`
 
 ## Bar Anchor Chain
 ```
-EssentialCooldownViewer → PowerBar → SegmentBar → RuneBar → BuffBarCooldownViewer
+EssentialCooldownViewer → PowerBar → ResourceBar → RuneBar → BuffBarCooldownViewer
 ```
 Use `BarFrame.GetPreferredAnchor(addon, excludeModule)` for bottom-most visible bar.
 

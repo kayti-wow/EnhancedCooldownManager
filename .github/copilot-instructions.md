@@ -15,7 +15,7 @@ WoW addon: customizable resource bars anchored to Blizzard's Cooldown Manager vi
 
 Blizzard frames: `EssentialCooldownViewer`, `UtilityCooldownViewer`, `BuffIconCooldownViewer`, `BuffBarCooldownViewer`
 
-Bar stack: `EssentialCooldownViewer` → `PowerBar` → `SegmentBar` → `RuneBar` → `BuffBarCooldownViewer`
+Bar stack: `EssentialCooldownViewer` → `PowerBar` → `ResourceBar` → `RuneBar` → `BuffBarCooldownViewer`
 
 **Module interface**: `:GetFrame()`, `:GetFrameIfShown()`, `:SetExternallyHidden(bool)`, `:UpdateLayout()`, `:Refresh()`, `:Enable()`/`:Disable()`
 
@@ -26,7 +26,7 @@ Bar modules use object-based mixins (methods attached directly to bar frames):
 ### BarFrame
 Frame creation, layout, appearance, text overlay. Constants and helpers for styling.
 
-**Constants:** `DEFAULT_POWER_BAR_HEIGHT`, `DEFAULT_SEGMENT_BAR_HEIGHT`, `DEFAULT_BG_COLOR`
+**Constants:** `DEFAULT_POWER_BAR_HEIGHT`, `DEFAULT_RESOURCE_BAR_HEIGHT`, `DEFAULT_BG_COLOR`
 
 **Helpers:** `GetBarHeight()`, `GetTopGapOffset()`, `GetBgColor()`, `GetTexture()`, `ApplyFont()`
 
@@ -57,7 +57,7 @@ Enable/Disable, event registration, throttled refresh. Injects methods onto modu
 ### TickRenderer
 Tick pooling and positioning. Attaches methods to bars via `TickRenderer.AttachTo(bar)`.
 
-**Bar methods:** `bar:EnsureTicks()`, `bar:HideAllTicks()`, `bar:LayoutSegmentTicks()`, `bar:LayoutValueTicks()`
+**Bar methods:** `bar:EnsureTicks()`, `bar:HideAllTicks()`, `bar:LayoutResourceTicks()`, `bar:LayoutValueTicks()`
 
 ## Creating a New Bar Module
 
@@ -71,7 +71,7 @@ local function GetValues(profile) return max, current, kind end
 -- Frame creation
 function MyBar:GetFrame()
     if self._frame then return self._frame end
-    self._frame = BarFrame.Create(ADDON_NAME .. "MyBar", UIParent, BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT)
+    self._frame = BarFrame.Create(ADDON_NAME .. "MyBar", UIParent, BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT)
     TickRenderer.AttachTo(self._frame)  -- optional
     BarFrame.AddTextOverlay(self._frame, profile)  -- optional
     return self._frame
@@ -90,7 +90,7 @@ Lifecycle.Setup(MyBar, {
     name = "MyBar",
     configKey = "myBar",
     shouldShow = ShouldShow,
-    defaultHeight = BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT,
+    defaultHeight = BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT,
     anchorMode = "chain",  -- or "viewer"
     layoutEvents = { "PLAYER_ENTERING_WORLD" },
     refreshEvents = { { event = "UNIT_POWER_UPDATE", handler = "OnRefresh" } },

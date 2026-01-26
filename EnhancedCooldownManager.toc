@@ -30,7 +30,7 @@ Modules\Mixins\ModuleLifecycle.lua
 Modules\Mixins\TickRenderer.lua
 
 Modules\PowerBar.lua
-Modules\SegmentBar.lua
+Modules\ResourceBar.lua
 Modules\RuneBar.lua
 Modules\BuffBars.lua
 Modules\ViewerHook.lua

@@ -3,7 +3,7 @@ local _, ns = ...
 local Util = ns.Util
 
 --- TickRenderer mixin: Tick pooling and positioning.
---- Handles segment dividers (SegmentBar) and value ticks (PowerBar).
+--- Handles resource dividers (ResourceBar) and value ticks (PowerBar).
 --- Methods are attached directly to bars via AttachTo().
 local TickRenderer = {}
 ns.Mixins = ns.Mixins or {}
@@ -66,16 +66,16 @@ function TickRenderer.AttachTo(bar)
         end
     end
 
-    --- Positions ticks evenly as segment dividers.
-    --- Used by SegmentBar to show divisions between segments.
+    --- Positions ticks evenly as resource dividers.
+    --- Used by ResourceBar to show divisions between resources.
     ---@param self Frame
-    ---@param maxSegments number Number of segments (ticks = maxSegments - 1)
+    ---@param maxResources number Number of resources (ticks = maxResources - 1)
     ---@param color table|nil RGBA color { r, g, b, a } (default black)
     ---@param tickWidth number|nil Width of each tick (default 1)
     ---@param poolKey string|nil Key for tick pool (default "tickPool")
-    function bar:LayoutSegmentTicks(maxSegments, color, tickWidth, poolKey)
-        maxSegments = tonumber(maxSegments) or 0
-        if maxSegments <= 1 then
+    function bar:LayoutResourceTicks(maxResources, color, tickWidth, poolKey)
+        maxResources = tonumber(maxResources) or 0
+        if maxResources <= 1 then
             self:HideAllTicks(poolKey)
             return
         end
@@ -95,7 +95,7 @@ function TickRenderer.AttachTo(bar)
         color = color or { 0, 0, 0, 1 }
         tickWidth = tickWidth or 1
 
-        local step = barWidth / maxSegments
+        local step = barWidth / maxResources
         local tr, tg, tb, ta = color[1] or 0, color[2] or 0, color[3] or 0, color[4] or 1
 
         for i, tick in ipairs(pool) do

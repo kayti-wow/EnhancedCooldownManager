@@ -99,10 +99,10 @@
     <rect x="47" y="237" width="275" height="18" fill="url(#energyGrad)" rx="2" ry="2"/>
   </g>
 
-  <!-- Segmented bar (like DK runes) -->
+  <!-- Resourceed bar (like DK runes) -->
   <g>
     <rect x="45" y="270" width="310" height="22" fill="#15151f" rx="3" ry="3" stroke="#333344" stroke-width="1"/>
-    <!-- 6 segments with small gaps -->
+    <!-- 6 resources with small gaps -->
     <rect x="47" y="272" width="48" height="18" fill="#00cccc" rx="2" ry="2"/>
     <rect x="99" y="272" width="48" height="18" fill="#00cccc" rx="2" ry="2"/>
     <rect x="151" y="272" width="48" height="18" fill="#00cccc" rx="2" ry="2"/>

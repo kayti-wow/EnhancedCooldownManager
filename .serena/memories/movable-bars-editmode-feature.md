@@ -1,4 +1,4 @@
-# Movable PowerBar and SegmentBar Feature
+# Movable PowerBar and ResourceBar Feature
 
 ## Status: COMPLETED
 
@@ -6,7 +6,7 @@ Implementation completed on 2026-01-21. All code changes merged, ready for testi
 
 ## Feature Summary
 
-Added `autoPosition` toggle to both PowerBar and SegmentBar. When disabled, bars integrate with **LibEQOLEditMode-1.0** for free positioning via Blizzard's Edit Mode UI with an in-frame width slider.
+Added `autoPosition` toggle to both PowerBar and ResourceBar. When disabled, bars integrate with **LibEQOLEditMode-1.0** for free positioning via Blizzard's Edit Mode UI with an in-frame width slider.
 
 ## Files Modified
 
@@ -18,10 +18,10 @@ Added `autoPosition` toggle to both PowerBar and SegmentBar. When disabled, bars
 2. **EnhancedCooldownManager.lua** - Added config defaults:
    - `powerBar.autoPosition = true`
    - `powerBar.barWidth = 300`
-   - `segmentBar.autoPosition = true`
-   - `segmentBar.barWidth = 300`
+   - `resourceBar.autoPosition = true`
+   - `resourceBar.barWidth = 300`
    - `editModeLayouts.powerBar = {}`
-   - `editModeLayouts.segmentBar = {}`
+   - `editModeLayouts.resourceBar = {}`
 
 3. **Utilities.lua** - Modified `GetPreferredAnchor()` to exclude bars with `autoPosition=false` from anchor chain
 
@@ -32,20 +32,20 @@ Added `autoPosition` toggle to both PowerBar and SegmentBar. When disabled, bars
    - `GetCurrentLayoutName()` function
    - Modified `UpdateLayout()` to handle manual positioning
 
-5. **Modules/SegmentBar.lua** - Same pattern as PowerBar
+5. **Modules/ResourceBar.lua** - Same pattern as PowerBar
 
-6. **Options.lua** - Added `positioningSettings` group to both PowerBarOptionsTable and SegmentBarOptionsTable with:
+6. **Options.lua** - Added `positioningSettings` group to both PowerBarOptionsTable and ResourceBarOptionsTable with:
    - Description text explaining the feature
    - `autoPosition` toggle
    - `barWidth` range slider (hidden when autoPosition=true)
 
 ## Anchor Chain Behavior
 
-| PowerBar | SegmentBar | BuffBars anchors to |
+| PowerBar | ResourceBar | BuffBars anchors to |
 |----------|------------|---------------------|
-| auto=true | auto=true | SegmentBar |
+| auto=true | auto=true | ResourceBar |
 | auto=true | auto=false | PowerBar |
-| auto=false | auto=true | SegmentBar (to viewer) |
+| auto=false | auto=true | ResourceBar (to viewer) |
 | auto=false | auto=false | Viewer |
 
 ## Per-Layout Storage
@@ -53,7 +53,7 @@ Added `autoPosition` toggle to both PowerBar and SegmentBar. When disabled, bars
 Positions saved per EditMode layout in:
 ```lua
 profile.editModeLayouts.powerBar[layoutName] = { x, y, width }
-profile.editModeLayouts.segmentBar[layoutName] = { x, y, width }
+profile.editModeLayouts.resourceBar[layoutName] = { x, y, width }
 ```
 
 ## Testing Checklist (Not Yet Verified)
@@ -72,4 +72,4 @@ profile.editModeLayouts.segmentBar[layoutName] = { x, y, width }
 - Frame registration happens in `RegisterWithEditMode()` only when `autoPosition=false`
 - `_editModeRegistered` flag prevents duplicate registration
 - `UnregisterFromEditMode()` clears the flag (LibEQOL has no explicit unregister)
-- EditMode name labels: "ECM: Power Bar" and "ECM: Segment Bar"
+- EditMode name labels: "ECM: Power Bar" and "ECM: Resource Bar"

@@ -7,8 +7,8 @@ local BarFrame = ns.Mixins.BarFrame
 local Lifecycle = ns.Mixins.Lifecycle
 local TickRenderer = ns.Mixins.TickRenderer
 
-local PowerBars = EnhancedCooldownManager:NewModule("PowerBars", "AceEvent-3.0")
-EnhancedCooldownManager.PowerBars = PowerBars
+local PowerBar = EnhancedCooldownManager:NewModule("PowerBar", "AceEvent-3.0")
+EnhancedCooldownManager.PowerBar = PowerBar
 
 --------------------------------------------------------------------------------
 -- Domain Logic (module-specific value/config handling)
@@ -58,7 +58,7 @@ end
 
 --- Returns the tick marks configured for the current class and spec.
 ---@return ECM_TickMark[]|nil
-function PowerBars:GetCurrentTicks()
+function PowerBar:GetCurrentTicks()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
     local ticksCfg = profile and profile.powerBarTicks
     if not ticksCfg or not ticksCfg.mappings then
@@ -86,12 +86,12 @@ end
 
 --- Returns or creates the power bar frame.
 ---@return ECM_PowerBarFrame
-function PowerBars:GetFrame()
+function PowerBar:GetFrame()
     if self._frame then
         return self._frame
     end
 
-    Util.Log("PowerBars", "Creating frame")
+    Util.Log("PowerBar", "Creating frame")
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
 
@@ -123,7 +123,7 @@ end
 ---@param bar ECM_PowerBarFrame
 ---@param resource Enum.PowerType
 ---@param max number
-function PowerBars:UpdateTicks(bar, resource, max)
+function PowerBar:UpdateTicks(bar, resource, max)
     local ticks = self:GetCurrentTicks()
     if not ticks or #ticks == 0 then
         bar:HideAllTicks()
@@ -142,7 +142,7 @@ end
 -- UpdateLayout is injected by Lifecycle.Setup with onLayoutSetup hook
 
 --- Updates values: status bar value, text, colors, ticks.
-function PowerBars:Refresh()
+function PowerBar:Refresh()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
     local cfg = profile and profile.powerBar
     if self._externallyHidden or not (cfg and cfg.enabled) then
@@ -193,7 +193,7 @@ end
 -- Event Handling
 --------------------------------------------------------------------------------
 
-function PowerBars:OnUnitPower(_, unit)
+function PowerBar:OnUnitPower(_, unit)
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
     if unit ~= "player" or self._externallyHidden or not (profile and profile.powerBar and profile.powerBar.enabled) then
         return
@@ -208,8 +208,8 @@ end
 -- Module Lifecycle
 --------------------------------------------------------------------------------
 
-Lifecycle.Setup(PowerBars, {
-    name = "PowerBars",
+Lifecycle.Setup(PowerBar, {
+    name = "PowerBar",
     configKey = "powerBar",
     shouldShow = ShouldShowPowerBar,
     defaultHeight = BarFrame.DEFAULT_POWER_BAR_HEIGHT,

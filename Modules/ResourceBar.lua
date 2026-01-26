@@ -7,8 +7,8 @@ local BarFrame = ns.Mixins.BarFrame
 local Lifecycle = ns.Mixins.Lifecycle
 local TickRenderer = ns.Mixins.TickRenderer
 
-local SegmentBar = EnhancedCooldownManager:NewModule("SegmentBar", "AceEvent-3.0")
-EnhancedCooldownManager.SegmentBar = SegmentBar
+local ResourceBar = EnhancedCooldownManager:NewModule("ResourceBar", "AceEvent-3.0")
+EnhancedCooldownManager.ResourceBar = ResourceBar
 
 local C_SPECID_DH_HAVOC = 1
 local C_SPECID_DH_DEVOURER = 3
@@ -17,7 +17,7 @@ local C_SPECID_DH_DEVOURER = 3
 -- Domain Logic (module-specific value/config handling)
 --------------------------------------------------------------------------------
 
--- Discrete power types that should be shown as segments
+-- Discrete power types that should be shown as resources
 local discretePowerTypes = {
     [Enum.PowerType.ComboPoints] = true,
     [Enum.PowerType.Chi] = true,
@@ -47,21 +47,21 @@ local function GetDiscretePowerType()
     return nil
 end
 
-local function ShouldShowSegmentBar()
+local function ShouldShowResourceBar()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    local cfg = profile.segmentBar
+    local cfg = profile.resourceBar
     local _, class = UnitClass("player")
     local discretePower = GetDiscretePowerType()
     return cfg and cfg.enabled and ((class == "DEMONHUNTER" and GetSpecialization() ~= C_SPECID_DH_HAVOC) or discretePower ~= nil)
 end
 
---- Returns segment bar values based on class/power type.
+--- Returns resource bar values based on class/power type.
 ---@param profile table
----@return number|nil maxSegments
+---@return number|nil maxResources
 ---@return number|nil currentValue
 ---@return Enum.PowerType|string|nil kind
 local function GetValues(profile)
-    local cfg = profile and profile.segmentBar
+    local cfg = profile and profile.resourceBar
     local _, class = UnitClass("player")
 
     -- Special: DH Souls (aura-based stacks)
@@ -100,29 +100,29 @@ end
 -- Frame Management (uses BarFrame mixin)
 --------------------------------------------------------------------------------
 
---- Returns or creates the segment bar frame.
----@return ECM_SegmentBarFrame
-function SegmentBar:GetFrame()
+--- Returns or creates the resource bar frame.
+---@return ECM_ResourceBarFrame
+function ResourceBar:GetFrame()
     if self._frame then
         return self._frame
     end
 
-    Util.Log("SegmentBar", "Creating frame")
+    Util.Log("ResourceBar", "Creating frame")
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
 
     -- Create base bar with Background + StatusBar
     self._frame = BarFrame.Create(
-        ADDON_NAME .. "SegmentBar",
+        ADDON_NAME .. "ResourceBar",
         UIParent,
-        BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT
+        BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT
     )
 
-    -- Add tick functionality for segment dividers
+    -- Add tick functionality for resource dividers
     TickRenderer.AttachTo(self._frame)
 
     -- Apply initial appearance
-    self._frame:ApplyAppearance(profile and profile.segmentBar, profile)
+    self._frame:ApplyAppearance(profile and profile.resourceBar, profile)
 
     return self._frame
 end
@@ -135,14 +135,14 @@ end
 -- UpdateLayout is injected by Lifecycle.Setup with onLayoutSetup hook
 
 --- Updates values: status bar value, colors.
-function SegmentBar:Refresh()
+function ResourceBar:Refresh()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    local cfg = profile and profile.segmentBar
+    local cfg = profile and profile.resourceBar
     if self._externallyHidden or not (cfg and cfg.enabled) then
         return
     end
 
-    if not ShouldShowSegmentBar() then
+    if not ShouldShowResourceBar() then
         return
     end
 
@@ -151,24 +151,24 @@ function SegmentBar:Refresh()
         return
     end
 
-    local maxSegments, currentValue, kind = GetValues(profile)
-    if not maxSegments or maxSegments <= 0 then
+    local maxResources, currentValue, kind = GetValues(profile)
+    if not maxResources or maxResources <= 0 then
         return
     end
 
     bar.StatusBar:SetValue(currentValue or 0)
     bar.StatusBar:SetStatusBarColor(cfg.colors[kind][1] or 1, cfg.colors[kind][2] or 1, cfg.colors[kind][3] or 1)
 
-    bar:LayoutSegmentTicks(maxSegments, { 0, 0, 0, 1 }, 1, "ticks")
+    bar:LayoutResourceTicks(maxResources, { 0, 0, 0, 1 }, 1, "ticks")
 end
 
 --------------------------------------------------------------------------------
 -- Event Handling
 --------------------------------------------------------------------------------
 
-function SegmentBar:OnUpdateThrottled()
+function ResourceBar:OnUpdateThrottled()
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    if self._externallyHidden or not (profile and profile.segmentBar and profile.segmentBar.enabled) then
+    if self._externallyHidden or not (profile and profile.resourceBar and profile.resourceBar.enabled) then
         return
     end
 
@@ -177,7 +177,7 @@ function SegmentBar:OnUpdateThrottled()
     end)
 end
 
-function SegmentBar:OnUnitEvent(event, unit)
+function ResourceBar:OnUnitEvent(event, unit)
     if unit == "player" then
         self:OnUpdateThrottled()
     end
@@ -187,11 +187,11 @@ end
 -- Module Lifecycle
 --------------------------------------------------------------------------------
 
-Lifecycle.Setup(SegmentBar, {
-    name = "SegmentBar",
-    configKey = "segmentBar",
-    shouldShow = ShouldShowSegmentBar,
-    defaultHeight = BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT,
+Lifecycle.Setup(ResourceBar, {
+    name = "ResourceBar",
+    configKey = "resourceBar",
+    shouldShow = ShouldShowResourceBar,
+    defaultHeight = BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT,
     layoutEvents = {
         "PLAYER_SPECIALIZATION_CHANGED",
         "PLAYER_ENTERING_WORLD",
@@ -202,17 +202,17 @@ Lifecycle.Setup(SegmentBar, {
         { event = "UNIT_AURA", handler = "OnUnitEvent" },
     },
     onLayoutSetup = function(self, bar, cfg, profile)
-        local maxSegments = GetValues(profile)
-        if not maxSegments or maxSegments <= 0 then
+        local maxResources = GetValues(profile)
+        if not maxResources or maxResources <= 0 then
             bar:Hide()
             return false
         end
 
-        bar._maxSegments = maxSegments
-        bar.StatusBar:SetMinMaxValues(0, maxSegments)
+        bar._maxResources = maxResources
+        bar.StatusBar:SetMinMaxValues(0, maxResources)
 
-        local tickCount = math.max(0, maxSegments - 1)
+        local tickCount = math.max(0, maxResources - 1)
         bar:EnsureTicks(tickCount, bar.TicksFrame, "ticks")
-        bar:LayoutSegmentTicks(maxSegments, { 0, 0, 0, 1 }, 1, "ticks")
+        bar:LayoutResourceTicks(maxResources, { 0, 0, 0, 1 }, 1, "ticks")
     end,
 })

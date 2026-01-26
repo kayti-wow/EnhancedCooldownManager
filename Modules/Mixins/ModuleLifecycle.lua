@@ -61,6 +61,9 @@ function Lifecycle.Setup(module, config)
             self:RegisterEvent(eventName, "UpdateLayout")
         end
 
+        -- Reigster ourselves with the viewer hook to respond to global events
+        ns.RegisterBar(self)
+
         C_Timer.After(0.1, function()
             self:UpdateLayout()
         end)
@@ -142,7 +145,7 @@ function Lifecycle.Setup(module, config)
             local offsetY = (isFirstBar and anchor == viewer) and -BarFrame.GetTopGapOffset(cfg, profile) or 0
 
             -- Apply layout and appearance
-            local defaultHeight = config.defaultHeight or BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT
+            local defaultHeight = config.defaultHeight or BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT
             bar:ApplyLayoutAndAppearance(anchor, offsetY, cfg, profile, defaultHeight)
 
             -- Call module-specific setup hook if provided

@@ -58,14 +58,14 @@ end
 
 --- Creates or returns fragmented sub-bars for runes.
 ---@param bar Frame
----@param maxSegments number
-local function EnsureFragmentedBars(bar, maxSegments)
+---@param maxResources number
+local function EnsureFragmentedBars(bar, maxResources)
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
     local cfg = profile and profile.runeBar
     local gbl = profile and profile.global
     local tex = BarFrame.GetTexture((cfg and cfg.texture) or (gbl and gbl.texture))
 
-    for i = 1, maxSegments do
+    for i = 1, maxResources do
         if not bar.FragmentedBars[i] then
             local frag = CreateFrame("StatusBar", nil, bar)
             frag:SetFrameLevel(bar:GetFrameLevel() + 1)
@@ -77,7 +77,7 @@ local function EnsureFragmentedBars(bar, maxSegments)
         bar.FragmentedBars[i]:Show()
     end
 
-    for i = maxSegments + 1, #bar.FragmentedBars do
+    for i = maxResources + 1, #bar.FragmentedBars do
         if bar.FragmentedBars[i] then
             bar.FragmentedBars[i]:Hide()
         end
@@ -212,10 +212,10 @@ function RuneBar:GetFrame()
     self._frame = BarFrame.Create(
         ADDON_NAME .. "RuneBar",
         UIParent,
-        BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT
+        BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT
     )
 
-    -- Add tick functionality for segment dividers
+    -- Add tick functionality for resource dividers
     TickRenderer.AttachTo(self._frame)
 
     -- Initialize fragmented bars container
@@ -256,7 +256,7 @@ function RuneBar:Refresh()
     end
 
     UpdateFragmentedRuneDisplay(bar, maxRunes)
-    bar:LayoutSegmentTicks(maxRunes, { 0, 0, 0, 1 }, 1, "ticks")
+    bar:LayoutResourceTicks(maxRunes, { 0, 0, 0, 1 }, 1, "ticks")
 end
 
 --------------------------------------------------------------------------------
@@ -292,7 +292,7 @@ Lifecycle.Setup(RuneBar, {
     name = "RuneBar",
     configKey = "runeBar",
     shouldShow = ShouldShowRuneBar,
-    defaultHeight = BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT,
+    defaultHeight = BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT,
     layoutEvents = {
         "PLAYER_SPECIALIZATION_CHANGED",
         "PLAYER_ENTERING_WORLD",
@@ -308,7 +308,7 @@ Lifecycle.Setup(RuneBar, {
             return false
         end
 
-        bar._maxSegments = maxRunes
+        bar._maxResources = maxRunes
         bar.StatusBar:SetMinMaxValues(0, maxRunes)
 
         -- Set up fragmented bars for runes
@@ -319,7 +319,7 @@ Lifecycle.Setup(RuneBar, {
         -- Set up ticks
         local tickCount = math.max(0, maxRunes - 1)
         bar:EnsureTicks(tickCount, bar.TicksFrame, "ticks")
-        bar:LayoutSegmentTicks(maxRunes, { 0, 0, 0, 1 }, 1, "ticks")
+        bar:LayoutResourceTicks(maxRunes, { 0, 0, 0, 1 }, 1, "ticks")
 
         -- Set up OnUpdate for continuous recharge animation
         if not bar._onUpdateAttached then

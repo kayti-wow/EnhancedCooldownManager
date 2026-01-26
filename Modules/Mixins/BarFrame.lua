@@ -15,7 +15,7 @@ ns.Mixins.BarFrame = BarFrame
 --------------------------------------------------------------------------------
 
 BarFrame.DEFAULT_POWER_BAR_HEIGHT = 20
-BarFrame.DEFAULT_SEGMENT_BAR_HEIGHT = 13
+BarFrame.DEFAULT_RESOURCE_BAR_HEIGHT = 13
 BarFrame.DEFAULT_BG_COLOR = { 0.08, 0.08, 0.08, 0.65 }
 BarFrame.VIEWER_ANCHOR_NAME = "EssentialCooldownViewer"
 
@@ -136,7 +136,7 @@ function BarFrame.GetViewerAnchor()
 end
 
 --- Returns the bottom-most visible ECM bar frame for anchoring.
---- Chain order: Viewer -> PowerBar -> SegmentBar -> RuneBar.
+--- Chain order: Viewer -> PowerBar -> ResourceBar -> RuneBar.
 ---@param addon table The EnhancedCooldownManager addon table
 ---@param excludeModule string|nil Module name to exclude from the chain
 ---@return Frame anchor The frame to anchor to
@@ -144,7 +144,7 @@ end
 function BarFrame.GetPreferredAnchor(addon, excludeModule)
     local viewer = BarFrame.GetViewerAnchor()
 
-    local chain = { "PowerBars", "SegmentBar", "RuneBar" }
+    local chain = { "PowerBar", "ResourceBar", "RuneBar" }
     local bottomMost = nil
 
     for _, modName in ipairs(chain) do

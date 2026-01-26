@@ -20,7 +20,7 @@ local ADDON_NAME, ns = ...
 ---@field showManaAsPercent boolean
 ---@field colors table<ECM_ResourceType, number[]>
 
----@class ECM_SegmentBarConfig : ECM_BarConfigBase
+---@class ECM_ResourceBarConfig : ECM_BarConfigBase
 ---@field demonHunterSoulsMax number
 ---@field colors table<ECM_ResourceType, number[]>
 
@@ -80,7 +80,7 @@ local ADDON_NAME, ns = ...
 ---@field combatFade ECM_CombatFadeConfig
 ---@field global ECM_GlobalConfig
 ---@field powerBar ECM_PowerBarConfig
----@field segmentBar ECM_SegmentBarConfig
+---@field resourceBar ECM_ResourceBarConfig
 ---@field runeBar ECM_RuneBarConfig
 ---@field buffBars ECM_BuffBarsConfig
 ---@field buffBarColors ECM_BuffBarColorsConfig
@@ -142,7 +142,7 @@ local defaults = {
                 [Enum.PowerType.ArcaneCharges] = { 0.20, 0.60, 1.00 },
             },
         },
-        segmentBar = {
+        resourceBar = {
             enabled = true,
             height = nil,
             texture = nil,

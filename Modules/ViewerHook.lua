@@ -15,6 +15,7 @@ local _layoutUpdatePending = false
 local _lastHiddenState = nil
 local _inCombat = InCombatLockdown()
 local _lastFadeAlpha = nil
+local _registeredBars = {}
 
 local function SetHidden(hidden)
     -- Log only when state changes
@@ -38,9 +39,9 @@ local function SetHidden(hidden)
         end
     end
 
-    EnhancedCooldownManager.PowerBars:SetExternallyHidden(hidden)
-    EnhancedCooldownManager.SegmentBar:SetExternallyHidden(hidden)
-    EnhancedCooldownManager.RuneBar:SetExternallyHidden(hidden)
+    for _, module in ipairs(_registeredBars) do
+        module:SetExternallyHidden(hidden)
+    end
 end
 
 --- Checks if combat fade should be applied based on config and instance type.
@@ -112,7 +113,7 @@ local function ApplyCombatFade(targetAlpha, instant)
     end
 
     -- Fade ECM module frames
-    for _, module in ipairs({ EnhancedCooldownManager.PowerBars, EnhancedCooldownManager.SegmentBar }) do
+    for _, module in ipairs(_registeredBars) do
         local frame = module and module:GetFrame()
         if frame and frame:IsShown() then
             ApplyFrameFade(frame, targetAlpha, duration)
@@ -170,16 +171,15 @@ local function UpdateLayoutInternal()
 
     Util.Log("ViewerHook", "UpdateLayoutInternal - triggering module layouts")
 
-    EnhancedCooldownManager.PowerBars:UpdateLayout()
-    EnhancedCooldownManager.SegmentBar:UpdateLayout()
-    EnhancedCooldownManager.RuneBar:UpdateLayout()
-    EnhancedCooldownManager.BuffBars:UpdateLayout()
+    for _, module in ipairs(EnhancedCooldownManager.ALL_BARS) do
+        module:UpdateLayout()
+    end
 
     -- BuffBarCooldownViewer children can be re-created/re-anchored during zone transitions.
     -- A small delay ensures Blizzard frames have settled before we style them.
-    C_Timer.After(0.1, function()
-        EnhancedCooldownManager.BuffBars:UpdateLayout()
-    end)
+    -- C_Timer.After(0.1, function()
+    --     EnhancedCooldownManager.BuffBars:UpdateLayout()
+    -- end)
 
     -- Apply combat fade after layout updates
     UpdateCombatFade()
@@ -194,6 +194,10 @@ local function ScheduleLayoutUpdate(delay)
         _layoutUpdatePending = false
         UpdateLayoutInternal()
     end)
+end
+
+local function RegisterBar(module)
+    table.insert(EnhancedCooldownManager.ALL_BARS, module)
 end
 
 -- Event handling configuration: maps events to their delay and whether to reset BuffBars
@@ -266,3 +270,4 @@ f:RegisterEvent("CVAR_UPDATE")
 -- Export for Options.lua to call when settings change
 ns.UpdateCombatFade = UpdateCombatFade
 ns.ScheduleLayoutUpdate = ScheduleLayoutUpdate
+ns.RegisterBar = RegisterBar
