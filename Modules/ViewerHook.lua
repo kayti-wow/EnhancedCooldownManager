@@ -66,7 +66,7 @@ local function GetCombatFadeState()
 
     if profile.combatFade.exceptInInstance then
         local inInstance, instanceType = IsInInstance()
-        local groupInstanceTypes = { party = true, raid = true, arena = true, pvp = true }
+        local groupInstanceTypes = { party = true, raid = true, arena = true, pvp = true, delve = true }
         if inInstance and groupInstanceTypes[instanceType] then
             return false, 1
         end
