@@ -17,7 +17,7 @@ local ADDON_NAME, ns = ...
 ---@field texture string|nil
 ---@field showText boolean|nil
 ---@field bgColor number[]|nil
----@field anchorMode "viewer"|"chain"|"independent"|nil
+---@field anchorMode "chain"|"independent"|nil
 
 ---@class ECM_PowerBarConfig : ECM_BarConfigBase
 ---@field showManaAsPercent boolean

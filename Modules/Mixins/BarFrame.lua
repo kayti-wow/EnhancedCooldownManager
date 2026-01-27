@@ -167,57 +167,53 @@ function BarFrame.GetViewerAnchor()
     return UIParent
 end
 
---- Returns the bottom-most visible ECM bar frame for anchoring.
+--- Calculates the anchor frame for a bar module.
 --- Chain order: Viewer -> PowerBar -> ResourceBar -> RuneBar.
+---
+--- When moduleName is nil, returns the bottom-most visible bar (for BuffBars).
+--- When moduleName is provided, returns the previous visible bar in chain order
+--- (to avoid circular anchoring between bar modules).
 ---@param addon table The EnhancedCooldownManager addon table
----@param excludeModule string|nil Module name to exclude from the chain
+---@param moduleName string|nil Module name to find anchor for (nil = bottom-most)
 ---@return Frame anchor The frame to anchor to
----@return boolean isFirstBar True if anchoring directly to the viewer
-function BarFrame.GetPreferredAnchor(addon, excludeModule)
+---@return boolean isAnchoredToViewer True if anchoring directly to the viewer
+function BarFrame.CalculateAnchor(addon, moduleName)
     local viewer = BarFrame.GetViewerAnchor()
     local chain = { "PowerBar", "ResourceBar", "RuneBar" }
-    local bottomMost
     local profile = addon and addon.db and addon.db.profile
 
-    for _, modName in ipairs(chain) do
-        if modName ~= excludeModule then
-            local mod = addon[modName]
-            local configKey = mod and mod._barConfig and mod._barConfig.configKey
-            local cfg = configKey and profile and profile[configKey]
-            local isIndependent = cfg and cfg.anchorMode == "independent"
-            if not isIndependent and mod and mod.GetFrameIfShown then
-                local f = mod:GetFrameIfShown()
-                if f then
-                    bottomMost = f
-                end
+    -- Find the stopping point in the chain
+    local stopIndex = #chain + 1 -- Default: iterate all (for BuffBars)
+    if moduleName then
+        for i, name in ipairs(chain) do
+            if name == moduleName then
+                stopIndex = i
+                break
             end
         end
     end
 
-    if bottomMost then
-        return bottomMost, false
+    -- Find the last visible bar before stopIndex
+    local lastVisible
+    for i = 1, stopIndex - 1 do
+        local modName = chain[i]
+        local mod = addon and addon[modName]
+        local configKey = mod and mod._barConfig and mod._barConfig.configKey
+        local cfg = configKey and profile and profile[configKey]
+        local isIndependent = cfg and cfg.anchorMode == "independent"
+        if not isIndependent and mod and mod.GetFrameIfShown then
+            local f = mod:GetFrameIfShown()
+            if f then
+                lastVisible = f
+            end
+        end
+    end
+
+    if lastVisible then
+        return lastVisible, false
     end
 
     return viewer, true
-end
-
---- Resolves the anchor frame based on anchorMode in config.
----@param addon table The EnhancedCooldownManager addon table
----@param cfg table Module-specific config
----@param moduleName string Module name for chain exclusion
----@return Frame anchor The frame to anchor to
----@return boolean isAnchoredToViewer True if anchoring directly to the viewer (for top gap offset)
----@return boolean isIndependent True if module should be anchored to screen center
-function BarFrame.ResolveAnchor(addon, cfg, moduleName)
-    local anchorMode = (cfg and cfg.anchorMode) or "chain"
-    if anchorMode == "viewer" then
-        anchorMode = "chain"
-    end
-    if anchorMode == "independent" then
-        return UIParent, false, true
-    end
-    local anchor, isAnchoredToViewer = BarFrame.GetPreferredAnchor(addon, moduleName)
-    return anchor, isAnchoredToViewer, false
 end
 
 BarFrame.Helpers = {
@@ -228,8 +224,7 @@ BarFrame.Helpers = {
     ApplyFont = BarFrame.ApplyFont,
     GetBarHeight = BarFrame.GetBarHeight,
     GetViewerAnchor = BarFrame.GetViewerAnchor,
-    GetPreferredAnchor = BarFrame.GetPreferredAnchor,
-    ResolveAnchor = BarFrame.ResolveAnchor,
+    CalculateAnchor = BarFrame.CalculateAnchor,
 }
 
 ns.BarHelpers = BarFrame.Helpers
@@ -424,8 +419,16 @@ function BarFrame.Create(frameName, parent, defaultHeight)
             return false
         end
 
-        -- 2. Calculate anchor (reads cfg.anchorMode)
-        local anchor, isAnchoredToViewer, isIndependent = BarFrame.ResolveAnchor(addon, cfg, barConfig.name)
+        -- 2. Calculate anchor (handle anchorMode inline)
+        local anchorMode = (cfg and cfg.anchorMode) or "chain"
+        local isIndependent = anchorMode == "independent"
+        local anchor, isAnchoredToViewer
+        if isIndependent then
+            anchor = UIParent
+            isAnchoredToViewer = false
+        else
+            anchor, isAnchoredToViewer = BarFrame.CalculateAnchor(addon, barConfig.name)
+        end
 
         -- 3. Calculate offsets
         local viewer = BarFrame.GetViewerAnchor()

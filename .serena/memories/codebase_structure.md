@@ -24,13 +24,13 @@ Frame creation, layout, appearance, text overlay. Uses object-based pattern (met
 - `BarFrame.GetTexture(textureOverride)` - LSM-resolved texture
 - `BarFrame.ApplyFont(fontString, profile)` - Apply font settings
 - `BarFrame.GetViewerAnchor()` - EssentialCooldownViewer or UIParent
-- `BarFrame.GetPreferredAnchor(addon, excludeModule)` - Bottom-most visible bar
+- `BarFrame.CalculateAnchor(addon, moduleName)` - Anchor for a bar module (nil = bottom-most, or previous bar in chain)
 
 **Bar methods (attached during Create):**
-- `bar:ApplyLayout(anchor, offsetY, height, width, matchAnchorWidth)`
-- `bar:ApplyLayoutAndAppearance(anchor, offsetY, cfg, profile, defaultHeight)`
-- `bar:ApplyAppearance(cfg, profile)`
-- `bar:SetValue(min, max, current, r, g, b)`
+- `bar:SetLayout(anchor, offsetX, offsetY, height, width, isIndependent)` - Apply layout (cached)
+- `bar:SetAppearance(cfg, profile)` - Apply appearance (bg color, texture)
+- `bar:SetValue(min, max, current, r, g, b)` - Update StatusBar value and color
+- `bar:ApplyConfig(module)` - Complete layout/appearance from profile
 
 **Text methods (attached via AddTextOverlay):**
 - `bar:SetText(text)`
@@ -48,7 +48,8 @@ Enable/Disable, event registration, throttled refresh. Injects methods onto modu
 **Auto-generated UpdateLayout** (when `configKey` provided):
 - Checks preconditions, calculates anchor, applies layout
 - Calls `onLayoutSetup` hook for module-specific setup
-- Config options: `configKey`, `shouldShow`, `defaultHeight`, `anchorMode`
+- Config options: `configKey`, `shouldShow`, `defaultHeight`
+- `anchorMode`: `"chain"` (auto-position in stack) or `"independent"` (custom position)
 
 **Static helpers:**
 - `Lifecycle.CheckLayoutPreconditions(module, configKey, shouldShowFn, moduleName)`
@@ -67,7 +68,9 @@ Tick pooling and positioning. Uses `TickRenderer.AttachTo(bar)` to attach method
 ```
 EssentialCooldownViewer → PowerBar → ResourceBar → RuneBar → BuffBarCooldownViewer
 ```
-Use `BarFrame.GetPreferredAnchor(addon, excludeModule)` for bottom-most visible bar.
+Use `BarFrame.CalculateAnchor(addon, moduleName)` to find the anchor:
+- `moduleName = nil` → bottom-most visible bar (for BuffBars)
+- `moduleName = "RuneBar"` → previous visible bar in chain (for bar modules)
 
 ## Module Interface
 `:GetFrame()`, `:GetFrameIfShown()`, `:SetExternallyHidden(bool)`, `:UpdateLayout()`, `:Refresh()`, `:Enable()/:Disable()`

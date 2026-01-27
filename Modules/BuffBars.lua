@@ -585,7 +585,7 @@ function BuffBars:UpdateLayout()
     local autoPosition = buffBarsConfig.autoPosition ~= false -- Default to true
 
     if autoPosition then
-        local anchor = BarHelpers.GetPreferredAnchor(EnhancedCooldownManager, nil)
+        local anchor = BarHelpers.CalculateAnchor(EnhancedCooldownManager, nil)
         if not anchor then
             Util.Log("BuffBars", "UpdateLayout skipped - no anchor")
             return

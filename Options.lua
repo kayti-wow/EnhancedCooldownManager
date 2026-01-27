@@ -1118,18 +1118,15 @@ local function RuneBarOptionsTable()
                         hidden = function() return not IsValueChanged("runeBar.height") end,
                         func = MakeResetHandler("runeBar.height"),
                     },
-                },
-            },
-            displaySettings = {
-                type = "group",
-                name = "Display Options",
-                inline = true,
-                order = 2,
-                args = {
+                    spacer1 = {
+                        type = "description",
+                        name = " ",
+                        order = 20,
+                    },
                     color = {
                         type = "color",
                         name = "Rune color",
-                        order = 1,
+                        order = 21,
                         width = "double",
                         get = function()
                             local c = db.profile.runeBar.color
@@ -1143,7 +1140,7 @@ local function RuneBarOptionsTable()
                     colorReset = {
                         type = "execute",
                         name = "X",
-                        order = 2,
+                        order = 22,
                         width = 0.3,
                         hidden = function() return not IsValueChanged("runeBar.color") end,
                         func = MakeResetHandler("runeBar.color"),

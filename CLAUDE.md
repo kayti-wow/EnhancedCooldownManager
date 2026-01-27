@@ -31,9 +31,9 @@ Frame creation, layout, appearance, text overlay, and module setup. Bar-specific
 
 **Constants:** `DEFAULT_POWER_BAR_HEIGHT`, `DEFAULT_RESOURCE_BAR_HEIGHT`, `DEFAULT_BG_COLOR`
 
-**Helpers:** `GetBarHeight()`, `GetTopGapOffset()`, `GetBgColor()`, `GetTexture()`, `ApplyFont()`, `ResolveAnchor()`
+**Helpers:** `GetBarHeight()`, `GetTopGapOffset()`, `GetBgColor()`, `GetTexture()`, `ApplyFont()`
 
-**Anchoring:** `GetViewerAnchor()`, `GetPreferredAnchor(addon, excludeModule)`, `ResolveAnchor(addon, cfg, moduleName)`
+**Anchoring:** `GetViewerAnchor()`, `CalculateAnchor(addon, moduleName)`
 
 **Bar methods (attached during Create):**
 - `bar:SetLayout(anchor, offsetX, offsetY, height, width)` - Apply layout (cached)
@@ -110,7 +110,7 @@ end
 
 **Anchor mode rules**
 
-- `anchorMode = "viewer"` or `"chain"`: `offsetX` and `width` are ignored (bars match anchor width). `offsetY` creates a gap below the anchor.
+- `anchorMode = "chain"`: `offsetX` and `width` are ignored (bars match anchor width). `offsetY` creates a gap below the anchor.
 - `anchorMode = "independent"`: `offsetX`, `offsetY`, and `width` apply directly to the bar.
 - `profile.offsetY` is the base gap between the viewer and the top-most bar in the chain. It is added to the top bar's `offsetY`.
 
@@ -125,9 +125,9 @@ myBar = {
     enabled = true,
     height = nil,  -- defaults to global.barHeight
     texture = nil,  -- defaults to global.texture
-    anchorMode = "chain",  -- "viewer" | "chain" | "independent"
+    anchorMode = "chain",  -- "chain" | "independent"
     offsetX = 0,  -- horizontal offset (independent only)
-    offsetY = 0,  -- vertical gap below anchor (viewer/chain) or offset from center (independent)
+    offsetY = 0,  -- vertical gap below anchor (chain) or offset from center (independent)
     -- module-specific config...
 },
 ```
