@@ -376,6 +376,12 @@ local function UpdateLayoutInternal()
         module:UpdateLayout()
     end
 
+    -- Update BuffBars after bar chain so it repositions when bars above it change
+    local BuffBars = EnhancedCooldownManager.BuffBars
+    if BuffBars and BuffBars.UpdateLayout then
+        BuffBars:UpdateLayout()
+    end
+
     ViewerHook:UpdateCombatFade()
 end
 

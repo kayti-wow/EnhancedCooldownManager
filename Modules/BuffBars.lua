@@ -608,8 +608,23 @@ function BuffBars:UpdateLayout()
     else
         -- When autoPosition is disabled, apply the configured barWidth.
         -- The user controls positioning via Blizzard's edit mode.
+        -- Clear chain anchors on first switch so SetWidth takes effect,
+        -- but preserve current position.
+        if viewer._lastAnchor ~= nil then
+            local top = viewer:GetTop()
+            local centerX = viewer:GetCenter()
+            local parentCenterX = UIParent:GetCenter()
+            if top and centerX and parentCenterX then
+                local offsetX = centerX - parentCenterX
+                local offsetY = top - UIParent:GetTop()
+                viewer:ClearAllPoints()
+                viewer:SetPoint("TOP", UIParent, "TOP", offsetX, offsetY)
+            else
+                viewer:ClearAllPoints()
+            end
+        end
         viewer:SetWidth(buffBarsConfig.barWidth)
-        viewer._lastAnchor = nil -- Clear cached anchor so re-enabling autoPosition works
+        viewer._lastAnchor = nil
         viewer._lastOffsetY = nil
     end
 
