@@ -187,9 +187,7 @@ function ResourceBar:OnUpdateThrottled()
         return
     end
 
-    Lifecycle.ThrottledRefresh(self, profile, function(mod)
-        mod:Refresh()
-    end)
+    Lifecycle.ThrottledRefresh(self)
 end
 
 function ResourceBar:OnUnitEvent(event, unit)

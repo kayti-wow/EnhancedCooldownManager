@@ -581,51 +581,42 @@ function BuffBars:UpdateLayout()
     end
 
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
-    local buffBarsConfig = profile.buffBars or {}
-    local autoPosition = buffBarsConfig.autoPosition ~= false -- Default to true
+    local cfg = profile.buffBars or {}
+    local isChainMode = (cfg.anchorMode or "chain") == "chain"
 
-    if autoPosition then
-        local anchor = BarHelpers.CalculateAnchor(EnhancedCooldownManager, nil)
-        if not anchor then
-            Util.Log("BuffBars", "UpdateLayout skipped - no anchor")
-            return
-        end
+    -- Create appropriate strategy for BuffBars
+    local PositionStrategy = ns.Mixins.PositionStrategy
+    local strategy = PositionStrategy.Create(cfg, true)
 
-        local offsetY = -((buffBarsConfig and buffBarsConfig.offsetY) or 0)
+    -- Get positioning parameters from strategy
+    local anchor, isAnchoredToViewer = strategy:GetAnchor(EnhancedCooldownManager, nil)
+    if not anchor then
+        Util.Log("BuffBars", "UpdateLayout skipped - no anchor")
+        return
+    end
 
-        -- Position viewer under anchor. Use both TOPLEFT and TOPRIGHT anchor points
-        -- so the viewer width automatically matches the anchor. Do NOT set explicit width
-        -- as this conflicts with anchor-based sizing and causes offset issues after zone changes.
-        local _, rel1 = viewer:GetPoint(1)
-        local _, rel2 = viewer:GetPoint(2)
-        if viewer._lastAnchor ~= anchor or viewer._lastOffsetY ~= offsetY or rel1 ~= anchor or rel2 ~= anchor then
-            viewer:ClearAllPoints()
-            viewer:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, offsetY)
-            viewer:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, offsetY)
-            viewer._lastAnchor = anchor
-            viewer._lastOffsetY = offsetY
-        end
-    else
-        -- When autoPosition is disabled, apply the configured barWidth.
-        -- The user controls positioning via Blizzard's edit mode.
-        -- Clear chain anchors on first switch so SetWidth takes effect,
-        -- but preserve current position.
-        if viewer._lastAnchor ~= nil then
-            local top = viewer:GetTop()
-            local centerX = viewer:GetCenter()
-            local parentCenterX = UIParent:GetCenter()
-            if top and centerX and parentCenterX then
-                local offsetX = centerX - parentCenterX
-                local offsetY = top - UIParent:GetTop()
-                viewer:ClearAllPoints()
-                viewer:SetPoint("TOP", UIParent, "TOP", offsetX, offsetY)
-            else
-                viewer:ClearAllPoints()
-            end
-        end
-        viewer:SetWidth(buffBarsConfig.barWidth)
-        viewer._lastAnchor = nil
-        viewer._lastOffsetY = nil
+    local offsetX = strategy:GetOffsetX(cfg)
+    local offsetY = strategy:GetOffsetY(cfg, profile, isAnchoredToViewer)
+    local width = strategy:GetWidth(cfg)
+
+    -- Check if layout needs updating
+    local _, rel1 = viewer:GetPoint(1)
+    local _, rel2 = viewer:GetPoint(2)
+    local layoutChanged = viewer._lastAnchor ~= anchor
+        or viewer._lastOffsetY ~= offsetY
+        or (isChainMode and (rel1 ~= anchor or rel2 ~= anchor))
+
+    if layoutChanged then
+        -- Preserve position when switching from chain to independent
+        local preservePosition = not isChainMode and viewer._lastAnchor ~= nil
+        strategy:ApplyPoints(viewer, anchor, offsetX, offsetY, { preservePosition = preservePosition })
+        viewer._lastAnchor = isChainMode and anchor or nil
+        viewer._lastOffsetY = isChainMode and offsetY or nil
+    end
+
+    -- Apply width for independent mode
+    if not isChainMode then
+        viewer:SetWidth(width)
     end
 
     -- Hook all children for anchor change detection
@@ -645,9 +636,10 @@ function BuffBars:UpdateLayout()
     self:LayoutBars()
 
     Util.Log("BuffBars", "UpdateLayout complete", {
-        autoPosition = autoPosition,
-        barWidth = not autoPosition and buffBarsConfig.barWidth or nil,
-        offsetY = autoPosition and (buffBarsConfig and buffBarsConfig.offsetY) or nil,
+        strategy = strategy:GetStrategyKey(),
+        anchorMode = cfg.anchorMode or "chain",
+        width = not isChainMode and width or nil,
+        offsetY = offsetY,
         visibleCount = #visibleChildren,
     })
 end

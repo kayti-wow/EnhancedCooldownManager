@@ -115,27 +115,21 @@ function methods:OnWidthSet(width)
 end
 
 function methods:UpdateVisuals()
-    local selected = self.value
-
     local function Apply(button, isSelected)
         button.selectedTex:SetShown(isSelected)
         if isSelected then
             button:SetBackdropBorderColor(1, 0.82, 0, 1)
             button:SetBackdropColor(0.15, 0.12, 0.02, 0.95)
             button.label:SetTextColor(1, 1, 1)
-            button.icon:SetDesaturated(false)
-            button:SetAlpha(1)
         else
             button:SetBackdropBorderColor(0.45, 0.45, 0.45, 1)
             button:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
             button.label:SetTextColor(0.8, 0.8, 0.8)
-            button.icon:SetDesaturated(false)
-            button:SetAlpha(1)
         end
     end
 
-    Apply(self.autoButton, selected == "auto")
-    Apply(self.customButton, selected == "custom")
+    Apply(self.autoButton, self.value == "auto")
+    Apply(self.customButton, self.value == "custom")
 end
 
 local function Constructor()

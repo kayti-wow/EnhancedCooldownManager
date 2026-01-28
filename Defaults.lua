@@ -60,8 +60,8 @@ local ADDON_NAME, ns = ...
 ---@field selectedPalette string|nil Name of the currently selected palette
 
 ---@class ECM_BuffBarsConfig
----@field autoPosition boolean
----@field barWidth number
+---@field anchor "chain"|"independent"|nil
+---@field width number|nil
 ---@field offsetY number|nil
 ---@field showIcon boolean|nil
 ---@field showSpellName boolean|nil
@@ -192,8 +192,8 @@ local defaults = {
             color      = { 0.87, 0.10, 0.22 }, -- DK class colour red
         },
         buffBars = {
-            autoPosition = true,
-            barWidth = 300,
+            anchorMode = "chain",
+            width = 300,
             offsetY = 0,
             showIcon = false,
             showSpellName = true,

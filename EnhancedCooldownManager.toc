@@ -33,6 +33,7 @@ EnhancedCooldownManager.lua
 Modules\ImportExport.lua
 Options.lua
 
+Modules\Mixins\PositionStrategy.lua
 Modules\Mixins\BarFrame.lua
 Modules\Mixins\ModuleLifecycle.lua
 Modules\Mixins\TickRenderer.lua

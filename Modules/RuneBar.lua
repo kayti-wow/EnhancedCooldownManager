@@ -293,9 +293,7 @@ function RuneBar:OnUpdateThrottled()
         return
     end
 
-    Lifecycle.ThrottledRefresh(self, profile, function(mod)
-        mod:Refresh()
-    end)
+    Lifecycle.ThrottledRefresh(self)
 end
 
 function RuneBar:OnUnitEvent(event, unit)

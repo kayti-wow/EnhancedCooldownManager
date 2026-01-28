@@ -36,6 +36,7 @@ Frame creation, layout, appearance, text overlay, and module setup. Bar-specific
 **Anchoring:** `GetViewerAnchor()`, `CalculateAnchor(addon, moduleName)`
 
 **Bar methods (attached during Create):**
+- `bar:CalculateAnchor(module)` - Calculate anchor frame based on chain position
 - `bar:SetLayout(anchor, offsetX, offsetY, height, width)` - Apply layout (cached)
 - `bar:SetAppearance(cfg, profile)` - Apply appearance (bg color, texture)
 - `bar:SetValue(min, max, current, r, g, b)` - Update StatusBar value and color

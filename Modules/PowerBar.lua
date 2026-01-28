@@ -18,9 +18,9 @@ local ADDON_NAME, ns = ...
 local EnhancedCooldownManager = ns.Addon
 local Util = ns.Util
 
--- Mixins
 local BarFrame = ns.Mixins.BarFrame
-local Lifecycle = ns.Mixins.Lifecycle
+local Module = ns.Mixins.Module
+local EventListener = ns.Mixins.EventListener
 local TickRenderer = ns.Mixins.TickRenderer
 
 local PowerBar = EnhancedCooldownManager:NewModule("PowerBar", "AceEvent-3.0")
@@ -130,7 +130,6 @@ function PowerBar:GetFrame()
     return self._frame
 end
 
-
 --------------------------------------------------------------------------------
 -- Layout and Rendering
 --------------------------------------------------------------------------------
@@ -154,8 +153,6 @@ function PowerBar:UpdateTicks(bar, resource, max)
     bar:EnsureTicks(#ticks, bar.StatusBar)
     bar:LayoutValueTicks(bar.StatusBar, ticks, max, defaultColor, defaultWidth)
 end
-
--- UpdateLayout is injected by Lifecycle.Setup with onLayoutSetup hook
 
 --- Updates values: status bar value, text, colors, ticks.
 function PowerBar:Refresh()
@@ -206,37 +203,32 @@ function PowerBar:Refresh()
     bar:Show()
 end
 
---------------------------------------------------------------------------------
--- Event Handling
---------------------------------------------------------------------------------
-
 function PowerBar:OnUnitPower(_, unit)
     local profile = EnhancedCooldownManager.db and EnhancedCooldownManager.db.profile
     if unit ~= "player" or self._externallyHidden or not (profile and profile.powerBar and profile.powerBar.enabled) then
         return
     end
 
-    Lifecycle.ThrottledRefresh(self, profile, function(mod)
-        mod:Refresh()
-    end)
+    Lifecycle.ThrottledRefresh(self)
 end
 
---------------------------------------------------------------------------------
--- Module Lifecycle
---------------------------------------------------------------------------------
+Module.AddMixin(PowerBar, "PowerBar")
+EventListener.AddMixin(
+    PowerBar,
+    {
+        "PLAYER_SPECIALIZATION_CHANGED",
+        "UPDATE_SHAPESHIFT_FORM",
+        "PLAYER_ENTERING_WORLD",
+    },
+    {
+        { event = "UNIT_POWER_UPDATE", handler = "OnUnitPower" },
+    })
 
 BarFrame.Setup(PowerBar, {
     name = "PowerBar",
     configKey = "powerBar",
     shouldShow = ShouldShowPowerBar,
-    layoutEvents = {
-        "PLAYER_SPECIALIZATION_CHANGED",
-        "UPDATE_SHAPESHIFT_FORM",
-        "PLAYER_ENTERING_WORLD",
-    },
-    refreshEvents = {
-        { event = "UNIT_POWER_UPDATE", handler = "OnUnitPower" },
-    },
+
 })
 
 function PowerBar:OnLayoutComplete(bar, cfg, profile)

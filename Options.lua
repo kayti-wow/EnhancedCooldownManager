@@ -1320,10 +1320,10 @@ local function AuraBarsOptionsTable()
                         dialogControl = "ECM_PositionModeSelector",
                         values = POSITION_MODE_VALUES,
                         get = function()
-                            return db.profile.buffBars.autoPosition and "auto" or "custom"
+                            return GetPositionModeFromAnchor(db.profile.buffBars.anchorMode)
                         end,
                         set = function(_, val)
-                            db.profile.buffBars.autoPosition = (val == "auto")
+                            ApplyPositionModeToBar(db.profile.buffBars, val)
                             EnhancedCooldownManager.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1332,13 +1332,14 @@ local function AuraBarsOptionsTable()
                         name = " ",
                         order = 2.5,
                     },
-                    barWidthDesc = {
+                    widthDesc = {
                         type = "description",
                         name = "\nWidth of the buff bars when automatic positioning is disabled.",
                         order = 4,
-                        hidden = function() return db.profile.buffBars.autoPosition end,
+                        hidden = function() return not IsIndependent(db.profile.buffBars) end,
+
                     },
-                    barWidth = {
+                    width = {
                         type = "range",
                         name = "Buff Bar Width",
                         order = 5,
@@ -1346,25 +1347,25 @@ local function AuraBarsOptionsTable()
                         min = 100,
                         max = 600,
                         step = 10,
-                        hidden = function() return db.profile.buffBars.autoPosition end,
-                        get = function() return db.profile.buffBars.barWidth end,
+                        hidden = function() return not IsIndependent(db.profile.buffBars) end,
+                        get = function() return db.profile.buffBars.width end,
                         set = function(_, val)
-                            db.profile.buffBars.barWidth = val
+                            db.profile.buffBars.width = val
                             local buffBars = EnhancedCooldownManager.BuffBars
                             if buffBars then
                                 buffBars:UpdateLayout()
                             end
                         end,
                     },
-                    barWidthReset = {
+                    widthReset = {
                         type = "execute",
                         name = "X",
                         order = 6,
                         width = 0.3,
                         hidden = function()
-                            return db.profile.buffBars.autoPosition or not IsValueChanged("buffBars.barWidth")
+                            return IsIndependent(db.profile.buffBars) or not IsValueChanged("buffBars.width")
                         end,
-                        func = MakeResetHandler("buffBars.barWidth"),
+                        func = MakeResetHandler("buffBars.width"),
                     },
                 },
             },

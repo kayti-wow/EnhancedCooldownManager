@@ -161,60 +161,13 @@ end
 ---@return Frame
 function BarFrame.GetViewerAnchor()
     local viewer = _G[BarFrame.VIEWER_ANCHOR_NAME]
-    if viewer and viewer:GetPoint(1) then
+    if viewer then
         return viewer
     end
     return UIParent
 end
 
---- Calculates the anchor frame for a bar module.
---- Chain order: Viewer -> PowerBar -> ResourceBar -> RuneBar.
----
---- When moduleName is nil, returns the bottom-most visible bar (for BuffBars).
---- When moduleName is provided, returns the previous visible bar in chain order
---- (to avoid circular anchoring between bar modules).
----@param addon table The EnhancedCooldownManager addon table
----@param moduleName string|nil Module name to find anchor for (nil = bottom-most)
----@return Frame anchor The frame to anchor to
----@return boolean isAnchoredToViewer True if anchoring directly to the viewer
-function BarFrame.CalculateAnchor(addon, moduleName)
-    local viewer = BarFrame.GetViewerAnchor()
-    local chain = { "PowerBar", "ResourceBar", "RuneBar" }
-    local profile = addon and addon.db and addon.db.profile
 
-    -- Find the stopping point in the chain
-    local stopIndex = #chain + 1 -- Default: iterate all (for BuffBars)
-    if moduleName then
-        for i, name in ipairs(chain) do
-            if name == moduleName then
-                stopIndex = i
-                break
-            end
-        end
-    end
-
-    -- Find the last visible bar before stopIndex
-    local lastVisible
-    for i = 1, stopIndex - 1 do
-        local modName = chain[i]
-        local mod = addon and addon[modName]
-        local configKey = mod and mod._barConfig and mod._barConfig.configKey
-        local cfg = configKey and profile and profile[configKey]
-        local isIndependent = cfg and cfg.anchorMode == "independent"
-        if not isIndependent and mod and mod.GetFrameIfShown then
-            local f = mod:GetFrameIfShown()
-            if f then
-                lastVisible = f
-            end
-        end
-    end
-
-    if lastVisible then
-        return lastVisible, false
-    end
-
-    return viewer, true
-end
 
 BarFrame.Helpers = {
     GetBgColor = BarFrame.GetBgColor,
@@ -224,7 +177,6 @@ BarFrame.Helpers = {
     ApplyFont = BarFrame.ApplyFont,
     GetBarHeight = BarFrame.GetBarHeight,
     GetViewerAnchor = BarFrame.GetViewerAnchor,
-    CalculateAnchor = BarFrame.CalculateAnchor,
 }
 
 ns.BarHelpers = BarFrame.Helpers
@@ -335,10 +287,10 @@ function BarFrame.Create(frameName, parent, defaultHeight)
     ---@param height number Desired bar height
     ---@param width number|nil Desired bar width. If nil, width matches viewer width.
     --- @param isIndependent boolean|nil Whether the bar is positioned relative to screen center
-        function bar:SetLayout(anchor, offsetX, offsetY, height, width, isIndependent)
-            local shouldMatchWidth = width == nil and not isIndependent
+    function bar:SetLayout(anchor, offsetX, offsetY, height, width, isIndependent)
+        local shouldMatchWidth = width == nil and not isIndependent
         offsetX = offsetX or 0
-            isIndependent = isIndependent == true
+        isIndependent = isIndependent == true
 
         local layoutChanged = self._lastAnchor ~= anchor
             or self._lastOffsetX ~= offsetX
@@ -376,17 +328,53 @@ function BarFrame.Create(frameName, parent, defaultHeight)
         end
     end
 
+    --- Applies layout using a positioning strategy.
+    --- Internal method used by ApplyConfig and BuffBars.
+    ---@param self ECMBarFrame Bar instance
+    ---@param strategy table Position strategy instance
+    ---@param anchor Frame Anchor frame
+    ---@param offsetX number Horizontal offset
+    ---@param offsetY number Vertical offset
+    ---@param height number Bar height
+    ---@param width number|nil Bar width (nil = match anchor)
+    function bar:SetLayoutWithStrategy(strategy, anchor, offsetX, offsetY, height, width)
+        local shouldMatchWidth = width == nil
+        local isIndependent = strategy:GetStrategyKey():find("independent") ~= nil
+
+        local layoutChanged = self._lastAnchor ~= anchor
+            or self._lastOffsetX ~= offsetX
+            or self._lastOffsetY ~= offsetY
+            or self._lastMatchAnchorWidth ~= shouldMatchWidth
+            or self._lastIsIndependent ~= isIndependent
+
+        if layoutChanged then
+            strategy:ApplyPoints(self, anchor, offsetX, offsetY)
+            self._lastAnchor = isIndependent and UIParent or anchor
+            self._lastOffsetX = offsetX
+            self._lastOffsetY = offsetY
+            self._lastMatchAnchorWidth = shouldMatchWidth
+            self._lastIsIndependent = isIndependent
+        end
+
+        if self._lastHeight ~= height then
+            self:SetHeight(height)
+            self._lastHeight = height
+        end
+
+        if not shouldMatchWidth and width ~= nil and self._lastWidth ~= width then
+            self:SetWidth(width)
+            self._lastWidth = width
+        elseif shouldMatchWidth then
+            self._lastWidth = nil
+        end
+    end
+
     --- Applies complete configuration from profile.
     --- Handles preconditions internally - no coupling to Lifecycle.
     ---
-    --- Anchor mode behavior (ApplyConfig + SetLayout):
-    --- - independent: offsetX/offsetY apply, width applies (config/default width).
-    --- - viewer: offsetX ignored (0), width ignored (match anchor), offsetY is the
-    ---   negative sum of profile.offsetY and cfg.offsetY (gap below viewer).
-    --- - chain: offsetX ignored (0), width ignored (match anchor), offsetY is the
-    ---   negative of cfg.offsetY (gap below previous bar).
-    ---
-    --- offsetY sign convention: positive config values create a gap below the anchor.
+    --- Uses PositionStrategy to handle anchor mode differences:
+    --- - chain: Anchors below previous bar, matches anchor width
+    --- - independent: Anchors to screen center, uses explicit width
     ---@param self ECMBarFrame Bar instance
     ---@param module table Module reference
     ---@return boolean success True if layout applied, false if preconditions failed
@@ -419,39 +407,18 @@ function BarFrame.Create(frameName, parent, defaultHeight)
             return false
         end
 
-        -- 2. Calculate anchor (handle anchorMode inline)
-        local anchorMode = (cfg and cfg.anchorMode) or "chain"
-        local isIndependent = anchorMode == "independent"
-        local anchor, isAnchoredToViewer
-        if isIndependent then
-            anchor = UIParent
-            isAnchoredToViewer = false
-        else
-            anchor, isAnchoredToViewer = BarFrame.CalculateAnchor(addon, barConfig.name)
-        end
+        -- 2. Create strategy and delegate positioning logic
+        local PositionStrategy = ns.Mixins.PositionStrategy
+        local strategy = PositionStrategy.Create(cfg, false)
 
-        -- 3. Calculate offsets
-        local viewer = BarFrame.GetViewerAnchor()
-        local offsetY
-        if isIndependent then
-            offsetY = (cfg and cfg.offsetY) or 0
-        elseif isAnchoredToViewer and anchor == viewer then
-            offsetY = -BarFrame.GetTopGapOffset(cfg, profile)
-        else
-            offsetY = -((cfg and cfg.offsetY) or 0)
-        end
-        local offsetX = isIndependent and ((cfg and cfg.offsetX) or 0) or 0
-
-        -- 4. Calculate dimensions (uses stored defaultHeight)
+        local anchor, isAnchoredToViewer = strategy:GetAnchor(addon, barConfig.name)
+        local offsetX = strategy:GetOffsetX(cfg)
+        local offsetY = strategy:GetOffsetY(cfg, profile, isAnchoredToViewer)
+        local width = strategy:GetWidth(cfg)
         local height = BarFrame.GetBarHeight(cfg, profile, self._defaultHeight)
-        local width
-        if isIndependent then
-            width = Util.PixelSnap((cfg and cfg.width) or BarFrame.DEFAULT_BAR_WIDTH)
-        else
-            width = nil
-        end
 
         Util.Log(barConfig.name, "Applying layout", {
+            strategy = strategy:GetStrategyKey(),
             anchor = anchor:GetName() or tostring(anchor),
             offsetX = offsetX,
             offsetY = offsetY,
@@ -459,11 +426,11 @@ function BarFrame.Create(frameName, parent, defaultHeight)
             width = width or "auto",
         })
 
-        -- 5. Apply layout and appearance
-        self:SetLayout(anchor, offsetX, offsetY, height, width, isIndependent)
+        -- 3. Apply layout and appearance
+        self:SetLayoutWithStrategy(strategy, anchor, offsetX, offsetY, height, width)
         self:SetAppearance(cfg, profile)
 
-        -- 6. Call module override if defined
+        -- 4. Call module override if defined
         if module.OnLayoutComplete then
             local shouldContinue = module:OnLayoutComplete(self, cfg, profile)
             if shouldContinue == false then
@@ -528,6 +495,26 @@ function BarFrame.AddTextOverlay(bar, profile)
     return bar.TextValue
 end
 
+
+function BarFrame:SetExternallyHidden(hidden)
+    local isHidden = not not hidden
+    if self._externallyHidden ~= isHidden then
+        self._externallyHidden = isHidden
+        Util.Log(config.name, "SetExternallyHidden", { hidden = self._externallyHidden })
+    end
+    if self._externallyHidden and self._frame then
+        self._frame:Hide()
+    end
+end
+
+function BarFrame:GetFrameIfShown()
+    local f = self._frame
+    if self._externallyHidden or not f or not f:IsShown() then
+        return nil
+    end
+    return f
+end
+
 --------------------------------------------------------------------------------
 -- Module Setup (orchestrates Lifecycle + bar-specific config)
 --------------------------------------------------------------------------------
@@ -560,11 +547,13 @@ function BarFrame.Setup(module, config)
     }
 
     -- 3. Inject bar-specific UpdateLayout
-    function module:UpdateLayout()
-        local bar = self:GetFrame()
-        if bar:ApplyConfig(self) then
-            bar:Show()
-            self:Refresh()
-        end
+
+end
+
+function BarFrame:OnUpdateLayout()
+    local bar = self:GetFrame()
+    if bar:ApplyConfig(self) then
+        bar:Show()
+        self:Refresh()
     end
 end
