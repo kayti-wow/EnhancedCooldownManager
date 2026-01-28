@@ -19,8 +19,6 @@ local EnhancedCooldownManager = ns.Addon
 local Util = ns.Util
 
 local BarFrame = ns.Mixins.BarFrame
-local Module = ns.Mixins.Module
-local EventListener = ns.Mixins.EventListener
 local TickRenderer = ns.Mixins.TickRenderer
 
 local PowerBar = EnhancedCooldownManager:NewModule("PowerBar", "AceEvent-3.0")
@@ -209,29 +207,18 @@ function PowerBar:OnUnitPower(_, unit)
         return
     end
 
-    Lifecycle.ThrottledRefresh(self)
+    self:ThrottledRefresh()
 end
 
-Module.AddMixin(PowerBar, "PowerBar")
-EventListener.AddMixin(
+BarFrame.AddMixin(
     PowerBar,
-    {
-        "PLAYER_SPECIALIZATION_CHANGED",
-        "UPDATE_SHAPESHIFT_FORM",
-        "PLAYER_ENTERING_WORLD",
-    },
-    {
-        { event = "UNIT_POWER_UPDATE", handler = "OnUnitPower" },
-    })
+    "PowerBar",
+    "powerBar",
+    nil,
+    nil
+)
 
-BarFrame.Setup(PowerBar, {
-    name = "PowerBar",
-    configKey = "powerBar",
-    shouldShow = ShouldShowPowerBar,
-
-})
-
-function PowerBar:OnLayoutComplete(bar, cfg, profile)
-    BarFrame.ApplyFont(bar.TextValue, profile)
-    return true
-end
+-- function PowerBar:OnLayoutComplete(bar, cfg, profile)
+--     BarFrame.ApplyFont(bar.TextValue, profile)
+--     return true
+-- end

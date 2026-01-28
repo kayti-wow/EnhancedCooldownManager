@@ -16,6 +16,26 @@ function Util.PixelSnap(v)
     return snapped / scale
 end
 
+--- Merges two lists of strings into one with unique entries.
+--- @param a string[]
+--- @param b string[]
+local function MergeUniqueLists(a, b)
+    local out, seen = {}, {}
+
+    local function add(v, label, i)
+        assert(type(v) == "string", ("MergeUniqueLists: %s[%d] not string"):format(label, i))
+        if not seen[v] then
+            seen[v] = true
+            out[#out + 1] = v
+        end
+    end
+
+    for i = 1, #a do add(a[i], "a", i) end
+    for i = 1, #b do add(b[i], "b", i) end
+
+    return out
+end
+
 --- Safely converts a value to a copyable form, handling WoW secret values.
 ---@param v any
 ---@return any
