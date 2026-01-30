@@ -2,26 +2,26 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame Base UI frame type
+---@class Frame Base UI frame type.
 
----@class StatusBar : Frame Status bar frame type
+---@class StatusBar : Frame Status bar frame type.
 
----@class ECM_BuffBarChild : Frame Buff bar child frame
----@field Bar StatusBar Status bar region for the buff bar
----@field Icon Frame Icon texture frame
----@field IconFrame Frame Icon container frame
----@field IconButton Frame Icon button frame
----@field __ecmAnchorHooked boolean|nil True when anchor hooks are installed
----@field __ecmStyled boolean|nil True when ECM styling is applied
+---@class ECM_BuffBarChild : Frame Buff bar child frame.
+---@field Bar StatusBar Status bar region for the buff bar.
+---@field Icon Frame Icon texture frame.
+---@field IconFrame Frame Icon container frame.
+---@field IconButton Frame Icon button frame.
+---@field __ecmAnchorHooked boolean|nil True when anchor hooks are installed.
+---@field __ecmStyled boolean|nil True when ECM styling is applied.
 
----@class ECM_BuffBarViewer : Frame Buff bar viewer frame
----@field _layoutCache table|nil Cached layout parameters
----@field ApplyLayout fun(self: ECM_BuffBarViewer, params: table): boolean Applies layout parameters
----@field InvalidateLayout fun(self: ECM_BuffBarViewer): nil Invalidates cached layout
----@field __ecmHooked boolean|nil True when viewer hooks are installed
----@field __ecmLayoutRunning boolean|nil True while ECM layout is running
+---@class ECM_BuffBarViewer : ECM_PositionedFrame Buff bar viewer frame.
+---@field _layoutCache table|nil Cached layout parameters.
+---@field ApplyLayout fun(self: ECM_BuffBarViewer, params: table): boolean Applies layout parameters.
+---@field InvalidateLayout fun(self: ECM_BuffBarViewer): nil Invalidates cached layout.
+---@field __ecmHooked boolean|nil True when viewer hooks are installed.
+---@field __ecmLayoutRunning boolean|nil True while ECM layout is running.
 
----@class ECM_BuffBarsModule Buff bars module
+---@class ECM_BuffBarsModule : ECMModule Buff bars module.
 
 local _, ns = ...
 local ECM = ns.Addon
@@ -50,52 +50,52 @@ local BuffBars = ECM:NewModule("BuffBars", "AceEvent-3.0")
 ECM.BuffBars = BuffBars
 
 local WHITE8 = "Interface\\Buttons\\WHITE8X8"
-local DEFAULT_BAR_COLOR = { 0.90, 0.90, 0.90 }
+local DEFAULT_BAR_COLOR = { r = 0.90, g = 0.90, b = 0.90, a = 1 }
 
 local PALETTES = {
     ["Default"] = {
-        { 0.90, 0.90, 0.90 },
+        { r = 0.90, g = 0.90, b = 0.90, a = 1 },
     },
     ["Rainbow"] = {
-        { 0.95, 0.27, 0.27 }, -- Red
-        { 0.95, 0.65, 0.27 }, -- Orange
-        { 0.95, 0.95, 0.27 }, -- Yellow
-        { 0.27, 0.95, 0.27 }, -- Green
-        { 0.27, 0.65, 0.95 }, -- Blue
-        { 0.58, 0.27, 0.95 }, -- Purple
-        { 0.95, 0.27, 0.65 }, -- Pink
+        { r = 0.95, g = 0.27, b = 0.27, a = 1 }, -- Red
+        { r = 0.95, g = 0.65, b = 0.27, a = 1 }, -- Orange
+        { r = 0.95, g = 0.95, b = 0.27, a = 1 }, -- Yellow
+        { r = 0.27, g = 0.95, b = 0.27, a = 1 }, -- Green
+        { r = 0.27, g = 0.65, b = 0.95, a = 1 }, -- Blue
+        { r = 0.58, g = 0.27, b = 0.95, a = 1 }, -- Purple
+        { r = 0.95, g = 0.27, b = 0.65, a = 1 }, -- Pink
     },
     ["Warm"] = {
-        { 0.95, 0.35, 0.25 }, -- Red-Orange
-        { 0.95, 0.55, 0.25 }, -- Orange
-        { 0.95, 0.75, 0.30 }, -- Golden
-        { 0.90, 0.60, 0.40 }, -- Tan
+        { r = 0.95, g = 0.35, b = 0.25, a = 1 }, -- Red-Orange
+        { r = 0.95, g = 0.55, b = 0.25, a = 1 }, -- Orange
+        { r = 0.95, g = 0.75, b = 0.30, a = 1 }, -- Golden
+        { r = 0.90, g = 0.60, b = 0.40, a = 1 }, -- Tan
     },
     ["Cool"] = {
-        { 0.25, 0.70, 0.95 }, -- Sky Blue
-        { 0.30, 0.85, 0.85 }, -- Cyan
-        { 0.35, 0.65, 0.90 }, -- Ocean Blue
-        { 0.40, 0.55, 0.85 }, -- Deep Blue
+        { r = 0.25, g = 0.70, b = 0.95, a = 1 }, -- Sky Blue
+        { r = 0.30, g = 0.85, b = 0.85, a = 1 }, -- Cyan
+        { r = 0.35, g = 0.65, b = 0.90, a = 1 }, -- Ocean Blue
+        { r = 0.40, g = 0.55, b = 0.85, a = 1 }, -- Deep Blue
     },
     ["Pastel"] = {
-        { 0.95, 0.75, 0.80 }, -- Pink
-        { 0.80, 0.85, 0.95 }, -- Light Blue
-        { 0.85, 0.95, 0.80 }, -- Light Green
-        { 0.95, 0.90, 0.75 }, -- Cream
-        { 0.90, 0.80, 0.95 }, -- Lavender
+        { r = 0.95, g = 0.75, b = 0.80, a = 1 }, -- Pink
+        { r = 0.80, g = 0.85, b = 0.95, a = 1 }, -- Light Blue
+        { r = 0.85, g = 0.95, b = 0.80, a = 1 }, -- Light Green
+        { r = 0.95, g = 0.90, b = 0.75, a = 1 }, -- Cream
+        { r = 0.90, g = 0.80, b = 0.95, a = 1 }, -- Lavender
     },
     ["Neon"] = {
-        { 1.00, 0.10, 0.50 }, -- Hot Pink
-        { 0.10, 1.00, 0.90 }, -- Cyan
-        { 0.90, 1.00, 0.10 }, -- Lime
-        { 1.00, 0.40, 0.10 }, -- Orange
-        { 0.50, 0.10, 1.00 }, -- Purple
+        { r = 1.00, g = 0.10, b = 0.50, a = 1 }, -- Hot Pink
+        { r = 0.10, g = 1.00, b = 0.90, a = 1 }, -- Cyan
+        { r = 0.90, g = 1.00, b = 0.10, a = 1 }, -- Lime
+        { r = 1.00, g = 0.40, b = 0.10, a = 1 }, -- Orange
+        { r = 0.50, g = 0.10, b = 1.00, a = 1 }, -- Purple
     },
     ["Earth"] = {
-        { 0.55, 0.45, 0.35 }, -- Brown
-        { 0.40, 0.60, 0.35 }, -- Moss Green
-        { 0.65, 0.55, 0.40 }, -- Sand
-        { 0.50, 0.40, 0.30 }, -- Dark Earth
+        { r = 0.55, g = 0.45, b = 0.35, a = 1 }, -- Brown
+        { r = 0.40, g = 0.60, b = 0.35, a = 1 }, -- Moss Green
+        { r = 0.65, g = 0.55, b = 0.40, a = 1 }, -- Sand
+        { r = 0.50, g = 0.40, b = 0.30, a = 1 }, -- Dark Earth
     },
 }
 
@@ -151,25 +151,24 @@ end
 --- Gets color from palette for the given bar index.
 ---@param barIndex number
 ---@param paletteName string
----@return number r, number g, number b
+---@return ECM_Color
 local function GetPaletteColor(barIndex, paletteName)
     local palette = PALETTES[paletteName]
     if not palette or #palette == 0 then
-        return DEFAULT_BAR_COLOR[1], DEFAULT_BAR_COLOR[2], DEFAULT_BAR_COLOR[3]
+        return DEFAULT_BAR_COLOR
     end
 
     local colorIndex = ((barIndex - 1) % #palette) + 1
-    local color = palette[colorIndex]
-    return color[1], color[2], color[3]
+    return palette[colorIndex]
 end
 
 --- Returns color for bar at index for current class/spec, or palette/default if not set.
 ---@param barIndex number 1-based index in layout order
 ---@param cfg table|nil
----@return number r, number g, number b
+---@return ECM_Color
 local function GetBarColor(barIndex, cfg)
     if not cfg then
-        return DEFAULT_BAR_COLOR[1], DEFAULT_BAR_COLOR[2], DEFAULT_BAR_COLOR[3]
+        return DEFAULT_BAR_COLOR
     end
 
     EnsureColorStorage(cfg)
@@ -179,7 +178,7 @@ local function GetBarColor(barIndex, cfg)
     if classID and specID and colors[classID] and colors[classID][specID] then
         local c = colors[classID][specID][barIndex]
         if c then
-            return c[1], c[2], c[3]
+            return c
         end
     end
 
@@ -188,8 +187,7 @@ local function GetBarColor(barIndex, cfg)
         return GetPaletteColor(barIndex, selectedPalette)
     end
 
-    local dc = cfg.colors.defaultColor or DEFAULT_BAR_COLOR
-    return dc[1], dc[2], dc[3]
+    return cfg.colors.defaultColor or DEFAULT_BAR_COLOR
 end
 
 --- Updates bar cache with current bar metadata for Options UI.
@@ -320,8 +318,8 @@ local function ApplyCooldownBarStyle(child, profile, barIndex)
     -- Apply bar color from per-bar settings or default
     local cfg = profile.buffBars or {}
     if bar.SetStatusBarColor and barIndex then
-        local r, g, b = GetBarColor(barIndex, cfg)
-        bar:SetStatusBarColor(r, g, b, 1.0)
+        local color = GetBarColor(barIndex, cfg)
+        bar:SetStatusBarColor(color.r, color.g, color.b, 1.0)
     end
 
     -- Update bar cache for Options UI (extract spell name safely)
@@ -342,7 +340,7 @@ local function ApplyCooldownBarStyle(child, profile, barIndex)
     local barBG = GetBuffBarBackground(bar)
     if barBG then
         barBG:SetTexture(WHITE8)
-        barBG:SetVertexColor(bgColor[1] or 0, bgColor[2] or 0, bgColor[3] or 0, bgColor[4] or 1)
+        barBG:SetVertexColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
         barBG:ClearAllPoints()
         barBG:SetPoint("TOPLEFT", bar, "TOPLEFT")
         barBG:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
@@ -713,7 +711,7 @@ function BuffBars:SetBarColor(barIndex, r, g, b)
     local colors = cfg.colors.perBar
     colors[classID] = colors[classID] or {}
     colors[classID][specID] = colors[classID][specID] or {}
-    colors[classID][specID][barIndex] = { r, g, b }
+    colors[classID][specID][barIndex] = { r = r, g = g, b = b, a = 1 }
 
     Util.Log("BuffBars", "SetBarColor", { barIndex = barIndex, r = r, g = g, b = b })
 
@@ -755,7 +753,8 @@ end
 function BuffBars:GetBarColor(barIndex)
     local profile = GetProfile(self)
     local cfg = profile and profile.buffBars
-    return GetBarColor(barIndex, cfg)
+    local color = GetBarColor(barIndex, cfg)
+    return color.r, color.g, color.b
 end
 
 --- Checks if bar at index has a custom color set.

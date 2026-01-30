@@ -69,7 +69,7 @@ local REFRESH_EVENTS = {
 
 local DEFAULT_HEIGHT = 20
 BarFrame.DEFAULT_BAR_WIDTH = 250
-BarFrame.DEFAULT_BG_COLOR = { 0.08, 0.08, 0.08, 0.65 }
+BarFrame.DEFAULT_BG_COLOR = { r = 0.08, g = 0.08, b = 0.08, a = 0.65 }
 BarFrame.DEFAULT_STATUSBAR_TEXTURE = "Interface\\TARGETINGFRAME\\UI-StatusBar"
 BarFrame.VIEWER_ANCHOR_NAME = "EssentialCooldownViewer"
 
@@ -98,10 +98,20 @@ local function GetTickPool(self, poolKey)
     return pool
 end
 
+local function RequireColor(color, defaultAlpha)
+    assert(type(color) == "table", "color table required")
+    assert(color.r ~= nil and color.g ~= nil and color.b ~= nil, "color requires r,g,b")
+    local a = color.a
+    if a == nil then
+        a = defaultAlpha or 1
+    end
+    return color.r, color.g, color.b, a
+end
+
 --- Returns the resolved background color from config or defaults.
 ---@param cfg table|nil Module-specific config
 ---@param profile table|nil Full profile table
----@return number[] RGBA color array
+---@return ECM_Color
 function BarFrame.GetBgColor(cfg, profile)
     local gbl = profile and profile.global
     return (cfg and cfg.bgColor) or (gbl and gbl.barBgColor) or BarFrame.DEFAULT_BG_COLOR
@@ -217,7 +227,7 @@ function BarFrame:SetValue(minVal, maxVal, currentVal, r, g, b)
         minVal = minVal,
         maxVal = maxVal,
         currentVal = currentVal,
-        color = { r, g, b }
+        color = { r = r, g = g, b = b, a = 1 }
     })
     self.StatusBar:SetMinMaxValues(minVal, maxVal)
     self.StatusBar:SetValue(currentVal)
@@ -232,7 +242,8 @@ end
 function BarFrame:SetAppearance(cfg, profile)
     local bgColor = BarFrame.GetBgColor(cfg, profile)
     if self.Background and self.Background.SetColorTexture then
-        self.Background:SetColorTexture(bgColor[1], bgColor[2], bgColor[3], bgColor[4] or 1)
+        local bgR, bgG, bgB, bgA = RequireColor(bgColor, 1)
+        self.Background:SetColorTexture(bgR, bgG, bgB, bgA)
     end
 
     local gbl = profile and profile.global
@@ -245,7 +256,8 @@ function BarFrame:SetAppearance(cfg, profile)
     local borderCfg = cfg and cfg.border
     if border and borderCfg and borderCfg.enabled then
         local thickness = borderCfg.thickness or 1
-        local color = borderCfg.color or {}
+        local color = borderCfg.color or { r = 1, g = 1, b = 1, a = 1 }
+        local borderR, borderG, borderB, borderA = RequireColor(color, 1)
         if self._lastBorderThickness ~= thickness then
             border:SetBackdrop({
                 edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -256,16 +268,17 @@ function BarFrame:SetAppearance(cfg, profile)
         border:ClearAllPoints()
         border:SetPoint("TOPLEFT", -thickness, thickness)
         border:SetPoint("BOTTOMRIGHT", thickness, -thickness)
-        border:SetBackdropBorderColor(color.r or 1, color.g or 1, color.b or 1, color.a or 1)
+        border:SetBackdropBorderColor(borderR, borderG, borderB, borderA)
         border:Show()
     elseif border then
         border:Hide()
     end
 
+    local logR, logG, logB, logA = RequireColor(bgColor, 1)
     Util.Log(self:GetName(), "SetAppearance", {
         textureOverride = (cfg and cfg.texture) or (gbl and gbl.texture),
         texture = tex,
-        bgColor = bgColor[1] .. "," .. bgColor[2] .. "," .. bgColor[3] .. "," .. (bgColor[4] or 1),
+        bgColor = table.concat({ tostring(logR), tostring(logG), tostring(logB), tostring(logA) }, ","),
         border = border and borderCfg and borderCfg.enabled
     })
 
@@ -393,7 +406,7 @@ end
 --- Used by ResourceBar to show divisions between resources.
 ---@param self ECMBarFrame
 ---@param maxResources number Number of resources (ticks = maxResources - 1)
----@param color table|nil RGBA color { r, g, b, a } (default black)
+---@param color ECM_Color|table|nil RGBA color (default black)
 ---@param tickWidth number|nil Width of each tick (default 1)
 ---@param poolKey string|nil Key for tick pool (default "tickPool")
 function BarFrame:LayoutResourceTicks(maxResources, color, tickWidth, poolKey)
@@ -414,11 +427,11 @@ function BarFrame:LayoutResourceTicks(maxResources, color, tickWidth, poolKey)
         return
     end
 
-    color = color or { 0, 0, 0, 1 }
+    color = color or { r = 0, g = 0, b = 0, a = 1 }
     tickWidth = tickWidth or 1
 
     local step = barWidth / maxResources
-    local tr, tg, tb, ta = color[1] or 0, color[2] or 0, color[3] or 0, color[4] or 1
+    local tr, tg, tb, ta = RequireColor(color, 1)
 
     for i = 1, #pool do
         local tick = pool[i]
@@ -436,9 +449,9 @@ end
 --- Used by PowerBar for breakpoint markers (e.g., energy thresholds).
 ---@param self ECMBarFrame
 ---@param statusBar StatusBar StatusBar to position ticks on
----@param ticks table Array of tick definitions { { value = number, color = {r,g,b,a}, width = number }, ... }
+---@param ticks table Array of tick definitions { { value = number, color = ECM_Color, width = number }, ... }
 ---@param maxValue number Maximum resource value
----@param defaultColor table Default RGBA color
+---@param defaultColor ECM_Color Default RGBA color
 ---@param defaultWidth number Default tick width
 ---@param poolKey string|nil Key for tick pool (default "tickPool")
 function BarFrame:LayoutValueTicks(statusBar, ticks, maxValue, defaultColor, defaultWidth, poolKey)
@@ -462,7 +475,7 @@ function BarFrame:LayoutValueTicks(statusBar, ticks, maxValue, defaultColor, def
         return
     end
 
-    defaultColor = defaultColor or { 0, 0, 0, 0.5 }
+    defaultColor = defaultColor or { r = 0, g = 0, b = 0, a = 0.5 }
     defaultWidth = defaultWidth or 1
 
     for i = 1, #ticks do
@@ -473,17 +486,13 @@ function BarFrame:LayoutValueTicks(statusBar, ticks, maxValue, defaultColor, def
             if value and value > 0 and value < maxValue then
                 local tickColor = tickData.color or defaultColor
                 local tickWidthVal = tickData.width or defaultWidth
+                local tr, tg, tb, ta = RequireColor(tickColor, defaultColor.a or 0.5)
 
                 local x = math.floor((value / maxValue) * barWidth)
                 tick:ClearAllPoints()
                 tick:SetPoint("LEFT", statusBar, "LEFT", x, 0)
                 tick:SetSize(math.max(1, Util.PixelSnap(tickWidthVal)), barHeight)
-                tick:SetColorTexture(
-                    tickColor[1] or 0,
-                    tickColor[2] or 0,
-                    tickColor[3] or 0,
-                    tickColor[4] or 0.5
-                )
+                tick:SetColorTexture(tr, tg, tb, ta)
                 tick:Show()
             else
                 tick:Hide()

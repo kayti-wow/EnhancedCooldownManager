@@ -2,17 +2,15 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame
----@class FontString
----@class StatusBar : Frame
----@class Enum.PowerType
+---@class Frame WoW UI base frame type.
 
----@class ECM_PowerBarFrame : Frame
----@field StatusBar StatusBar
----@field TextValue FontString
----@field EnsureTicks fun(self: ECM_PowerBarFrame, count: number, parentFrame: Frame)
----@field HideAllTicks fun(self: ECM_PowerBarFrame)
----@field LayoutValueTicks fun(self: ECM_PowerBarFrame, statusBar: StatusBar, ticks: table, maxValue: number, defaultColor: table, defaultWidth: number)
+---@class FontString WoW UI font string type.
+
+---@class StatusBar : Frame WoW UI status bar frame type.
+
+---@class Enum.PowerType Enum of supported power types.
+
+---@class ECM_PowerBarFrame : ECMBarFrame Power bar frame specialization.
 
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
@@ -128,7 +126,7 @@ function PowerBar:UpdateTicks(bar, resource, max)
 
     local profile = ECM.db and ECM.db.profile
     local ticksCfg = profile and profile.powerBar and profile.powerBar.ticks
-    local defaultColor = ticksCfg and ticksCfg.defaultColor or { 1, 1, 1, 0.8 }
+    local defaultColor = ticksCfg and ticksCfg.defaultColor or { r = 1, g = 1, b = 1, a = 0.8 }
     local defaultWidth = ticksCfg and ticksCfg.defaultWidth or 1
 
     bar:EnsureTicks(#ticks, bar.StatusBar)
@@ -174,8 +172,12 @@ function PowerBar:Refresh()
     current = current or 0
     displayValue = displayValue or 0
 
-    local color = cfg.colors[resource] or {}
-    bar:SetValue(0, max, current, color[1] or 1, color[2] or 1, color[3] or 1)
+    local color = cfg.colors[resource]
+    local r, g, b = 1, 1, 1
+    if color then
+        r, g, b = color.r, color.g, color.b
+    end
+    bar:SetValue(0, max, current, r, g, b)
 
     -- Update text
     if valueType == "percent" then

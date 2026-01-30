@@ -2,18 +2,18 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame
+---@class Frame WoW UI base frame type.
 
----@class ECM_HookedFrame : Frame
----@field _ecmHidden boolean|nil
+---@class ECM_HookedFrame : Frame Frame with ECM hidden state.
+---@field _ecmHidden boolean|nil Whether the frame is hidden by ECM.
 
----@class ECM_BarModule
----@field GetFrame fun(self: ECM_BarModule): Frame
----@field GetFrameIfShown fun(self: ECM_BarModule): Frame|nil
----@field SetHidden fun(self: ECM_BarModule, hidden: boolean)
----@field IsHidden fun(self: ECM_BarModule): boolean
----@field UpdateLayout fun(self: ECM_BarModule)
----@field _name string
+---@class ECM_BarModule : ECMBarModule Registered bar module contract.
+---@field GetFrame fun(self: ECM_BarModule): Frame Gets the module frame.
+---@field GetFrameIfShown fun(self: ECM_BarModule): Frame|nil Gets the frame if shown.
+---@field SetHidden fun(self: ECM_BarModule, hidden: boolean) Sets module hidden state.
+---@field IsHidden fun(self: ECM_BarModule): boolean Gets whether module is hidden.
+---@field UpdateLayout fun(self: ECM_BarModule) Updates module layout.
+---@field _name string Module name.
 
 local _, ns = ...
 local ECM = ns.Addon

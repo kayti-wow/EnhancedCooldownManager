@@ -46,9 +46,13 @@ local function NormalizeRGB(color)
     end
 
     if type(color) == "table" then
-        local r = ToNumberOrError(color[1])
-        local g = ToNumberOrError(color[2])
-        local b = ToNumberOrError(color[3])
+        local r = color.r or color[1]
+        local g = color.g or color[2]
+        local b = color.b or color[3]
+
+        r = ToNumberOrError(r)
+        g = ToNumberOrError(g)
+        b = ToNumberOrError(b)
 
         -- Treat values > 1 as 0..255.
         if r > 1 or g > 1 or b > 1 then
@@ -115,7 +119,7 @@ end
 ---
 --- Notes:
 --- - Designed for 4..60 characters; longer strings are mapped onto a 60-step gradient.
---- - Colors can be provided as "RRGGBB" / "#RRGGBB" strings or {r,g,b} arrays (0..1 or 0..255).
+--- - Colors can be provided as "RRGGBB" / "#RRGGBB" strings, ECM_Color tables, or {r,g,b} arrays (0..1 or 0..255).
 ---@param text string
 ---@param startColor string|table
 ---@param midColor string|table

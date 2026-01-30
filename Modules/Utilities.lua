@@ -154,7 +154,12 @@ function Util.Print(...)
     local prefixText = "Enhanced Cooldown Manager:"
     local sparkle = ns.SparkleUtil
     local coloredPrefix = (sparkle and sparkle.GradientText)
-        and sparkle.GradientText(prefixText, { 0.25, 0.82, 1.00 }, { 0.62, 0.45, 1.00 }, { 0.13, 0.77, 0.37 })
+        and sparkle.GradientText(
+            prefixText,
+            { r = 0.25, g = 0.82, b = 1.00, a = 1 },
+            { r = 0.62, g = 0.45, b = 1.00, a = 1 },
+            { r = 0.13, g = 0.77, b = 0.37, a = 1 }
+        )
         or prefixText
 
     if message ~= "" then
@@ -261,4 +266,14 @@ function Util.SafeGetDebugValue(v)
     end
 
     return GetSafeScalarString(v)
+end
+
+--- Creates an ECM_Color table from channels.
+---@param r number
+---@param g number
+---@param b number
+---@param a number|nil
+---@return ECM_Color
+function Util.Color(r, g, b, a)
+    return { r = r, g = g, b = b, a = a or 1 }
 end

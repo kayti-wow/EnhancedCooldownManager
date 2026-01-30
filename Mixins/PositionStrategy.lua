@@ -2,40 +2,9 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame
----@field ClearAllPoints fun(self: Frame)
----@field SetPoint fun(self: Frame, point: string, relativeTo: Frame, relativePoint: string, offsetX: number, offsetY: number)
----@field SetHeight fun(self: Frame, height: number)
----@field SetWidth fun(self: Frame, width: number)
----@field GetTop fun(self: Frame): number|nil
----@field GetCenter fun(self: Frame): number|nil, number|nil
-
----@class ECM_PositionedFrame : Frame
----@field _layoutCache table|nil
----@field ApplyLayout fun(self: ECM_PositionedFrame, params: ECM_LayoutParams): boolean
----@field InvalidateLayout fun(self: ECM_PositionedFrame): nil
-
----@class ECMPositionedModule
----@field _configKey string
----@field GetConfig fun(self: ECMPositionedModule): table|nil
----@field GetName fun(self: ECMPositionedModule): string
----@field GetFrameIfShown fun(self: ECMPositionedModule): Frame|nil
-
 local _, ns = ...
 local ECM = ns.Addon
 local Util = ns.Util
-
----@class ECM_LayoutParams
----@field anchor Frame
----@field offsetX number
----@field offsetY number
----@field width number|nil
----@field height number|nil
----@field anchorPoint string
----@field anchorRelativePoint string
----@field matchAnchorWidth boolean
----@field mode "chain"|"independent"
-
 local PositionMixin = {}
 ns.Mixins = ns.Mixins or {}
 ns.Mixins.PositionMixin = PositionMixin

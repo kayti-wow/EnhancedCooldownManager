@@ -2,19 +2,11 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame
----@class StatusBar : Frame
+---@class Frame WoW UI base frame type.
 
----@class ECM_RuneBarFrame : Frame
----@field StatusBar StatusBar
----@field TicksFrame Frame
----@field FragmentedBars table
----@field _lastReadySet table|nil
----@field _displayOrder table|nil
----@field _maxResources number|nil
----@field _onUpdateAttached boolean|nil
----@field EnsureTicks fun(self: ECM_RuneBarFrame, count: number, parentFrame: Frame, poolKey: string|nil)
----@field LayoutResourceTicks fun(self: ECM_RuneBarFrame, maxResources: number, color: table|nil, tickWidth: number|nil, poolKey: string|nil)
+---@class StatusBar : Frame WoW UI status bar frame type.
+
+---@class ECM_RuneBarFrame : ECMBarFrame Rune bar frame specialization.
 
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
@@ -126,7 +118,7 @@ local function UpdateFragmentedRuneDisplay(bar, maxRunes)
 
     bar.StatusBar:SetAlpha(0)
 
-    local r, g, b = cfg.color[1], cfg.color[2], cfg.color[3]
+    local r, g, b = cfg.color.r, cfg.color.g, cfg.color.b
     local readySet = {}
     local cdLookup = {}
     local now = GetTime()
@@ -287,7 +279,7 @@ function RuneBar:Refresh()
     bar:EnsureTicks(tickCount, bar.TicksFrame, "ticks")
 
     UpdateFragmentedRuneDisplay(bar, maxRunes)
-    bar:LayoutResourceTicks(maxRunes, { 0, 0, 0, 1 }, 1, "ticks")
+    bar:LayoutResourceTicks(maxRunes, { r = 0, g = 0, b = 0, a = 1 }, 1, "ticks")
 
     bar:Show()
 end

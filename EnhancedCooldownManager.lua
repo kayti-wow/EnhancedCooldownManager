@@ -260,8 +260,38 @@ function ECM:HandleOpenOptionsAfterCombat()
     end
 end
 
---- Returns true when the color array matches the expected RGBA values.
----@param color number[]|nil
+local function NormalizeLegacyColor(color, defaultAlpha)
+    if color == nil then
+        return nil
+    end
+
+    if type(color) ~= "table" then
+        return nil
+    end
+
+    if color.r ~= nil or color.g ~= nil or color.b ~= nil then
+        return {
+            r = color.r or 0,
+            g = color.g or 0,
+            b = color.b or 0,
+            a = color.a or defaultAlpha or 1,
+        }
+    end
+
+    if color[1] ~= nil then
+        return {
+            r = color[1],
+            g = color[2],
+            b = color[3],
+            a = color[4] or defaultAlpha or 1,
+        }
+    end
+
+    return nil
+end
+
+--- Returns true when the color matches the expected RGBA values.
+---@param color ECM_Color|table|nil
 ---@param r number
 ---@param g number
 ---@param b number
@@ -272,7 +302,47 @@ local function IsColorMatch(color, r, g, b, a)
         return false
     end
 
-    return color[1] == r and color[2] == g and color[3] == b and color[4] == a
+    local resolved = NormalizeLegacyColor(color, a)
+    if not resolved then
+        return false
+    end
+
+    if resolved.r ~= r or resolved.g ~= g or resolved.b ~= b then
+        return false
+    end
+
+    if a == nil then
+        return true
+    end
+
+    return resolved.a == a
+end
+
+local function NormalizeColorTable(colorTable, defaultAlpha)
+    if type(colorTable) ~= "table" then
+        return
+    end
+
+    for key, value in pairs(colorTable) do
+        colorTable[key] = NormalizeLegacyColor(value, defaultAlpha)
+    end
+end
+
+local function NormalizeBarConfig(cfg)
+    if not cfg then
+        return
+    end
+
+    cfg.bgColor = NormalizeLegacyColor(cfg.bgColor, 1)
+    if cfg.border and cfg.border.color then
+        cfg.border.color = NormalizeLegacyColor(cfg.border.color, 1)
+    end
+    if cfg.colors then
+        NormalizeColorTable(cfg.colors, 1)
+    end
+    if cfg.color then
+        cfg.color = NormalizeLegacyColor(cfg.color, 1)
+    end
 end
 
 --- Initializes saved variables, runs migrations, and registers slash commands.
@@ -314,7 +384,7 @@ function ECM:RunMigrations(profile)
         -- Migration: powerBarTicks.defaultColor -> bold semi-transparent white (schema 3 -> 4)
         local ticksCfg = profile.powerBarTicks
         if ticksCfg and IsColorMatch(ticksCfg.defaultColor, 0, 0, 0, 0.5) then
-            ticksCfg.defaultColor = { 1, 1, 1, 0.8 }
+            ticksCfg.defaultColor = { r = 1, g = 1, b = 1, a = 0.8 }
         end
 
         -- Migration: demon hunter souls default color update
@@ -322,7 +392,7 @@ function ECM:RunMigrations(profile)
         local colors = resourceCfg and resourceCfg.colors
         local soulsColor = colors and colors.souls
         if IsColorMatch(soulsColor, 0.46, 0.98, 1.00, nil) then
-            colors.souls = { 0.259, 0.6, 0.91 }
+            colors.souls = { r = 0.259, g = 0.6, b = 0.91, a = 1 }
         end
 
         -- Migration: powerBarTicks -> powerBar.ticks
@@ -332,6 +402,50 @@ function ECM:RunMigrations(profile)
                 profile.powerBar.ticks = profile.powerBarTicks
             end
             profile.powerBarTicks = nil
+        end
+
+        -- Normalize stored colors to ECM_Color (legacy conversion happens once here)
+        local gbl = profile.global
+        if gbl then
+            gbl.barBgColor = NormalizeLegacyColor(gbl.barBgColor, 1)
+        end
+
+        NormalizeBarConfig(profile.powerBar)
+        NormalizeBarConfig(profile.resourceBar)
+        NormalizeBarConfig(profile.runeBar)
+
+        local powerBar = profile.powerBar
+        if powerBar and powerBar.ticks then
+            local tickCfg = powerBar.ticks
+            tickCfg.defaultColor = NormalizeLegacyColor(tickCfg.defaultColor, 1)
+            if tickCfg.mappings then
+                for _, specMap in pairs(tickCfg.mappings) do
+                    for _, ticks in pairs(specMap) do
+                        for _, tick in ipairs(ticks) do
+                            if tick and tick.color then
+                                tick.color = NormalizeLegacyColor(tick.color, tickCfg.defaultColor and tickCfg.defaultColor.a or 1)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        local buffBars = profile.buffBars
+        if buffBars and buffBars.colors then
+            buffBars.colors.defaultColor = NormalizeLegacyColor(buffBars.colors.defaultColor, 1)
+            local perBar = buffBars.colors.perBar
+            if type(perBar) == "table" then
+                for _, specMap in pairs(perBar) do
+                    for _, bars in pairs(specMap) do
+                        if type(bars) == "table" then
+                            for index, color in pairs(bars) do
+                                bars[index] = NormalizeLegacyColor(color, 1)
+                            end
+                        end
+                    end
+                end
+            end
         end
 
         profile.schemaVersion = 4

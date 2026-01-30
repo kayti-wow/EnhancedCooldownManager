@@ -2,7 +2,7 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class ECMOptionsModule
+---@class ECMOptionsModule Options module.
 local _, ns = ...
 
 local ECM = ns.Addon
@@ -15,7 +15,7 @@ local AceDBOptions = LibStub("AceDBOptions-3.0")
 local LSM = LibStub("LibSharedMedia-3.0", true)
 
 -- Constants
-local SIDEBAR_BG_COLOR = { 0.1, 0.1, 0.1, 0.9 }
+local SIDEBAR_BG_COLOR = { r = 0.1, g = 0.1, b = 0.1, a = 0.9 }
 local DEFAULT_BAR_WIDTH = 250
 local POSITION_MODE_VALUES = {
     auto = "Position Automatically",
@@ -906,10 +906,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors.souls
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors.souls = { r, g, b }
+                            db.profile.resourceBar.colors.souls = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -928,10 +928,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors.devourerNormal
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors.devourerNormal = { r, g, b }
+                            db.profile.resourceBar.colors.devourerNormal = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -950,10 +950,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors.devourerMeta
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors.devourerMeta = { r, g, b }
+                            db.profile.resourceBar.colors.devourerMeta = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -972,10 +972,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors[Enum.PowerType.ComboPoints]
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors[Enum.PowerType.ComboPoints] = { r, g, b }
+                            db.profile.resourceBar.colors[Enum.PowerType.ComboPoints] = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -994,10 +994,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors[Enum.PowerType.Chi]
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors[Enum.PowerType.Chi] = { r, g, b }
+                            db.profile.resourceBar.colors[Enum.PowerType.Chi] = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1016,10 +1016,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors[Enum.PowerType.HolyPower]
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors[Enum.PowerType.HolyPower] = { r, g, b }
+                            db.profile.resourceBar.colors[Enum.PowerType.HolyPower] = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1038,10 +1038,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors[Enum.PowerType.SoulShards]
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors[Enum.PowerType.SoulShards] = { r, g, b }
+                            db.profile.resourceBar.colors[Enum.PowerType.SoulShards] = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1060,10 +1060,10 @@ local function ResourceBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.resourceBar.colors[Enum.PowerType.Essence]
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.resourceBar.colors[Enum.PowerType.Essence] = { r, g, b }
+                            db.profile.resourceBar.colors[Enum.PowerType.Essence] = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1145,10 +1145,10 @@ local function RuneBarOptionsTable()
                         width = "double",
                         get = function()
                             local c = db.profile.runeBar.color
-                            return c[1], c[2], c[3]
+                            return c.r, c.g, c.b
                         end,
                         set = function(_, r, g, b)
-                            db.profile.runeBar.color = { r, g, b }
+                            db.profile.runeBar.color = { r = r, g = g, b = b, a = 1 }
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1462,10 +1462,10 @@ ColoursOptionsTable = function()
                 width = "double",
                 get = function()
                     local c = db.profile.buffBars.colors.defaultColor
-                    return c[1], c[2], c[3]
+                    return c.r, c.g, c.b
                 end,
                 set = function(_, r, g, b)
-                    db.profile.buffBars.colors.defaultColor = { r, g, b }
+                    db.profile.buffBars.colors.defaultColor = { r = r, g = g, b = b, a = 1 }
                     ECM.ViewerHook:ScheduleLayoutUpdate(0)
                 end,
             },
@@ -1686,7 +1686,7 @@ local function SetCurrentTicks(ticks)
 
     local ticksCfg = powerBarCfg.ticks
     if not ticksCfg then
-        powerBarCfg.ticks = { mappings = {}, defaultColor = { 0, 0, 0, 0.5 }, defaultWidth = 1 }
+        powerBarCfg.ticks = { mappings = {}, defaultColor = { r = 0, g = 0, b = 0, a = 0.5 }, defaultWidth = 1 }
         ticksCfg = powerBarCfg.ticks
     end
     if not ticksCfg.mappings then
@@ -1701,7 +1701,7 @@ end
 
 --- Adds a new tick mark for the current class/spec.
 ---@param value number
----@param color number[]|nil
+---@param color ECM_Color|nil
 ---@param width number|nil
 local function AddTick(value, color, width)
     local ticks = GetCurrentTicks()
@@ -1714,7 +1714,7 @@ local function AddTick(value, color, width)
 
     local ticksCfg = powerBarCfg.ticks
     if not ticksCfg then
-        powerBarCfg.ticks = { mappings = {}, defaultColor = { 0, 0, 0, 0.5 }, defaultWidth = 1 }
+        powerBarCfg.ticks = { mappings = {}, defaultColor = { r = 0, g = 0, b = 0, a = 0.5 }, defaultWidth = 1 }
         ticksCfg = powerBarCfg.ticks
     end
 
@@ -1815,10 +1815,10 @@ TickMarksOptionsTable = function()
                 get = function()
                     local t = GetCurrentTicks()
                     local c = t[i] and t[i].color or ticksCfg.defaultColor
-                    return c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 0.5
+                    return c.r or 0, c.g or 0, c.b or 0, c.a or 0.5
                 end,
                 set = function(_, r, g, b, a)
-                    UpdateTick(i, "color", { r, g, b, a })
+                    UpdateTick(i, "color", { r = r, g = g, b = b, a = a })
                     ECM.ViewerHook:ScheduleLayoutUpdate(0)
                 end,
             }
@@ -1877,10 +1877,10 @@ TickMarksOptionsTable = function()
                 hasAlpha = true,
                 get = function()
                     local c = db.profile.powerBar.ticks.defaultColor
-                    return c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 0.5
+                    return c.r or 0, c.g or 0, c.b or 0, c.a or 0.5
                 end,
                 set = function(_, r, g, b, a)
-                    db.profile.powerBar.ticks.defaultColor = { r, g, b, a }
+                    db.profile.powerBar.ticks.defaultColor = { r = r, g = g, b = b, a = a }
                 end,
             },
             defaultWidth = {
@@ -2171,7 +2171,7 @@ function Options:ApplySidebarStyling()
             edgeSize = 12,
             insets = { left = 2, right = 2, top = 2, bottom = 2 },
         })
-        backdropFrame:SetBackdropColor(SIDEBAR_BG_COLOR[1], SIDEBAR_BG_COLOR[2], SIDEBAR_BG_COLOR[3], SIDEBAR_BG_COLOR[4])
+        backdropFrame:SetBackdropColor(SIDEBAR_BG_COLOR.r, SIDEBAR_BG_COLOR.g, SIDEBAR_BG_COLOR.b, SIDEBAR_BG_COLOR.a)
         backdropFrame:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8)
     end
 end

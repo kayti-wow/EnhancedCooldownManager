@@ -23,7 +23,6 @@ local DEFAULT_REFRESH_FREQUENCY = 0.066
 ---@field UnregisterEvent fun(self: ECMModule, event: string)
 ---@field OnEnable fun(self: ECMModule)
 ---@field OnDisable fun(self: ECMModule)
----@field _UnregisterEvents fun(self: ECMModule)
 ---@field UpdateLayout fun(self: ECMModule)
 ---@field Refresh fun(self: ECMModule)
 
@@ -53,12 +52,10 @@ function Module:ThrottledRefresh()
 end
 
 function Module:OnEnable()
-    self._lastUpdate = GetTime()
+    assert(self._layoutEvents, "layoutEvents not set for module " .. self:GetName())
+    assert(self._refreshEvents, "refreshEvents not set for module " .. self:GetName())
 
-    Util.Log(self:GetName(), "Enabled", {
-        layoutEvents=self._layoutEvents,
-        refreshEvents=self._refreshEvents
-    })
+    self._lastUpdate = GetTime()
 
     for _, eventConfig in ipairs(self._refreshEvents) do
         self:RegisterEvent(eventConfig.event, eventConfig.handler)
@@ -67,18 +64,29 @@ function Module:OnEnable()
     for _, eventName in ipairs(self._layoutEvents) do
         self:RegisterEvent(eventName, "UpdateLayout")
     end
+
+    Util.Log(self:GetName(), "Enabled", {
+        layoutEvents=self._layoutEvents,
+        refreshEvents=self._refreshEvents
+    })
 end
 
-function Module:_UnregisterEvents()
-    for _, eventName in ipairs(self._layoutEvents or {}) do
+function Module:OnDisable()
+    assert(self._layoutEvents, "layoutEvents not set for module " .. self:GetName())
+    assert(self._refreshEvents, "refreshEvents not set for module " .. self:GetName())
+
+    for _, eventName in ipairs(self._layoutEvents) do
         self:UnregisterEvent(eventName)
     end
 
-    for _, eventConfig in ipairs(self._refreshEvents or {}) do
+    for _, eventConfig in ipairs(self._refreshEvents) do
         self:UnregisterEvent(eventConfig.event)
     end
 
-    Util.Log(self:GetName(), "Events unregistered")
+    Util.Log(self:GetName(), "Disabled", {
+        layoutEvents=self._layoutEvents,
+        refreshEvents=self._refreshEvents
+    })
 end
 
 function Module:UpdateLayout()

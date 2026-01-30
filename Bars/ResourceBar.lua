@@ -2,15 +2,13 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame
----@class StatusBar : Frame
----@class Enum.PowerType
+---@class Frame WoW UI base frame type.
 
----@class ECM_ResourceBarFrame : Frame
----@field StatusBar StatusBar
----@field TicksFrame Frame
----@field EnsureTicks fun(self: ECM_ResourceBarFrame, count: number, parentFrame: Frame, poolKey: string|nil)
----@field LayoutResourceTicks fun(self: ECM_ResourceBarFrame, maxResources: number, color: table|nil, tickWidth: number|nil, poolKey: string|nil)
+---@class StatusBar : Frame WoW UI status bar frame type.
+
+---@class Enum.PowerType Enum of supported power types.
+
+---@class ECM_ResourceBarFrame : ECMBarFrame Resource bar frame specialization.
 
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
@@ -67,6 +65,27 @@ local function ShouldShowResourceBar()
     return cfg and cfg.enabled and (class == "DEMONHUNTER" or discretePower ~= nil)
 end
 
+--- Returns whether the Devourer DH is in void meta form.
+---@return boolean|nil isVoidMeta
+local function GetDevourerVoidMetaState()
+    local _, class = UnitClass("player")
+    if class ~= "DEMONHUNTER" or GetSpecialization() ~= C_SPECID_DH_DEVOURER then
+        return nil
+    end
+
+    local collapsingStar = C_UnitAuras.GetUnitAuraBySpellID("player", 1227702)
+    if collapsingStar then
+        return true
+    end
+
+    local voidFragments = C_UnitAuras.GetUnitAuraBySpellID("player", 1225789)
+    if voidFragments then
+        return false
+    end
+
+    return false
+end
+
 --- Returns resource bar values based on class/power type.
 ---@param profile table
 ---@return number|nil maxResources
@@ -89,7 +108,8 @@ local function GetValues(profile)
             if voidFragments then
                 return 7, (voidFragments.applications or 0) / 5, "souls", false
             end
-            return nil, nil, nil, nil
+            -- Transition gap: default to non-meta state so the color resets reliably.
+            return 7, 0, "souls", false
         else
             -- Havoc and vengeance use the same type of soul fragments
             local maxSouls = (cfg and cfg.demonHunterSoulsMax) or 5
@@ -167,15 +187,25 @@ function ResourceBar:Refresh()
     currentValue = currentValue or 0
 
     local isDevourer = (kind == "souls" and GetSpecialization() == C_SPECID_DH_DEVOURER)
-    local color = (cfg.colors and cfg.colors[kind]) or {}
+    local color = cfg.colors and cfg.colors[kind]
     if isDevourer then
         if isVoidMeta then
-            color = (cfg.colors and cfg.colors.devourerMeta) or {}
+            color = cfg.colors and cfg.colors.devourerMeta
         else
-            color = (cfg.colors and cfg.colors.devourerNormal) or {}
+            color = cfg.colors and cfg.colors.devourerNormal
         end
     end
-    bar:SetValue(0, maxResources, currentValue, color[1] or 1, color[2] or 1, color[3] or 1)
+    if isDevourer then
+        self._lastVoidMeta = not not isVoidMeta
+    else
+        self._lastVoidMeta = nil
+    end
+
+    local r, g, b = 1, 1, 1
+    if color then
+        r, g, b = color.r, color.g, color.b
+    end
+    bar:SetValue(0, maxResources, currentValue, r, g, b)
 
     if isDevourer then
         local displayValue = math.floor(currentValue * 5)
@@ -187,7 +217,7 @@ function ResourceBar:Refresh()
 
         local tickCount = math.max(0, maxResources - 1)
         bar:EnsureTicks(tickCount, bar.TicksFrame, "ticks")
-        bar:LayoutResourceTicks(maxResources, { 0, 0, 0, 1 }, 1, "ticks")
+        bar:LayoutResourceTicks(maxResources, { r = 0, g = 0, b = 0, a = 1 }, 1, "ticks")
     end
 
     bar:Show()
@@ -203,6 +233,10 @@ function ResourceBar:OnUnitPower(_, unit)
         return
     end
 
+    if self:_MaybeRefreshForVoidMetaStateChange() then
+        return
+    end
+
     self:ThrottledRefresh()
 end
 
@@ -212,7 +246,34 @@ function ResourceBar:OnUnitEvent(_, unit)
         return
     end
 
+    if self:_MaybeRefreshForVoidMetaStateChange() then
+        return
+    end
+
     self:ThrottledRefresh()
+end
+
+--- Forces an immediate refresh when Devourer void meta state changes.
+---@return boolean refreshed
+function ResourceBar:_MaybeRefreshForVoidMetaStateChange()
+    local isVoidMeta = GetDevourerVoidMetaState()
+    if isVoidMeta == nil then
+        return false
+    end
+
+    if self._lastVoidMeta == nil then
+        self._lastVoidMeta = isVoidMeta
+        return false
+    end
+
+    if isVoidMeta ~= self._lastVoidMeta then
+        self._lastVoidMeta = isVoidMeta
+        self:Refresh()
+        self._lastUpdate = GetTime()
+        return true
+    end
+
+    return false
 end
 
 --------------------------------------------------------------------------------

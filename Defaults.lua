@@ -2,102 +2,102 @@
 
 local ADDON_NAME, ns = ...
 
----@class ECM_Color
----@field a number
----@field r number
----@field g number
----@field b number
+---@class ECM_Color RGBA color definition.
+---@field r number Red channel (0-1).
+---@field g number Green channel (0-1).
+---@field b number Blue channel (0-1).
+---@field a number Alpha channel (0-1).
 
----@class ECM_BarConfigBase
----@field enabled boolean
----@field offsetX number|nil
----@field offsetY number|nil
----@field width number|nil
----@field height number|nil
----@field texture string|nil
----@field showText boolean|nil
----@field bgColor number[]|nil
----@field anchorMode "chain"|"independent"|nil
+---@class ECM_BarConfigBase Shared bar layout configuration.
+---@field enabled boolean Whether the bar is enabled.
+---@field offsetX number|nil Horizontal offset when independent.
+---@field offsetY number|nil Vertical offset when independent.
+---@field width number|nil Bar width override.
+---@field height number|nil Bar height override.
+---@field texture string|nil Bar texture override.
+---@field showText boolean|nil Whether to show text.
+---@field bgColor ECM_Color|nil Background color override.
+---@field anchorMode "chain"|"independent"|nil Anchor mode for the bar.
 
----@class ECM_PowerBarConfig : ECM_BarConfigBase
----@field showManaAsPercent boolean
----@field colors table<ECM_ResourceType, number[]>
----@field border ECM_BorderConfig
----@field ticks ECM_PowerBarTicksConfig
+---@class ECM_PowerBarConfig : ECM_BarConfigBase Power bar configuration.
+---@field showManaAsPercent boolean Whether to show mana as a percent.
+---@field colors table<ECM_ResourceType, ECM_Color> Resource colors.
+---@field border ECM_BorderConfig Border configuration.
+---@field ticks ECM_PowerBarTicksConfig Tick mark configuration.
 
----@class ECM_ResourceBarConfig : ECM_BarConfigBase
----@field demonHunterSoulsMax number
----@field colors table<ECM_ResourceType, number[]>
----@field border ECM_BorderConfig
+---@class ECM_ResourceBarConfig : ECM_BarConfigBase Resource bar configuration.
+---@field demonHunterSoulsMax number Maximum Demon Hunter souls.
+---@field colors table<ECM_ResourceType, ECM_Color> Resource colors.
+---@field border ECM_BorderConfig Border configuration.
 
----@class ECM_RuneBarConfig : ECM_BarConfigBase
----@field max number
----@field color number[]
+---@class ECM_RuneBarConfig : ECM_BarConfigBase Rune bar configuration.
+---@field max number Maximum rune count.
+---@field color ECM_Color Rune bar color.
 
----@alias ECM_ResourceType number|string
+---@alias ECM_ResourceType number|string Resource type identifier.
 
----@class ECM_GlobalConfig
----@field barHeight number
----@field barBgColor number[]
----@field texture string|nil
----@field font string
----@field fontSize number
----@field fontOutline "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME"
----@field fontShadow boolean
+---@class ECM_GlobalConfig Global configuration.
+---@field barHeight number Default bar height.
+---@field barBgColor ECM_Color Default bar background color.
+---@field texture string|nil Default bar texture.
+---@field font string Font face.
+---@field fontSize number Font size.
+---@field fontOutline "NONE"|"OUTLINE"|"THICKOUTLINE"|"MONOCHROME" Font outline style.
+---@field fontShadow boolean Whether font shadow is enabled.
 
----@class ECM_BorderConfig
----@field enabled boolean
----@field thickness number
----@field color ECM_Color
+---@class ECM_BorderConfig Border configuration.
+---@field enabled boolean Whether border is enabled.
+---@field thickness number Border thickness in pixels.
+---@field color ECM_Color Border color.
 
----@class ECM_BarCacheEntry
----@field spellName string|nil
----@field lastSeen number
+---@class ECM_BarCacheEntry Cached bar metadata.
+---@field spellName string|nil Spell name.
+---@field lastSeen number Last seen timestamp.
 
----@class ECM_BuffBarColorsConfig Buff bar color configuration
----@field perBar table<number, table<number, table<number, number[]>>> Per-bar RGB colors by class/spec/index
----@field cache table<number, table<number, table<number, ECM_BarCacheEntry>>> Cached bar metadata by class/spec/index
----@field defaultColor number[] Default RGB color for buff bars
----@field selectedPalette string|nil Name of the currently selected palette
+---@class ECM_BuffBarColorsConfig Buff bar color configuration.
+---@field perBar table<number, table<number, table<number, ECM_Color>>> Per-bar colors by class/spec/index.
+---@field cache table<number, table<number, table<number, ECM_BarCacheEntry>>> Cached bar metadata by class/spec/index.
+---@field defaultColor ECM_Color Default color for buff bars.
+---@field selectedPalette string|nil Name of the currently selected palette.
 
----@class ECM_BuffBarsConfig Buff bars configuration
----@field anchor "chain"|"independent"|nil Anchor behavior for buff bars
----@field width number|nil Buff bar width when independent
----@field offsetY number|nil Vertical offset when independent
----@field showIcon boolean|nil Whether to show buff icons
----@field showSpellName boolean|nil Whether to show spell names
----@field showDuration boolean|nil Whether to show durations
----@field colors ECM_BuffBarColorsConfig Per-bar color settings
+---@class ECM_BuffBarsConfig Buff bars configuration.
+---@field anchor "chain"|"independent"|nil Anchor behavior for buff bars.
+---@field width number|nil Buff bar width when independent.
+---@field offsetY number|nil Vertical offset when independent.
+---@field showIcon boolean|nil Whether to show buff icons.
+---@field showSpellName boolean|nil Whether to show spell names.
+---@field showDuration boolean|nil Whether to show durations.
+---@field colors ECM_BuffBarColorsConfig Per-bar color settings.
 
----@class ECM_TickMark
----@field value number
----@field color number[]
----@field width number
+---@class ECM_TickMark Tick mark definition.
+---@field value number Tick mark value.
+---@field color ECM_Color Tick mark color.
+---@field width number Tick mark width.
 
----@class ECM_PowerBarTicksConfig
----@field mappings table<number, table<number, ECM_TickMark[]>>
----@field defaultColor ECM_Color
----@field defaultWidth number
+---@class ECM_PowerBarTicksConfig Power bar tick configuration.
+---@field mappings table<number, table<number, ECM_TickMark[]>> Mappings by class/spec.
+---@field defaultColor ECM_Color Default tick color.
+---@field defaultWidth number Default tick width.
 
----@class ECM_CombatFadeConfig
----@field enabled boolean
----@field opacity number
----@field exceptIfTargetCanBeAttacked boolean
----@field exceptInInstance boolean
+---@class ECM_CombatFadeConfig Combat fade configuration.
+---@field enabled boolean Whether combat fade is enabled.
+---@field opacity number Target opacity percent.
+---@field exceptIfTargetCanBeAttacked boolean Skip fade if target is attackable.
+---@field exceptInInstance boolean Skip fade in instances.
 
----@class ECM_Profile Profile settings
----@field hideWhenMounted boolean
----@field hideOutOfCombatInRestAreas boolean
----@field updateFrequency number
----@field schemaVersion number
----@field debug boolean
----@field offsetY number
----@field combatFade ECM_CombatFadeConfig
----@field global ECM_GlobalConfig
----@field powerBar ECM_PowerBarConfig
----@field resourceBar ECM_ResourceBarConfig
----@field runeBar ECM_RuneBarConfig
----@field buffBars ECM_BuffBarsConfig Buff bars configuration
+---@class ECM_Profile Profile settings.
+---@field hideWhenMounted boolean Whether to hide when mounted.
+---@field hideOutOfCombatInRestAreas boolean Whether to hide out of combat in rest areas.
+---@field updateFrequency number Update frequency in seconds.
+---@field schemaVersion number Saved variables schema version.
+---@field debug boolean Whether debug logging is enabled.
+---@field offsetY number Global vertical offset.
+---@field combatFade ECM_CombatFadeConfig Combat fade settings.
+---@field global ECM_GlobalConfig Global appearance settings.
+---@field powerBar ECM_PowerBarConfig Power bar settings.
+---@field resourceBar ECM_ResourceBarConfig Resource bar settings.
+---@field runeBar ECM_RuneBarConfig Rune bar settings.
+---@field buffBars ECM_BuffBarsConfig Buff bars configuration.
 
 local DEFAULT_BORDER_THICKNESS = 4
 local DEFAULT_BORDER_COLOR = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 }
@@ -114,7 +114,7 @@ local powerBarTickMappings = {}
 if DEVOURER_SPEC_ID then
     powerBarTickMappings[DEMONHUNTER_CLASS_ID] = {
         [DEVOURER_SPEC_ID] = {
-            { value = 90, color = { 2 / 3, 2 / 3, 2 / 3, 0.8 } },
+            { value = 90, color = { r = 2 / 3, g = 2 / 3, b = 2 / 3, a = 0.8 } },
             { value = 100 },
         },
     }
@@ -136,7 +136,7 @@ local defaults = {
         },
         global = {
             barHeight = 22,
-            barBgColor = { 0.08, 0.08, 0.08, 0.75 },
+            barBgColor = { r = 0.08, g = 0.08, b = 0.08, a = 0.75 },
             texture = "Solid",
             font = "Expressway",
             fontSize = 11,
@@ -156,7 +156,7 @@ local defaults = {
             showText          = true,
             ticks             = {
                 mappings = powerBarTickMappings, -- [classID][specID] = { { value = 50, color = {r,g,b,a}, width = 1 }, ... }
-                defaultColor = { 1, 1, 1, 0.8 },
+                defaultColor = { r = 1, g = 1, b = 1, a = 0.8 },
                 defaultWidth = 1,
             },
             showManaAsPercent = true,
@@ -166,15 +166,15 @@ local defaults = {
                 color = DEFAULT_BORDER_COLOR,
             },
             colors            = {
-                [Enum.PowerType.Mana] = { 0.00, 0.00, 1.00 },
-                [Enum.PowerType.Rage] = { 1.00, 0.00, 0.00 },
-                [Enum.PowerType.Focus] = { 1.00, 0.57, 0.31 },
-                [Enum.PowerType.Energy] = { 0.85, 0.65, 0.13 },
-                [Enum.PowerType.RunicPower] = { 0.00, 0.82, 1.00 },
-                [Enum.PowerType.LunarPower] = { 0.30, 0.52, 0.90 },
-                [Enum.PowerType.Fury] = { 0.79, 0.26, 0.99 },
-                [Enum.PowerType.Maelstrom] = { 0.00, 0.50, 1.00 },
-                [Enum.PowerType.ArcaneCharges] = { 0.20, 0.60, 1.00 },
+                [Enum.PowerType.Mana] = { r = 0.00, g = 0.00, b = 1.00, a = 1 },
+                [Enum.PowerType.Rage] = { r = 1.00, g = 0.00, b = 0.00, a = 1 },
+                [Enum.PowerType.Focus] = { r = 1.00, g = 0.57, b = 0.31, a = 1 },
+                [Enum.PowerType.Energy] = { r = 0.85, g = 0.65, b = 0.13, a = 1 },
+                [Enum.PowerType.RunicPower] = { r = 0.00, g = 0.82, b = 1.00, a = 1 },
+                [Enum.PowerType.LunarPower] = { r = 0.30, g = 0.52, b = 0.90, a = 1 },
+                [Enum.PowerType.Fury] = { r = 0.79, g = 0.26, b = 0.99, a = 1 },
+                [Enum.PowerType.Maelstrom] = { r = 0.00, g = 0.50, b = 1.00, a = 1 },
+                [Enum.PowerType.ArcaneCharges] = { r = 0.20, g = 0.60, b = 1.00, a = 1 },
             },
         },
         resourceBar = {
@@ -193,14 +193,14 @@ local defaults = {
                 color = DEFAULT_BORDER_COLOR,
             },
             colors              = {
-                souls = { 0.259, 0.6, 0.91 },
-                devourerNormal = { 0.447, 0.412, 0.651 },
-                devourerMeta = { 0.275, 0.169, 1.0 },
-                [Enum.PowerType.ComboPoints] = { 0.75, 0.15, 0.15 },
-                [Enum.PowerType.Chi] = { 0.00, 1.00, 0.59 },
-                [Enum.PowerType.HolyPower] = { 0.8863, 0.8235, 0.2392 },
-                [Enum.PowerType.SoulShards] = { 0.58, 0.51, 0.79 },
-                [Enum.PowerType.Essence] = { 0.20, 0.58, 0.50 }
+                souls = { r = 0.259, g = 0.6, b = 0.91, a = 1 },
+                devourerNormal = { r = 0.447, g = 0.412, b = 0.651, a = 1 },
+                devourerMeta = { r = 0.275, g = 0.169, b = 1.0, a = 1 },
+                [Enum.PowerType.ComboPoints] = { r = 0.75, g = 0.15, b = 0.15, a = 1 },
+                [Enum.PowerType.Chi] = { r = 0.00, g = 1.00, b = 0.59, a = 1 },
+                [Enum.PowerType.HolyPower] = { r = 0.8863, g = 0.8235, b = 0.2392, a = 1 },
+                [Enum.PowerType.SoulShards] = { r = 0.58, g = 0.51, b = 0.79, a = 1 },
+                [Enum.PowerType.Essence] = { r = 0.20, g = 0.58, b = 0.50, a = 1 }
             },
         },
         runeBar = {
@@ -213,7 +213,7 @@ local defaults = {
             -- bgColor    = nil,
             anchorMode = "chain",
             max        = 6,
-            color      = { 0.87, 0.10, 0.22 }, -- DK class colour red
+            color      = { r = 0.87, g = 0.10, b = 0.22, a = 1 }, -- DK class colour red
         },
         buffBars = {
             anchorMode = "chain",
@@ -225,7 +225,7 @@ local defaults = {
             colors = {
                 perBar = {},
                 cache = {},
-                defaultColor = { 228 / 255, 233 / 255, 235 / 255 },
+                defaultColor = { r = 228 / 255, g = 233 / 255, b = 235 / 255, a = 1 },
                 selectedPalette = nil,
             },
         },
