@@ -127,7 +127,7 @@ function PowerBar:UpdateTicks(bar, resource, max)
 
     local profile = ECM.db and ECM.db.profile
     local ticksCfg = profile and profile.powerBarTicks
-    local defaultColor = ticksCfg and ticksCfg.defaultColor or { 0, 0, 0, 0.5 }
+    local defaultColor = ticksCfg and ticksCfg.defaultColor or { 1, 1, 1, 0.8 }
     local defaultWidth = ticksCfg and ticksCfg.defaultWidth or 1
 
     bar:EnsureTicks(#ticks, bar.StatusBar)

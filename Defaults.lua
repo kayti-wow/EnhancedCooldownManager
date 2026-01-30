@@ -109,7 +109,7 @@ local defaults = {
         hideWhenMounted = true,
         hideOutOfCombatInRestAreas = false,
         updateFrequency = 0.04,
-        schemaVersion = 3,
+        schemaVersion = 4,
         offsetY = 4,
         combatFade = {
             enabled = false,
@@ -207,7 +207,7 @@ local defaults = {
         },
         powerBarTicks = {
             mappings = {}, -- [classID][specID] = { { value = 50, color = {r,g,b,a}, width = 1 }, ... }
-            defaultColor = { 0, 0, 0, 0.5 },
+            defaultColor = { 1, 1, 1, 0.8 },
             defaultWidth = 1,
         },
     },

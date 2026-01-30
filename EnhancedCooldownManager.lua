@@ -260,6 +260,21 @@ function ECM:HandleOpenOptionsAfterCombat()
     end
 end
 
+--- Returns true when the color array matches the expected RGBA values.
+---@param color number[]|nil
+---@param r number
+---@param g number
+---@param b number
+---@param a number
+---@return boolean
+local function IsColorMatch(color, r, g, b, a)
+    if type(color) ~= "table" then
+        return false
+    end
+
+    return color[1] == r and color[2] == g and color[3] == b and color[4] == a
+end
+
 --- Initializes saved variables, runs migrations, and registers slash commands.
 --- Runs profile migrations for schema version upgrades.
 --- Each migration is gated by schemaVersion to ensure it only runs once.
@@ -295,6 +310,16 @@ function ECM:RunMigrations(profile)
         end
 
         profile.schemaVersion = 3
+    end
+
+    -- Migration: powerBarTicks.defaultColor -> bold semi-transparent white (schema 3 -> 4)
+    if currentSchema < 4 then
+        local ticksCfg = profile.powerBarTicks
+        if ticksCfg and IsColorMatch(ticksCfg.defaultColor, 0, 0, 0, 0.5) then
+            ticksCfg.defaultColor = { 1, 1, 1, 0.8 }
+        end
+
+        profile.schemaVersion = 4
     end
 end
 
