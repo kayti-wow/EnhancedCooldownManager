@@ -11,6 +11,11 @@ local ECMFrame = {}
 ns.Mixins = ns.Mixins or {}
 ns.Mixins.ECMFrame = ECMFrame
 
+-- Owns:
+--  The inner frame
+--  Layout
+--  Config access
+
 ---@class ECM_LayoutCache Cached layout state for change detection.
 ---@field anchor Frame|nil Last anchor frame.
 ---@field offsetX number|nil Last horizontal offset.
@@ -20,10 +25,6 @@ ns.Mixins.ECMFrame = ECMFrame
 ---@field anchorPoint AnchorPoint|nil Last anchor point.
 ---@field anchorRelativePoint AnchorPoint|nil Last relative anchor point.
 ---@field mode "chain"|"independent"|nil Last positioning mode.
-
----@class RefreshEvent
----@field event string WoW event name to listen for
----@field handler string Name of the handler method on the frame
 
 ---@class ECMFrame : AceModule
 ---@field _name string Internal name of the frame
@@ -48,7 +49,7 @@ ns.Mixins.ECMFrame = ECMFrame
 ---@field AddMixin fun(target: table, name: string, profile: table, layoutEvents?: string[], refreshEvents?: RefreshEvent[]) Applies the Module mixin to a target table.
 
 --- Determine the correct anchor for this specific frame in the fixed order.
-local function CalculateChainLayout(frameName, config)
+local function GetNextChainAnchor(frameName, config)
     -- Find the ideal position
     local stopIndex = #C.CHAIN_ORDER + 1
     if frameName then
@@ -83,8 +84,9 @@ function ECMFrame:GetName()
     return self._name or "?"
 end
 
-function ECMFrame:GetConfig()
-    assert(false, "Deprecated. Use GetGlobalConfig or GetConfigSection.")
+function ECMFrame:GetInnerFrame()
+    assert(self._innerFrame, "innerFrame not created for frame " .. self:GetName())
+    return self._innerFrame
 end
 
 --- Gets the configuration table for this frame.
@@ -100,135 +102,83 @@ end
 function ECMFrame:GetConfigSection()
     assert(self._config, "config not set for frame " .. self:GetName())
     assert(self._configKey, "configKey not set for frame " .. self:GetName())
-    return self._config[self._configKey]
+    local section = self._config[self._configKey]
+    assert(section, "config section '" .. self._configKey .. "' not found for frame " .. self:GetName())
+    return section
 end
 
---- Refreshes the frame if enough time has passed since the last update.
---- Uses the global `updateFrequency` setting to throttle refresh calls.
----@return boolean refreshed True if Refresh() was called, false if skipped due to throttling
-function ECMFrame:ThrottledRefresh()
-    local profile = ECM.db and ECM.db.profile
-    local freq = (profile and profile.updateFrequency) or C.DEFAULT_REFRESH_FREQUENCY
-    if GetTime() - (self._lastUpdate or 0) < freq then
-        return false
-    end
+function ECMFrame:CreateFrame()
+    local globalConfig = self:GetGlobalConfig()
+    local configSection = self:GetConfigSection()
+    local name = "ECM" .. self:GetName()
+    local frame = CreateFrame("Frame", name, UIParent)
 
-    self:Refresh()
-    self._lastUpdate = GetTime()
-    return true
-end
+    local barHeight = (configSection and configSection.height)
+        or (globalConfig and globalConfig.barHeight)
+        or C.DEFAULT_BAR_HEIGHT
 
---- Called when the frame is enabled.
---- Registers all configured layout and refresh events.
-function ECMFrame:OnEnable()
-    assert(self._layoutEvents, "layoutEvents not set for frame " .. self:GetName())
-    assert(self._refreshEvents, "refreshEvents not set for frame " .. self:GetName())
+    frame:SetFrameStrata("MEDIUM")
+    frame:SetHeight(barHeight)
+    frame.Background = frame:CreateTexture(nil, "BACKGROUND")
+    frame.Background:SetAllPoints()
 
-    self._lastUpdate = GetTime()
+    -- Optional border frame (shown when cfg.border.enabled)
+    frame.Border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    frame.Border:SetFrameLevel(frame:GetFrameLevel() + 3)
+    frame.Border:Hide()
 
-    for _, eventConfig in ipairs(self._refreshEvents) do
-        self:RegisterEvent(eventConfig.event, eventConfig.handler)
-    end
+    -- if opts and type(opts) == "table" and opts.withTicks then
+    --     BarFrame.AttachTicks(frame)
+    -- end
 
-    for _, eventName in ipairs(self._layoutEvents) do
-        self:RegisterEvent(eventName, "UpdateLayout")
-    end
-
-    Util.Log(self:GetName(), "Enabled", {
-        layoutEvents=self._layoutEvents,
-        refreshEvents=self._refreshEvents
-    })
-end
-
---- Called when the frame is disabled.
---- Unregisters all layout and refresh events.
-function ECMFrame:OnDisable()
-    assert(self._layoutEvents, "layoutEvents not set for frame " .. self:GetName())
-    assert(self._refreshEvents, "refreshEvents not set for frame " .. self:GetName())
-
-    for _, eventName in ipairs(self._layoutEvents) do
-        self:UnregisterEvent(eventName)
-    end
-
-    for _, eventConfig in ipairs(self._refreshEvents) do
-        self:UnregisterEvent(eventConfig.event)
-    end
-
-    Util.Log(self:GetName(), "Disabled", {
-        layoutEvents=self._layoutEvents,
-        refreshEvents=self._refreshEvents
-    })
+    return frame
 end
 
 --- Updates the visual layout of the frame.
 --- Override this method in concrete frames to handle layout changes.
+-- function ECMFrame:UpdateLayout()
+
+--     local anchor, offsetX, offsetY, width, height, anchorPoint, anchorRelativePoint, mode
+--     if anchorMode == "chain" then
+--         anchor = GetNextChainAnchor(self._name, configSection)
+--     elseif anchorMode == "independent" then
+--         assert(false, "NYI")
+--     else
+--         ECM:Print("Unknown anchor mode: " .. tostring(anchorMode))
+--         return false
+--     end
+
+--     -- local anchor = module_config:GetAnchorFrame()
+--     -- local offsetX, offsetY = module_config:GetOffsets()
+--     -- local width, height = module_config:GetDimensions()
+--     -- local anchorPoint, anchorRelativePoint = module_config:GetAnchorPoints()
+--     -- local mode = module_config:GetPositioningMode()
+-- end
+
+
 function ECMFrame:UpdateLayout()
-    local frameName = self:GetName()
-    local config = self:GetConfigSection()
-    local anchorMode = config.anchorMode
+    local configSection = self:GetConfigSection()
+    local mode = configSection.anchorMode
+    local frame = self:GetInnerFrame()
 
-    if anchorMode == "chain" then
-        local anchor = CalculateChainLayout(frameName, config)
-
-    elseif anchorMode == "independent" then
-
-    else
-        ECM:Print("Unknown anchor mode: " .. tostring(anchorMode))
-        return false
+    -- Determine the layout parameters based on the anchor mode. Chain mode will
+    -- append this frame to the previous in the chain and inherit its width.
+    local anchor, offsetX, offsetY, width, height
+    if mode == "chain" then
+        anchor = GetNextChainAnchor(self._name, configSection)
+        offsetX = 0
+        offsetY = configSection.offsetY and -configSection.offsetY or 0
+        height = configSection.height
+        width = nil -- Width will be set by anchoring
+    elseif mode == "independent" then
+        assert(false, "NYI")
     end
 
-    local anchor = module_config:GetAnchorFrame()
-    local offsetX, offsetY = module_config:GetOffsets()
-    local width, height = module_config:GetDimensions()
-    local anchorPoint, anchorRelativePoint = module_config:GetAnchorPoints()
-    local mode = module_config:GetPositioningMode()
-
-    return self:ApplyLayoutInternal(anchor, offsetX, offsetY, width, height, anchorPoint, anchorRelativePoint, mode)
-end
-
---- Updates the visual layout of the frame.
---- Override this method in concrete frames to handle layout changes.
-function ECMFrame:OnUpdateLayout()
-end
-
---- Refreshes the frame's display state.
---- Override this method in concrete frames to update visual state.
-function ECMFrame:Refresh()
-end
-
---- Called when the frame's configuration has changed.
---- Override this method to respond to configuration updates.
-function ECMFrame:OnConfigChanged()
-end
-
---- Sets the configuration table for this frame.
----@param config table The configuration table to use
-function ECMFrame:SetConfig(config)
-    assert(config, "config required")
-    self._config = config
-    self:OnConfigChanged()
-end
-
---- Applies layout parameters to a frame, caching state to reduce updates.
----@param anchor Frame The anchor frame to attach to.
----@param offsetX number Horizontal offset from the anchor point.
----@param offsetY number Vertical offset from the anchor point.
----@param width number|nil Width to set on the frame, or nil to skip.
----@param height number|nil Height to set on the frame, or nil to skip.
----@param anchorPoint AnchorPoint|nil Anchor point on the frame (default "TOPLEFT").
----@param anchorRelativePoint AnchorPoint|nil Relative point on the anchor (default "BOTTOMLEFT").
----@param mode "chain"|"independent"|nil Positioning mode identifier.
----@return boolean changed True if layout changed
-function ECMFrame:ApplyLayoutInternal(anchor, offsetX, offsetY, width, height, anchorPoint, anchorRelativePoint, mode)
-    assert(self, "frame required")
-    assert(anchor, "anchor required")
-
-    offsetX = offsetX or 0
-    offsetY = offsetY or 0
-    anchorPoint = anchorPoint or "TOPLEFT"
-    anchorRelativePoint = anchorRelativePoint or "BOTTOMLEFT"
+    local anchorPoint = "TOPLEFT"
+    local anchorRelativePoint = "BOTTOMLEFT"
     local layoutCache = self._layoutCache or {}
 
+    -- Detect whether or not the layout has changed and skip redrawing if not.
     local layoutChanged = layoutCache.anchor ~= anchor
         or layoutCache.offsetX ~= offsetX
         or layoutCache.offsetY ~= offsetY
@@ -237,13 +187,13 @@ function ECMFrame:ApplyLayoutInternal(anchor, offsetX, offsetY, width, height, a
         or layoutCache.mode ~= mode
 
     if layoutChanged then
-        self:ClearAllPoints()
+        frame:ClearAllPoints()
         if mode == "chain" then
-            self:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", offsetX, offsetY)
-            self:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", offsetX, offsetY)
+            frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", offsetX, offsetY)
+            frame:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", offsetX, offsetY)
         else
             assert(anchor ~= nil, "anchor required for independent mode")
-            self:SetPoint(anchorPoint, anchor, anchorRelativePoint, offsetX, offsetY)
+            frame:SetPoint(anchorPoint, anchor, anchorRelativePoint, offsetX, offsetY)
         end
 
         layoutCache.anchor = anchor
@@ -255,7 +205,7 @@ function ECMFrame:ApplyLayoutInternal(anchor, offsetX, offsetY, width, height, a
     end
 
     if height and layoutCache.height ~= height then
-        self:SetHeight(height)
+        frame:SetHeight(height)
         layoutCache.height = height
         layoutChanged = true
     elseif height == nil then
@@ -263,7 +213,7 @@ function ECMFrame:ApplyLayoutInternal(anchor, offsetX, offsetY, width, height, a
     end
 
     if width and layoutCache.width ~= width then
-        self:SetWidth(width)
+        frame:SetWidth(width)
         layoutCache.width = width
         layoutChanged = true
     elseif width == nil then
@@ -273,19 +223,9 @@ function ECMFrame:ApplyLayoutInternal(anchor, offsetX, offsetY, width, height, a
     return layoutChanged
 end
 
-
---- Applies the frame mixin to a target table.
---- Copies all mixin methods that the target doesn't already have,
---- preserving frame-specific overrides of UpdateLayout, Refresh, etc.
----@param target table frame table to add the mixin to
----@param name string Name of the frame
----@param profile table Configuration profile table
----@param layoutEvents? string[] List of WoW events that trigger layout updates
----@param refreshEvents? RefreshEvent[] List of refresh event configurations
-function ECMFrame.AddMixin(target, name, profile, layoutEvents, refreshEvents)
+function ECMFrame.AddMixin(target, name)
     assert(target, "target required")
     assert(name, "name required")
-    assert(profile, "profile required")
 
     -- Only copy methods that the target doesn't already have.
     -- This preserves frame-specific overrides of UpdateLayout, Refresh, etc.
@@ -295,10 +235,15 @@ function ECMFrame.AddMixin(target, name, profile, layoutEvents, refreshEvents)
         end
     end
 
+    local configRoot = ECM.db and ECM.db.profile
     target._name = name
-    target._layoutEvents = layoutEvents or {}
-    target._refreshEvents = refreshEvents or {}
-    target._config = profile
-    target._configKey = name
+    target._config = configRoot
+    target._configKey = name:sub(1,1):lower() .. name:sub(2) -- camelCase-ish
     target._layoutCache = {}
+    target._lastUpdate = GetTime()
+    target._innerFrame = target:CreateFrame()
+
+    C_Timer.After(0, function()
+        target:UpdateLayout()
+    end)
 end

@@ -2,16 +2,6 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame WoW UI base frame type.
-
----@class FontString WoW UI font string type.
-
----@class StatusBar : Frame WoW UI status bar frame type.
-
----@class Enum.PowerType Enum of supported power types.
-
----@class ECM_PowerBarFrame : ECMBarFrame Power bar frame specialization.
-
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
 local Util = ns.Util
@@ -29,20 +19,7 @@ ECM.PowerBar = PowerBar
 ---@return number|nil current
 ---@return number|nil displayValue
 ---@return string|nil valueType
-local function GetPrimaryResourceValue(resource, cfg)
-    if not resource then
-        return nil, nil, nil, nil
-    end
 
-    local current = UnitPower("player", resource)
-    local max = UnitPowerMax("player", resource)
-
-    if cfg and cfg.showManaAsPercent and resource == Enum.PowerType.Mana then
-        return max, current, UnitPowerPercent("player", resource, false, CurveConstants.ScaleTo100), "percent"
-    end
-
-    return max, current, current, "number"
-end
 
 
 local function ShouldShowPowerBar()

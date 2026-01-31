@@ -166,16 +166,6 @@ function BarFrame.ApplyFont(fontString, profile)
     end
 end
 
---- Returns the bar height from config or defaults.
----@param cfg table|nil Module-specific config
----@param profile table|nil Full profile table
----@return number
-function BarFrame.GetBarHeight(cfg, profile)
-    local gbl = profile and profile.global
-    local height = (cfg and cfg.height) or (gbl and gbl.barHeight) or C.DEFAULT_BAR_HEIGHT
-    return Util.PixelSnap(height)
-end
-
 --------------------------------------------------------------------------------
 -- Anchor Helpers
 --------------------------------------------------------------------------------

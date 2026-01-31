@@ -6,6 +6,7 @@ local _, ns = ...
 
 local Util = ns.Util or {}
 ns.Util = Util
+local SparkleUtil = ns.SparkleUtil
 
 --- Pixel-snaps a number to the nearest pixel for the current UI scale.
 ---@param v number|nil
@@ -140,6 +141,9 @@ function Util.Log(moduleName, message, data)
         }
         pcall(DevTool.AddData, DevTool, payload, prefix)
     end
+
+    prefix = "|cffaaaaaa[" .. moduleName .. "]:|r" .. " " .. message
+    Util.Print(prefix, data)
 end
 
 --- Prints a chat message with a colorful ECM prefix.
@@ -153,8 +157,8 @@ function Util.Print(...)
     local message = table.concat(parts, " ")
     local prefixText = "Enhanced Cooldown Manager:"
     local sparkle = ns.SparkleUtil
-    local coloredPrefix = (sparkle and sparkle.GradientText)
-        and sparkle.GradientText(
+    local coloredPrefix = (sparkle and sparkle.GetText)
+        and sparkle.GetText(
             prefixText,
             { r = 0.25, g = 0.82, b = 1.00, a = 1 },
             { r = 0.62, g = 0.45, b = 1.00, a = 1 },

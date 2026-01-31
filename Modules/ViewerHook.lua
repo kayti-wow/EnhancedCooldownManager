@@ -447,7 +447,7 @@ function ViewerHook:OnEvent(event, arg1)
 
     local function doUpdate()
         if config.resetBuffBars then
-            ECM.BuffBars:ResetStyledMarkers()
+            --ECM.BuffBars:ResetStyledMarkers()
         end
         ViewerHook:ScheduleLayoutUpdate(0)
     end

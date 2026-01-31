@@ -125,11 +125,11 @@ end
 ---@param midColor string|table
 ---@param endColor string|table
 ---@return string
-function SparkleUtil.GradientText(text, startColor, midColor, endColor)
-    assert(type(text) == "string", "ECM.Util.GradientText: text must be a string")
-    assert(type(startColor) == "string" or type(startColor) == "table", "ECM.Util.GradientText: startColor must be a string or table")
-    assert(type(midColor) == "string" or type(midColor) == "table", "ECM.Util.GradientText: midColor must be a string or table")
-    assert(type(endColor) == "string" or type(endColor) == "table", "ECM.Util.GradientText: endColor must be a string or table")
+function SparkleUtil.GetText(text, startColor, midColor, endColor)
+    assert(type(text) == "string", "ECM.Util.GetText: text must be a string")
+    startColor = startColor or { r = 0.25, g = 0.82, b = 1.00, a = 1 }
+    midColor = midColor or { r = 0.62, g = 0.45, b = 1.00, a = 1 }
+    endColor = endColor or { r = 0.13, g = 0.77, b = 0.37, a = 1 }
 
     local charCount = #text
     if charCount == 0 then

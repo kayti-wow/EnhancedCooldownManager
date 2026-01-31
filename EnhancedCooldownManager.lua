@@ -475,11 +475,12 @@ function ECM:OnEnable()
     pcall(C_CVar.SetCVar, "cooldownViewerEnabled", "1")
 
     local moduleOrder = {
-        "ViewerHook",
-        "PowerBar",
-        "ResourceBar",
-        "RuneBar",
-        "BuffBars",
+        "TestBar",
+        -- "ViewerHook",
+        -- "PowerBar",
+        -- "ResourceBar",
+        -- "RuneBar",
+        -- "BuffBars",
     }
 
     for _, moduleName in ipairs(moduleOrder) do
