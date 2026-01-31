@@ -34,7 +34,8 @@ EnhancedCooldownManager.lua
 UI\Widgets\PositionModeSelector.lua
 UI\Options.lua
 
-Mixins\Module.lua
+Mixins\ECMFrame.lua
+Mixins\FrameLayoutMixin.lua
 Mixins\PositionStrategy.lua
 Mixins\BarFrame.lua
 

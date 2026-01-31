@@ -11,6 +11,7 @@ local Module = ns.Mixins.Module
 local Util = ns.Util
 local LSM = LibStub("LibSharedMedia-3.0", true)
 local ECM = ns.Addon
+local C = ns.Constants
 local FONT_CACHE = setmetatable({}, { __mode = "k" })
 
 local function GetPositionMixin()
@@ -46,17 +47,6 @@ end
 ---@field LayoutResourceTicks fun(self: ECMBarFrame, maxResources: number, color: table|nil, tickWidth: number|nil, poolKey: string|nil) Sets resource divider tick positions.
 ---@field LayoutValueTicks fun(self: ECMBarFrame, statusBar: StatusBar, ticks: table, maxValue: number, defaultColor: table, defaultWidth: number, poolKey: string|nil) Sets value tick positions.
 
----@class ECMBarModule : ECMModule Base mixin module for bar-based viewers.
----@field _configKey string Config key for module settings.
----@field _externallyHidden boolean|nil External hidden flag.
----@field _frame ECMBarFrame|nil Cached bar frame.
----@field CreateFrame fun(self: ECMBarModule): ECMBarFrame Creates the bar frame.
----@field GetOrCreateFrame fun(self: ECMBarModule): ECMBarFrame Gets or creates the bar frame.
----@field GetFrame fun(self: ECMBarModule): ECMBarFrame Gets the bar frame.
----@field GetFrameIfShown fun(self: ECMBarModule): ECMBarFrame|nil Gets the bar frame if shown.
----@field SetHidden fun(self: ECMBarModule, hidden: boolean) Sets the hidden state.
----@field IsHidden fun(self: ECMBarModule): boolean Gets whether the module is hidden.
-
 local LAYOUT_EVENTS = {
     "PLAYER_SPECIALIZATION_CHANGED",
     "UPDATE_SHAPESHIFT_FORM",
@@ -66,20 +56,6 @@ local LAYOUT_EVENTS = {
 local REFRESH_EVENTS = {
     { event = "UNIT_POWER_UPDATE", handler = "OnUnitPower" },
 }
-
-local DEFAULT_HEIGHT = 20
-BarFrame.DEFAULT_BAR_WIDTH = 250
-BarFrame.DEFAULT_BG_COLOR = { r = 0.08, g = 0.08, b = 0.08, a = 0.65 }
-BarFrame.DEFAULT_STATUSBAR_TEXTURE = "Interface\\TARGETINGFRAME\\UI-StatusBar"
-BarFrame.VIEWER_ANCHOR_NAME = "EssentialCooldownViewer"
-
-local function GetConfigSection(config, configKey)
-    assert(config, "config required")
-    assert(configKey, "configKey required")
-    return config[configKey]
-end
-
--- Layout Helpers (module-level)
 
 local function FetchLSM(mediaType, key)
     if LSM and LSM.Fetch and key and type(key) == "string" then
@@ -196,7 +172,7 @@ end
 ---@return number
 function BarFrame.GetBarHeight(cfg, profile)
     local gbl = profile and profile.global
-    local height = (cfg and cfg.height) or (gbl and gbl.barHeight) or DEFAULT_HEIGHT
+    local height = (cfg and cfg.height) or (gbl and gbl.barHeight) or C.DEFAULT_BAR_HEIGHT
     return Util.PixelSnap(height)
 end
 

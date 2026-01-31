@@ -7,6 +7,7 @@ local _, ns = ...
 
 local ECM = ns.Addon
 local Util = ns.Util
+local C = ns.Constants
 local Options = ECM:NewModule("Options")
 
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
@@ -16,7 +17,6 @@ local LSM = LibStub("LibSharedMedia-3.0", true)
 
 -- Constants
 local SIDEBAR_BG_COLOR = { r = 0.1, g = 0.1, b = 0.1, a = 0.9 }
-local DEFAULT_BAR_WIDTH = 250
 local POSITION_MODE_VALUES = {
     auto = "Position Automatically",
     custom = "Custom Positioning",
@@ -33,7 +33,7 @@ local function ApplyPositionModeToBar(cfg, mode)
     if mode == "custom" then
         cfg.anchorMode = "independent"
         if cfg.width == nil then
-            cfg.width = DEFAULT_BAR_WIDTH
+            cfg.width = C.DEFAULT_BAR_WIDTH
         end
     else
         cfg.anchorMode = "chain"
@@ -587,7 +587,7 @@ local function PowerBarOptionsTable()
                         max = 600,
                         step = 10,
                         hidden = function() return not IsIndependent(db.profile.powerBar) end,
-                        get = function() return db.profile.powerBar.width or DEFAULT_BAR_WIDTH end,
+                        get = function() return db.profile.powerBar.width or C.DEFAULT_BAR_WIDTH end,
                         set = function(_, val)
                             db.profile.powerBar.width = val
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
@@ -766,7 +766,7 @@ local function ResourceBarOptionsTable()
                         max = 600,
                         step = 10,
                         hidden = function() return not IsIndependent(db.profile.resourceBar) end,
-                        get = function() return db.profile.resourceBar.width or DEFAULT_BAR_WIDTH end,
+                        get = function() return db.profile.resourceBar.width or C.DEFAULT_BAR_WIDTH end,
                         set = function(_, val)
                             db.profile.resourceBar.width = val
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)
@@ -1209,7 +1209,7 @@ local function RuneBarOptionsTable()
                         max = 600,
                         step = 10,
                         hidden = function() return not IsIndependent(db.profile.runeBar) end,
-                        get = function() return db.profile.runeBar.width or DEFAULT_BAR_WIDTH end,
+                        get = function() return db.profile.runeBar.width or C.DEFAULT_BAR_WIDTH end,
                         set = function(_, val)
                             db.profile.runeBar.width = val
                             ECM.ViewerHook:ScheduleLayoutUpdate(0)

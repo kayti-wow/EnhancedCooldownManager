@@ -19,7 +19,7 @@
 ---@field ApplyLayout fun(self: ECM_PositionedFrame, params: ECM_LayoutParams, cache?: ECM_LayoutCache): boolean Applies layout parameters.
 ---@field InvalidateLayout fun(self: ECM_PositionedFrame, cache?: ECM_LayoutCache) Clears cached layout state.
 
----@class ECMPositionedModule : ECMModule Module with position calculation support.
+---@class ECMPositionedModule : ECMFrame Module with position calculation support.
 ---@field _configKey string Configuration key for module settings.
 ---@field GetConfig fun(self: ECMPositionedModule): table Gets the profile configuration.
 ---@field GetName fun(self: ECMPositionedModule): string Gets the module name.
@@ -41,7 +41,6 @@ ns.Mixins = ns.Mixins or {}
 ns.Mixins.PositionMixin = PositionMixin
 ns.Mixins.PositionStrategy = PositionMixin
 
-local CHAIN_ORDER = { "PowerBar", "ResourceBar", "RuneBar" }
 
 local function GetBarFrame()
     assert(ns.Mixins and ns.Mixins.BarFrame, "BarFrame mixin required")

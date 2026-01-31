@@ -21,7 +21,7 @@
 ---@field __ecmHooked boolean|nil True when viewer hooks are installed.
 ---@field __ecmLayoutRunning boolean|nil True while ECM layout is running.
 
----@class ECM_BuffBarsModule : ECMModule Buff bars module.
+---@class ECM_BuffBarsModule : ECMFrame Buff bars module.
 
 local _, ns = ...
 local ECM = ns.Addon
