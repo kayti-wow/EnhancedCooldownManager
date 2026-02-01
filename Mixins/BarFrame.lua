@@ -281,10 +281,10 @@ function BarFrame:ThrottledRefresh()
     return true
 end
 
-function BarFrame:Refresh(force)  -- TODO: Refresh needs to be decoupled from the event handler. The check below is for the Power Bar, too.
-    local continue = ECMFrame.Refresh(self)
-    if not continue or unitID ~= "player" then
-        Util.Log(self.Name, "BarFrame:Refresh", "Skipping refresh due to event/unitID", { event = event, unitID = unitID })
+function BarFrame:Refresh(force)
+    local continue = ECMFrame.Refresh(self, force)
+    if not continue then
+        Util.Log(self.Name, "BarFrame:Refresh", "Skipping refresh")
         return false
     end
     Util.Log(self.Name, "BarFrame:Refresh", "Starting refresh")
@@ -298,13 +298,7 @@ function BarFrame:Refresh(force)  -- TODO: Refresh needs to be decoupled from th
     frame.StatusBar:SetValue(current)
     frame.StatusBar:SetMinMaxValues(0, max)
 
-    -- Text
-    if isFraction then
-        frame:SetText(string.format("%.0f%%", displayValue))
-    else
-        frame:SetText(tostring(displayValue))
-    end
-    frame:SetTextVisible(configSection.showText ~= false)
+    -- Text overlay not yet implemented
 
     -- TODO: apply font
 
@@ -320,7 +314,7 @@ function BarFrame:Refresh(force)  -- TODO: Refresh needs to be decoupled from th
     frame.StatusBar:SetStatusBarColor(statusBarColor.r, statusBarColor.g, statusBarColor.b)
 
     frame:Show()
-    ECM.Log(self:GetName(), "BarFrame:Refresh", {
+    Util.Log(self.Name, "BarFrame:Refresh", {
         current = current,
         max = max,
         displayValue = displayValue,

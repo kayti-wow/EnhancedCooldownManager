@@ -53,4 +53,4 @@ The following file will probably be removed:
 - [Mixins\PositionStrategy.lua](Mixins\PositionStrategy.lua)
 - [Modules\ViewerHook.lua](Modules\ViewerHook.lua) (replace with Layout.lua)
 
-Store details, status, and design choices and trade off decisions in [REFACTOR.md](REFACTOR.md)
+Store architectural details, status, and design choices and trade off decisions in [REFACTOR.md](REFACTOR.md) so that you can reload your progress later. It is okay to make suggestions for design and architecture and layout, if it is a significant improvement or if the current design deviates wildly from what a reasonable developer in the WoW addon space would do.

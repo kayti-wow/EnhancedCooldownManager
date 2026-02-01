@@ -34,24 +34,25 @@ function PowerBar:GetCurrentTicks()
 end
 
 --- Updates tick markers on the power bar based on per-class/spec configuration.
+--- NOT YET IMPLEMENTED - Tick rendering functionality needs to be restored in BarFrame
 ---@param bar ECM_PowerBarFrame
 ---@param resource Enum.PowerType
 ---@param max number
-function PowerBar:UpdateTicks(bar, resource, max)
-    local ticks = self:GetCurrentTicks()
-    if not ticks or #ticks == 0 then
-        bar:HideAllTicks()
-        return
-    end
+-- function PowerBar:UpdateTicks(bar, resource, max)
+--     local ticks = self:GetCurrentTicks()
+--     if not ticks or #ticks == 0 then
+--         bar:HideAllTicks()
+--         return
+--     end
 
-    local profile = ECM.db and ECM.db.profile
-    local ticksCfg = profile and profile.powerBar and profile.powerBar.ticks
-    local defaultColor = ticksCfg and ticksCfg.defaultColor or { r = 1, g = 1, b = 1, a = 0.8 }
-    local defaultWidth = ticksCfg and ticksCfg.defaultWidth or 1
+--     local profile = ECM.db and ECM.db.profile
+--     local ticksCfg = profile and profile.powerBar and profile.powerBar.ticks
+--     local defaultColor = ticksCfg and ticksCfg.defaultColor or { r = 1, g = 1, b = 1, a = 0.8 }
+--     local defaultWidth = ticksCfg and ticksCfg.defaultWidth or 1
 
-    bar:EnsureTicks(#ticks, bar.StatusBar)
-    bar:LayoutValueTicks(bar.StatusBar, ticks, max, defaultColor, defaultWidth)
-end
+--     bar:EnsureTicks(#ticks, bar.StatusBar)
+--     bar:LayoutValueTicks(bar.StatusBar, ticks, max, defaultColor, defaultWidth)
+-- end
 
 --- Updates values: status bar value, text, colors, ticks.
 -- function PowerBar:Refresh()
@@ -129,10 +130,19 @@ function PowerBar:GetStatusBarValues()
     local cfg = self:GetConfigSection()
 
     if cfg and cfg.showManaAsPercent and resource == Enum.PowerType.Mana then
-        return max, current, UnitPowerPercent("player", resource, false, CurveConstants.ScaleTo100), true
+        return current, max, UnitPowerPercent("player", resource, false, CurveConstants.ScaleTo100), true
     end
 
-    return max, current, current, false
+    return current, max, current, false
+end
+
+function PowerBar:OnUnitPowerUpdate(event, unitID, ...)
+    -- Filter events - only refresh for player unit
+    if unitID and unitID ~= "player" then
+        return
+    end
+
+    self:ThrottledRefresh()
 end
 
 function PowerBar:ShouldShow()
@@ -157,7 +167,7 @@ end
 function PowerBar:OnEnable()
     BarFrame.AddMixin(PowerBar, "PowerBar")
     BarFrame.OnEnable(self)
-    self:RegisterEvent("UNIT_POWER_UPDATE", "ThrottledRefresh")
+    self:RegisterEvent("UNIT_POWER_UPDATE", "OnUnitPowerUpdate")
     ECM.Log(self.Name, "PowerBar:Enabled")
 end
 

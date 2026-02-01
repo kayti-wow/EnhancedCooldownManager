@@ -81,9 +81,9 @@ local function GetNextChainAnchor(frameName, config)
     -- Valid frames are those that are enabled and visible.
     for i = stopIndex - 1, 1, -1 do
         local barName = C.CHAIN_ORDER[i]
-        local barModule = ECM:GetModuleByName(barName)
+        local barModule = ECM:GetModule(barName, true)
         if barModule and barModule:IsEnabled() then
-            local barFrame = barModule:GetBarFrame()
+            local barFrame = barModule:GetInnerFrame()
             if barFrame and barFrame:IsVisible() then
                 return barFrame
             end
@@ -283,7 +283,8 @@ function ECMFrame:UpdateLayout()
         bgColor = bgColor,
     })
 
-    self:Refresh(force
+    self:Refresh()
+    return true
 end
 
 --- Determines whether this frame should be shown at this particular moment. Can be overridden.
