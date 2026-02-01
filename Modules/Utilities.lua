@@ -234,8 +234,8 @@ function Util.Log(moduleName, message, data)
         pcall(DevTool.AddData, DevTool, payload, prefix)
     end
 
-    prefix = "|cffaaaaaa[" .. moduleName .. "]:|r" .. " " .. message
-    Util.Print(prefix,  Util.SafeGetDebugValue(data))
+    -- prefix = "|cffaaaaaa[" .. moduleName .. "]:|r" .. " " .. message
+    -- Util.Print(prefix,  Util.SafeGetDebugValue(data))
 end
 
 --- Prints a chat message with a colorful ECM prefix.

@@ -50,20 +50,6 @@ ns.Mixins.ECMFrame = ECMFrame
 ---@field UpdateLayout fun(self: ECMFrame): boolean Updates the visual layout of the frame.
 ---@field AddMixin fun(target: table, name: string) Adds ECMFrame methods and initializes state on target.
 
-
--- --- Returns the top gap offset for the first bar anchored to the viewer.
--- --- Combines profile-level gap (chain offset) with module-level offset.
--- ---@param cfg table|nil Module-specific config
--- ---@param profile table|nil Full profile table
--- ---@return number
--- function BarFrame.GetTopGapOffset(cfg, profile)
---     local profileOffset = (profile and profile.offsetY) or 6
---     local moduleOffset = (cfg and cfg.offsetY) or 0
---     return profileOffset + moduleOffset
--- end
-
-
-
 --- Determine the correct anchor for this specific frame in the fixed order.
 local function GetNextChainAnchor(frameName, config)
     -- Find the ideal position
@@ -309,6 +295,10 @@ function ECMFrame:Refresh(force)
 
     return true
 end
+
+--------------------------------------------------------------------------------
+-- Module Lifecycle
+--------------------------------------------------------------------------------
 
 function ECMFrame.AddMixin(target, name)
     assert(target, "target required")

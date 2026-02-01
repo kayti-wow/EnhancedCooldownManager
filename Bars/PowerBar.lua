@@ -4,8 +4,10 @@
 
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
-local BarFrame = ns.Mixins.BarFrame
 local C = ns.Constants
+
+local BarFrame = ns.Mixins.BarFrame
+
 local PowerBar = ECM:NewModule("PowerBar", "AceEvent-3.0")
 ECM.PowerBar = PowerBar
 
@@ -34,94 +36,29 @@ function PowerBar:GetCurrentTicks()
 end
 
 --- Updates tick markers on the power bar based on per-class/spec configuration.
---- NOT YET IMPLEMENTED - Tick rendering functionality needs to be restored in BarFrame
----@param bar ECM_PowerBarFrame
----@param resource Enum.PowerType
----@param max number
--- function PowerBar:UpdateTicks(bar, resource, max)
---     local ticks = self:GetCurrentTicks()
---     if not ticks or #ticks == 0 then
---         bar:HideAllTicks()
---         return
---     end
+---@param frame Frame The inner frame containing StatusBar and TicksFrame
+---@param resource Enum.PowerType Current power type
+---@param max number Maximum power value
+function PowerBar:UpdateTicks(frame, resource, max)
+    local ticks = self:GetCurrentTicks()
+    if not ticks or #ticks == 0 then
+        self:HideAllTicks("tickPool")
+        return
+    end
 
---     local profile = ECM.db and ECM.db.profile
---     local ticksCfg = profile and profile.powerBar and profile.powerBar.ticks
---     local defaultColor = ticksCfg and ticksCfg.defaultColor or { r = 1, g = 1, b = 1, a = 0.8 }
---     local defaultWidth = ticksCfg and ticksCfg.defaultWidth or 1
+    local profile = ECM.db and ECM.db.profile
+    local ticksCfg = profile and profile.powerBar and profile.powerBar.ticks
+    local defaultColor = ticksCfg and ticksCfg.defaultColor or { r = 1, g = 1, b = 1, a = 0.8 }
+    local defaultWidth = ticksCfg and ticksCfg.defaultWidth or 1
 
---     bar:EnsureTicks(#ticks, bar.StatusBar)
---     bar:LayoutValueTicks(bar.StatusBar, ticks, max, defaultColor, defaultWidth)
--- end
+    -- Create tick textures on TicksFrame, but position them relative to StatusBar
+    self:EnsureTicks(#ticks, frame.TicksFrame, "tickPool")
+    self:LayoutValueTicks(frame.StatusBar, ticks, max, defaultColor, defaultWidth, "tickPool")
+end
 
---- Updates values: status bar value, text, colors, ticks.
--- function PowerBar:Refresh()
---     local profile = ECM.db and ECM.db.profile
---     local cfg = profile and profile.powerBar
---     if self:IsHidden() or not (cfg and cfg.enabled) then
---         ECM.Log(self:GetName(), "Refresh skipped: bar is hidden or disabled")
---         return
---     end
-
---     if not ShouldShowPowerBar() then
---         ECM.Log(self:GetName(), "Refresh skipped: ShouldShowPowerBar returned false")
---         if self._frame then
---             self._frame:Hide()
---         end
---         return
---     end
-
---     local bar = self._frame
---     if not bar then
---         ECM.Log(self:GetName(), "Refresh skipped: frame not created yet")
---         return
---     end
-
---     if bar.RefreshAppearance then
---         bar:RefreshAppearance()
---     end
-
---     local resource = UnitPowerType("player")
---     local max, current, displayValue, valueType = GetPrimaryResourceValue(resource, cfg)
-
---     if not max then
---         ECM.Log(self:GetName(), "Refresh skipped:missing max value", { resource = resource })
---         bar:Hide()
---         return
---     end
-
---     current = current or 0
---     displayValue = displayValue or 0
-
---     local color = cfg.colors[resource]
---     local r, g, b = 1, 1, 1
---     if color then
---         r, g, b = color.r, color.g, color.b
---     end
---     bar:SetValue(0, max, current, r, g, b)
-
---     -- Update text
---     if valueType == "percent" then
---         bar:SetText(string.format("%.0f%%", displayValue))
---     else
---         bar:SetText(tostring(displayValue))
---     end
-
---     bar:SetTextVisible(cfg.showText ~= false)
-
---     -- Update ticks
---     -- self:UpdateTicks(bar, resource, max)
-
---     bar:Show()
-
---     ECM.Log(self:GetName(), "Refreshed", {
---         resource = resource,
---         max = max,
---         current = current,
---         displayValue = displayValue,
---         valueType = valueType
---     })
--- end
+--------------------------------------------------------------------------------
+-- ECMFrame/BarFrame Overrides
+--------------------------------------------------------------------------------
 
 function PowerBar:GetStatusBarValues()
     local resource = UnitPowerType("player")
@@ -136,14 +73,26 @@ function PowerBar:GetStatusBarValues()
     return current, max, current, false
 end
 
-function PowerBar:OnUnitPowerUpdate(event, unitID, ...)
-    -- Filter events - only refresh for player unit
-    if unitID and unitID ~= "player" then
-        return
+--------------------------------------------------------------------------------
+-- Layout and Refresh
+--------------------------------------------------------------------------------
+
+function PowerBar:Refresh(force)
+    -- Call base BarFrame refresh to handle standard updates
+    local result = BarFrame.Refresh(self, force)
+    if not result then
+        return false
     end
 
-    self:ThrottledRefresh()
+    -- Update ticks specific to PowerBar
+    local frame = self:GetInnerFrame()
+    local resource = UnitPowerType("player")
+    local max = UnitPowerMax("player", resource)
+    self:UpdateTicks(frame, resource, max)
+
+    return true
 end
+
 
 function PowerBar:ShouldShow()
     -- Base handles hidden and enabled checks
@@ -163,6 +112,23 @@ function PowerBar:ShouldShow()
 
     return false
 end
+
+--------------------------------------------------------------------------------
+-- Event Handling
+--------------------------------------------------------------------------------
+
+function PowerBar:OnUnitPowerUpdate(event, unitID, ...)
+    -- Filter events - only refresh for player unit
+    if unitID and unitID ~= "player" then
+        return
+    end
+
+    self:ThrottledRefresh()
+end
+
+--------------------------------------------------------------------------------
+-- Module Lifecycle
+--------------------------------------------------------------------------------
 
 function PowerBar:OnEnable()
     BarFrame.AddMixin(PowerBar, "PowerBar")

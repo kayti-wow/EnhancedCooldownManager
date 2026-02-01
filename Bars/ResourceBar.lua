@@ -2,19 +2,10 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame WoW UI base frame type.
-
----@class StatusBar : Frame WoW UI status bar frame type.
-
----@class Enum.PowerType Enum of supported power types.
-
----@class ECM_ResourceBarFrame : ECMBarFrame Resource bar frame specialization.
-
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
 local Util = ns.Util
 
--- Mixins
 local BarFrame = ns.Mixins.BarFrame
 
 local ResourceBar = ECM:NewModule("ResourceBar", "AceEvent-3.0")
@@ -145,31 +136,34 @@ function ResourceBar:GetStatusBarValues()
 end
 
 --------------------------------------------------------------------------------
--- Layout and Rendering
+-- Layout and Refresh
 --------------------------------------------------------------------------------
 
---- Updates values: status bar value, colors, ticks, text.
 function ResourceBar:Refresh(force)
-    local continue = BarFrame.Refresh(self, force)
+    -- Base refresh checks (enabled, hidden, etc.)
+    local continue = ECMFrame.Refresh(self, force)
     if not continue then
-        Util.Log(self.Name, "ResourceBar:Refresh", "Skipping refresh")
+        Util.Log(self.Name, "ResourceBar:Refresh", "Skipping refresh (base checks)")
         return false
     end
 
     local profile = ECM.db and ECM.db.profile
+    local globalConfig = self:GetGlobalConfig()
     local cfg = self:GetConfigSection()
     local frame = self:GetInnerFrame()
 
+    -- Get resource values
     local maxResources, currentValue, kind, isVoidMeta = GetValues(profile)
     if not maxResources or maxResources <= 0 then
+        Util.Log(self.Name, "ResourceBar:Refresh", "No resources available, hiding")
         frame:Hide()
-        return
+        return false
     end
 
     currentValue = currentValue or 0
     local isDevourer = (kind == "souls" and GetSpecialization() == C_SPECID_DH_DEVOURER)
 
-    -- Determine color
+    -- Determine color (ResourceBar-specific logic for DH souls)
     local color = cfg.colors and cfg.colors[kind]
     if isDevourer then
         if isVoidMeta then
@@ -191,28 +185,37 @@ function ResourceBar:Refresh(force)
         r, g, b = color.r, color.g, color.b
     end
 
-    -- Set status bar values
+    -- Update StatusBar
     frame.StatusBar:SetMinMaxValues(0, maxResources)
     frame.StatusBar:SetValue(currentValue)
     frame.StatusBar:SetStatusBarColor(r, g, b)
 
-    -- Handle ticks and text for Devourer vs normal resources
+    -- Set texture
+    local tex = Util.GetTexture((cfg and cfg.texture) or (globalConfig and globalConfig.texture))
+    if tex then
+        frame.StatusBar:SetStatusBarTexture(tex)
+    end
+
+    -- Handle text and ticks based on resource type
+    local showText = cfg.showText ~= false
     if isDevourer then
-        -- Devourer shows value as text, no ticks
-        local displayValue = math.floor(currentValue * 5)
-        if frame.SetText then
+        -- Devourer shows value as text (multiply by 5 for fragment count), no ticks
+        if showText and frame.TextValue then
+            local displayValue = math.floor(currentValue * 5)
             frame:SetText(tostring(displayValue))
+            Util.ApplyFont(frame.TextValue, profile)
         end
-        if frame.SetTextVisible then
-            frame:SetTextVisible(true)
-        end
+        frame:SetTextVisible(showText)
         self:HideAllTicks("tickPool")
     else
-        -- Normal resources show ticks, no text
-        if frame.SetTextVisible then
-            frame:SetTextVisible(false)
+        -- Normal resources show ticks (dividers), optionally show numeric value as text
+        if showText and frame.TextValue then
+            frame:SetText(tostring(math.floor(currentValue)))
+            Util.ApplyFont(frame.TextValue, profile)
         end
+        frame:SetTextVisible(showText)
 
+        -- Render tick dividers between resources
         local tickCount = math.max(0, maxResources - 1)
         self:EnsureTicks(tickCount, frame.TicksFrame, "tickPool")
         self:LayoutResourceTicks(maxResources, { r = 0, g = 0, b = 0, a = 1 }, 1, "tickPool")
@@ -223,9 +226,13 @@ function ResourceBar:Refresh(force)
         maxResources = maxResources,
         currentValue = currentValue,
         kind = kind,
+        isDevourer = isDevourer,
         isVoidMeta = isVoidMeta,
+        showText = showText,
         r = r, g = g, b = b,
     })
+
+    return true
 end
 
 --------------------------------------------------------------------------------

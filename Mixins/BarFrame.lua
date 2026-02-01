@@ -18,6 +18,10 @@ local C = ns.Constants
 --  Text overlay
 --  Tick marks
 
+--------------------------------------------------------------------------------
+-- Tick Helpers
+--------------------------------------------------------------------------------
+
 local function GetTickPool(self, poolKey)
     poolKey = poolKey or "tickPool"
     local pool = self[poolKey]
@@ -26,83 +30,6 @@ local function GetTickPool(self, poolKey)
         self[poolKey] = pool
     end
     return pool
-end
-
-
-
---- Adds a text overlay to an existing bar frame.
---- Creates TextFrame container and TextValue FontString.
---- Text methods (SetText, SetTextVisible) are attached to the bar.
----@param bar ECMBarFrame Bar frame to add text overlay to
----@param profile table|nil Profile for font settings
----@return FontString textValue The created FontString
-function BarFrame.AddTextOverlay(bar, profile)
-    assert(bar, "bar frame required")
-
-    ---@cast bar ECMBarFrame
-
-    local textFrame = CreateFrame("Frame", nil, bar)
-    textFrame:SetAllPoints(bar)
-    textFrame:SetFrameLevel(bar.StatusBar:GetFrameLevel() + 10)
-    bar.TextFrame = textFrame
-
-    local textValue = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    textValue:SetPoint("CENTER", textFrame, "CENTER", 0, 0)
-    textValue:SetJustifyH("CENTER")
-    textValue:SetJustifyV("MIDDLE")
-    textValue:SetText("0")
-    bar.TextValue = textValue
-
-    if profile then
-        BarFrame.ApplyFont(bar.TextValue, profile)
-    end
-
-    -- Attach text methods
-
-    --- Sets the text value on a bar with text overlay.
-    ---@param self ECMBarFrame
-    ---@param text string Text to display
-    function bar:SetText(text)
-        if self.TextValue then
-            self.TextValue:SetText(text)
-        end
-    end
-
-    --- Shows or hides the text overlay.
-    ---@param self ECMBarFrame
-    ---@param shown boolean Whether to show the text
-    function bar:SetTextVisible(shown)
-        if self.TextFrame then
-            self.TextFrame:SetShown(shown)
-        end
-    end
-
-    return bar.TextValue
-end
-
---------------------------------------------------------------------------------
--- Tick Helpers
---------------------------------------------------------------------------------
-
---- Attaches tick functionality to a bar frame.
---- Creates the tick container frame if needed.
----@param bar ECMBarFrame Bar frame to attach ticks to
----@return Frame ticksFrame Tick container frame
-function BarFrame.AttachTicks(bar)
-    assert(bar, "bar frame required")
-
-    ---@cast bar ECMBarFrame
-
-    if bar.TicksFrame then
-        return bar.TicksFrame
-    end
-
-    bar.TicksFrame = CreateFrame("Frame", nil, bar)
-    bar.TicksFrame:SetAllPoints(bar)
-    bar.TicksFrame:SetFrameLevel(bar:GetFrameLevel() + 2)
-    bar.ticks = bar.ticks or {}
-
-    return bar.TicksFrame
 end
 
 --- Ensures the tick pool has the required number of ticks.
@@ -160,8 +87,9 @@ function BarFrame:LayoutResourceTicks(maxResources, color, tickWidth, poolKey)
         return
     end
 
-    local barWidth = self:GetWidth()
-    local barHeight = self:GetHeight()
+    local frame = self:GetInnerFrame()
+    local barWidth = frame:GetWidth()
+    local barHeight = frame:GetHeight()
     if barWidth <= 0 or barHeight <= 0 then
         return
     end
@@ -182,7 +110,7 @@ function BarFrame:LayoutResourceTicks(maxResources, color, tickWidth, poolKey)
         if tick and tick:IsShown() then
             tick:ClearAllPoints()
             local x = Util.PixelSnap(step * i)
-            tick:SetPoint("LEFT", self, "LEFT", x, 0)
+            tick:SetPoint("LEFT", frame, "LEFT", x, 0)
             tick:SetSize(math.max(1, Util.PixelSnap(tickWidth)), barHeight)
             tick:SetColorTexture(tr, tg, tb, ta)
         end
@@ -208,8 +136,9 @@ function BarFrame:LayoutValueTicks(statusBar, ticks, maxValue, defaultColor, def
         return
     end
 
+    local frame = self:GetInnerFrame()
     local barWidth = statusBar:GetWidth()
-    local barHeight = self:GetHeight()
+    local barHeight = frame:GetHeight()
     if barWidth <= 0 or barHeight <= 0 then
         return
     end
@@ -266,6 +195,19 @@ function BarFrame:GetStatusBarValues()
     return -1, -1, -1, false
 end
 
+--------------------------------------------------------------------------------
+-- ECMFrame Overrides
+--------------------------------------------------------------------------------
+
+function BarFrame:ShouldShow()
+    -- Pass through so derived classes don't have to override ECMFrame
+    return ECMFrame.ShouldShow(self)
+end
+
+--------------------------------------------------------------------------------
+-- Layout and Refresh
+--------------------------------------------------------------------------------
+
 --- Refreshes the frame if enough time has passed since the last update.
 --- Uses the global `updateFrequency` setting to throttle refresh calls.
 ---@return boolean refreshed True if Refresh() was called, false if skipped due to throttling
@@ -299,16 +241,19 @@ function BarFrame:Refresh(force)
     frame.StatusBar:SetValue(current)
     frame.StatusBar:SetMinMaxValues(0, max)
 
-    -- Text overlay not yet implemented
+    -- Text overlay
+    local showText = configSection.showText ~= false
+    if showText and frame.TextValue then
+        frame:SetText(displayValue)
 
-    -- TODO: apply font
+        -- Apply font settings
+        Util.ApplyFont(frame.TextValue, ECM.db and ECM.db.profile)
+    end
+    frame:SetTextVisible(showText)
 
     -- Texture
-    -- TODO: create a better mixin for tracking changes on frames
     local tex = Util.GetTexture((configSection and configSection.texture) or (globalConfig and globalConfig.texture)) or C.DEFAULT_STATUSBAR_TEXTURE
     frame.StatusBar:SetStatusBarTexture(tex)
-
-    -- TODO: segments
 
     -- Status bar color
     local statusBarColor = GetColorForPlayerResource(configSection)
@@ -320,6 +265,7 @@ function BarFrame:Refresh(force)
         max = max,
         displayValue = displayValue,
         isFraction = isFraction,
+        showText = showText,
         texture = tex,
         color = statusBarColor,
     })
@@ -338,14 +284,36 @@ function BarFrame:CreateFrame()
     frame.TicksFrame:SetAllPoints(frame)
     frame.TicksFrame:SetFrameLevel(frame:GetFrameLevel() + 2)
 
+    -- Text overlay for displaying values
+    frame.TextFrame = CreateFrame("Frame", nil, frame)
+    frame.TextFrame:SetAllPoints(frame)
+    frame.TextFrame:SetFrameLevel(frame.StatusBar:GetFrameLevel() + 10)
+
+    frame.TextValue = frame.TextFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    frame.TextValue:SetPoint("CENTER", frame.TextFrame, "CENTER", 0, 0)
+    frame.TextValue:SetJustifyH("CENTER")
+    frame.TextValue:SetJustifyV("MIDDLE")
+
+    -- Attach text methods to the frame
+    function frame:SetText(text)
+        if self.TextValue then
+            self.TextValue:SetText(text)
+        end
+    end
+
+    function frame:SetTextVisible(shown)
+        if self.TextFrame then
+            self.TextFrame:SetShown(shown)
+        end
+    end
+
     ECM.Log(self.Name, "BarFrame:CreateFrame", "Success")
     return frame
 end
 
-function BarFrame:ShouldShow()
-    -- Pass through so derived classes don't have to override ECMFrame
-    return ECMFrame.ShouldShow(self)
-end
+--------------------------------------------------------------------------------
+-- Module Lifecycle
+--------------------------------------------------------------------------------
 
 function BarFrame:OnEnable()
 end

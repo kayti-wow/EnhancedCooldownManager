@@ -179,6 +179,7 @@ local defaults = {
         },
         resourceBar = {
             enabled             = true,
+            showText            = true,
             -- width               = nil,
             -- height              = nil,
             -- offsetX             = nil,

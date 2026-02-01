@@ -2,26 +2,15 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame WoW UI base frame type.
-
----@class StatusBar : Frame WoW UI status bar frame type.
-
----@class ECM_RuneBarFrame : ECMBarFrame Rune bar frame specialization.
-
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
 local Util = ns.Util
 
--- Mixins
 local BarFrame = ns.Mixins.BarFrame
 local ECMFrame = ns.Mixins.ECMFrame
 
 local RuneBar = ECM:NewModule("RuneBar", "AceEvent-3.0")
 ECM.RuneBar = RuneBar
-
---------------------------------------------------------------------------------
--- Domain Logic (DK rune-specific value/config handling)
---------------------------------------------------------------------------------
 
 --- Returns rune bar values.
 ---@param profile table
@@ -226,7 +215,7 @@ function RuneBar:CreateFrame()
 
     -- Attach OnUpdate script for continuous rune updates
     frame:SetScript("OnUpdate", function()
-        self:OnUpdateThrottled()
+        self:ThrottledRefresh()
     end)
 
     ECM.Log(self.Name, "RuneBar:CreateFrame", "Success")
@@ -251,10 +240,9 @@ function RuneBar:GetStatusBarValues()
 end
 
 --------------------------------------------------------------------------------
--- Layout and Rendering
+-- Layout and Refresh
 --------------------------------------------------------------------------------
 
---- Updates values: rune status and colors.
 function RuneBar:Refresh(force)
     local continue = ECMFrame.Refresh(self, force)
     if not continue then
@@ -295,46 +283,18 @@ function RuneBar:Refresh(force)
 end
 
 --------------------------------------------------------------------------------
--- Event Handling
---------------------------------------------------------------------------------
-
-function RuneBar:OnUpdateThrottled()
-    if self._hidden then
-        return
-    end
-
-    local config = self:GetConfigSection()
-    if not (config and config.enabled) then
-        return
-    end
-
-    self:ThrottledRefresh()
-end
-
-function RuneBar:OnRunePowerUpdate()
-    self:OnUpdateThrottled()
-end
-
-function RuneBar:OnRuneTypeUpdate()
-    self:OnUpdateThrottled()
-end
-
---------------------------------------------------------------------------------
 -- Module Lifecycle
 --------------------------------------------------------------------------------
 
 function RuneBar:OnEnable()
     BarFrame.AddMixin(self, "RuneBar")
 
-    -- Register events with dedicated handlers
-    self:RegisterEvent("RUNE_POWER_UPDATE", "OnRunePowerUpdate")
-    self:RegisterEvent("RUNE_TYPE_UPDATE", "OnRuneTypeUpdate")
+    self:RegisterEvent("RUNE_POWER_UPDATE", "ThrottledRefresh")
 end
 
 function RuneBar:OnDisable()
     self:UnregisterAllEvents()
 
-    -- Clean up OnUpdate script
     local frame = self._innerFrame
     if frame then
         frame:SetScript("OnUpdate", nil)

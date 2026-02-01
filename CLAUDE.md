@@ -26,7 +26,7 @@ ECMFrame should work with _any_ frame the addon needs to position or hide.
 
 BarFrame should work with any bar-style frame the addon is resposnible for drawing and updating.
 
-[PowerBar](Bars\PowerBar.lua) owns:
+[Bars\*](Bars\*.lua) owns:
 - Event registeration and handlers
 - Concrete implmementations for GetStatusBarValue, ticks, etc.
 
@@ -44,7 +44,7 @@ The following files have been mostly rewritten, but not everything is implemente
 - [Mixins\BarFrame.lua](Mixins\BarFrame.lua)
 - [Mixins\ECMFrame.lua](Mixins\ECMFrame.lua)
 
-The following files have not been rewritten yet:
+The following files are partially rewritten:
 - [Bars\BuffBars.lua](Bars\BuffBars.lua)
 - [Bars\ResourceBar.lua](Bars\ResourceBar.lua)
 - [Bars\RuneBar.lua](Bars\RuneBar.lua)
@@ -53,4 +53,4 @@ The following file will probably be removed:
 - [Mixins\PositionStrategy.lua](Mixins\PositionStrategy.lua)
 - [Modules\ViewerHook.lua](Modules\ViewerHook.lua) (replace with Layout.lua)
 
-Store architectural details, status, and design choices and trade off decisions in [REFACTOR.md](REFACTOR.md) so that you can reload your progress later. It is okay to make suggestions for design and architecture and layout, if it is a significant improvement or if the current design deviates wildly from what a reasonable developer in the WoW addon space would do.
+Store architectural details, status, and design choices and trade off decisions in [REFACTOR.md](docs\REFACTOR.md) so that you can reload your progress later. It is okay to make suggestions for design and architecture and layout, if it is a significant improvement or if the current design deviates wildly from what a reasonable developer in the WoW addon space would do.

@@ -29,9 +29,9 @@ ECMFrame (base) -> BuffBars (specialized, no BarFrame, uses Blizzard viewer)
 - Owns: StatusBar creation, value updates, appearance (texture, colors), tick marks, text overlays
 - Public API: `CreateFrame()`, `GetStatusBarValues()` (abstract), `ThrottledRefresh()`, `Refresh(force)`
 - Public API (Ticks): `EnsureTicks()`, `HideAllTicks()`, `LayoutResourceTicks()`, `LayoutValueTicks()`
-- Public API (Text): `AddTextOverlay()`, frame methods `SetText()`, `SetTextVisible()`
+- Public API (Text): Frame methods `SetText()`, `SetTextVisible()` (created in CreateFrame)
 - Internal state: `_lastUpdate`, tick pools (`tickPool`, etc.)
-- **Restored:** Text overlay methods, tick rendering methods
+- **Implemented:** Text overlay with font support, tick rendering
 
 **PowerBar** (`Bars/PowerBar.lua`)
 - Owns: Event registration, power-specific value calculations, class/spec visibility rules
@@ -95,7 +95,7 @@ Bars anchor in fixed order: PowerBar -> ResourceBar -> RuneBar -> BuffBars
    - `LayoutValueTicks(statusBar, ticks, maxValue, defaultColor, defaultWidth, poolKey)` - Specific value markers
 4. ✅ Added TicksFrame to `BarFrame:CreateFrame()` (lines 219-222)
 
-### Phase 2: ResourceBar ✅ Complete
+### Phase 2: ResourceBar ✅ Complete & Working
 
 **Full refactor to new mixin pattern:**
 1. ✅ Converted `ShouldShowResourceBar()` -> `ResourceBar:ShouldShow()` method override
@@ -107,12 +107,30 @@ Bars anchor in fixed order: PowerBar -> ResourceBar -> RuneBar -> BuffBars
 7. ✅ Implemented `GetStatusBarValues()` override (returns current, max, displayValue, isFraction)
 8. ✅ Custom `Refresh()` with Devourer-specific text/tick logic
 
+**Additional Fixes (2026-02-01):**
+1. ✅ Fixed `Refresh()` to call `ECMFrame.Refresh()` instead of `BarFrame.Refresh()`
+   - Avoids duplicate value/color updates
+   - Prevents wrong colors from `GetColorForPlayerResource()` (doesn't know about DH souls)
+2. ✅ Added texture setting in `Refresh()`
+   - Calls `Util.GetTexture()` with config/global texture key
+3. ✅ Enhanced text overlay handling
+   - Normal resources: show current count
+   - Devourer: multiply by 5 for fragment count (0-30 or 0-35)
+   - Applies font settings via `Util.ApplyFont()`
+4. ✅ Added `showText = true` to defaults (Defaults.lua:182)
+   - Consistent with PowerBar settings
+5. ✅ Created `RESOURCEBAR_STATUS.md` documentation
+   - Complete API reference
+   - Configuration details
+   - Testing checklist
+
 **Key Features:**
 - Discrete power types: ComboPoints, Chi, HolyPower, SoulShards, Essence
 - DH soul fragment tracking (Havoc/Vengeance vs Devourer)
 - Devourer void meta state detection and color changes
-- Text overlay for Devourer (shows fragment count)
-- Tick marks for standard resources (dividers between points)
+- Text overlay shows resource count (Devourer: multiply by 5)
+- Tick dividers between resources
+- Instant color change on void meta transitions
 
 ### Phase 3: RuneBar ✅ Complete
 
@@ -158,6 +176,51 @@ Bars anchor in fixed order: PowerBar -> ResourceBar -> RuneBar -> BuffBars
 - Child bar styling (texture, colors, height, visibility)
 - Edit mode integration (re-layout on edit mode exit)
 - Automatic rescan for new buffs/debuffs
+
+### Phase 5: Text Overlay and Tick Implementation ✅ Complete
+
+**BarFrame Text Overlay:**
+1. ✅ Text overlay created in `BarFrame:CreateFrame()` (lines 281-302)
+   - TextFrame container with proper z-order (level +10 above StatusBar)
+   - TextValue FontString with center alignment
+   - `frame:SetText(text)` and `frame:SetTextVisible(shown)` methods attached to frame
+2. ✅ Text updated in `BarFrame:Refresh()` (lines 231-246)
+   - Format based on `isFraction` from `GetStatusBarValues()`: percentage vs integer
+   - Apply font settings using `Util.ApplyFont(frame.TextValue, profile)`
+   - Respect `configSection.showText` setting (defaults to true)
+3. ✅ Removed deprecated `AddTextOverlay()` helper function
+4. ✅ Removed deprecated `AttachTicks()` helper function (TicksFrame now created in CreateFrame)
+5. ✅ Removed leftover TODO comments about font application
+
+**PowerBar Tick Implementation:**
+1. ✅ Restored `UpdateTicks()` method (lines 41-57)
+   - Uses `LayoutValueTicks()` for class/spec-specific tick marks
+   - Respects tick configuration (color, width, mappings)
+   - Creates ticks on `frame.TicksFrame` for proper organization
+2. ✅ Added `PowerBar:Refresh()` override (lines 70-84)
+   - Calls `BarFrame.Refresh()` for standard updates
+   - Calls `UpdateTicks()` for class/spec tick rendering
+3. ✅ Removed large commented-out Refresh implementation
+
+**BarFrame Tick Method Fixes:**
+1. ✅ Fixed `LayoutResourceTicks()` to use `self:GetInnerFrame()`
+   - Now gets frame width/height from actual frame, not module
+   - Anchors ticks to frame instead of module
+   - Fixes bug where module was used instead of frame
+2. ✅ Fixed `LayoutValueTicks()` to use `self:GetInnerFrame()`
+   - Gets frame height from actual frame for proper sizing
+   - Maintains statusBar parameter for positioning (ticks anchor to StatusBar)
+3. ✅ Created `TICK_API.md` documentation
+   - Comprehensive API reference for tick rendering
+   - Examples for ResourceBar (even spacing) and PowerBar (value-based)
+   - Migration notes and implementation details
+
+**Key Features:**
+- Text displays current/max or percentage based on power type
+- Font respects global settings (font, fontSize, fontOutline, fontShadow)
+- Uses LibSharedMedia-3.0 for font resolution
+- Text visibility controlled by `showText` config (per-module)
+- PowerBar can show tick marks at specific power values (e.g., energy thresholds)
 
 ## Design Decisions
 
@@ -244,7 +307,36 @@ function ResourceBar:OnUnitAura(event, unit)
 end
 ```
 
-### 5. BuffBars Integration
+### 5. Text Overlay in CreateFrame
+
+**Decision:** Create text overlay directly in `BarFrame:CreateFrame()` instead of using a separate `AddTextOverlay()` helper.
+
+**Rationale:**
+- Text overlay is a core feature of BarFrame, not an optional add-on
+- Creating it in CreateFrame ensures it's always available
+- Simplifies the API - no need to call separate setup methods
+- Methods (`SetText`, `SetTextVisible`) attached to frame, not module
+
+**Implementation:**
+```lua
+-- BarFrame.lua:CreateFrame
+frame.TextFrame = CreateFrame("Frame", nil, frame)
+frame.TextFrame:SetFrameLevel(frame.StatusBar:GetFrameLevel() + 10)
+frame.TextValue = frame.TextFrame:CreateFontString(...)
+
+function frame:SetText(text)
+    if self.TextValue then
+        self.TextValue:SetText(text)
+    end
+end
+```
+
+**Font Application:**
+- Uses `Util.ApplyFont(fontString, profile)` which handles LSM resolution
+- Applied every refresh to respect dynamic config changes
+- Global settings: `font`, `fontSize`, `fontOutline`, `fontShadow`
+
+### 6. BuffBars Integration
 
 **Decision:** Use ECMFrame directly, skip BarFrame, override UpdateLayout for child management.
 
@@ -324,6 +416,11 @@ None at this time. All modules have been successfully refactored to the new patt
 - [ ] Anchors correctly to EssentialCooldownViewer
 - [ ] Respects global updateFrequency throttling
 - [ ] Shows correct colors for different power types
+- [ ] Text overlay displays current power value in center
+- [ ] Text shows percentage for mana when showManaAsPercent enabled
+- [ ] Text respects global font settings
+- [ ] Text visibility controlled by showText config
+- [ ] Tick marks appear at configured power thresholds (if configured)
 
 **ResourceBar:**
 - [ ] Shows combo points for Rogue/Feral
