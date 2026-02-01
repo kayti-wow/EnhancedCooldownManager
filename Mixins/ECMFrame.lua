@@ -5,6 +5,7 @@
 local _, ns = ...
 local ECM = ns.Addon
 local C = ns.Constants
+local Util = ns.Util
 
 local ECMFrame = {}
 ns.Mixins = ns.Mixins or {}
@@ -12,7 +13,7 @@ ns.Mixins.ECMFrame = ECMFrame
 
 -- Owns:
 --  The inner frame
---  Layout
+--  Layout incl. border.
 --  Config access
 
 ---@alias AnchorPoint string
@@ -26,6 +27,10 @@ ns.Mixins.ECMFrame = ECMFrame
 ---@field anchorPoint AnchorPoint|nil Last anchor point.
 ---@field anchorRelativePoint AnchorPoint|nil Last relative anchor point.
 ---@field mode "chain"|"independent"|nil Last positioning mode.
+---@field borderEnabled boolean|nil Last border enabled state.
+---@field borderThickness number|nil Last border thickness.
+---@field borderColor ECM_Color|nil Last border color table.
+---@field bgColor ECM_Color|nil Last background color table.
 
 ---@class ECMFrame : AceModule Frame mixin that owns layout and config access.
 ---@field _name string Internal name of the frame.
@@ -36,10 +41,10 @@ ns.Mixins.ECMFrame = ECMFrame
 ---@field _hidden boolean|nil Whether the frame is currently hidden.
 ---@field IsECMFrame boolean True to identify this as an ECMFrame mixin instance.
 ---@field Name string  Name of the frame.
----@field GetName fun(self: ECMFrame): string Gets the frame name.
 ---@field GetInnerFrame fun(self: ECMFrame): Frame Gets the inner frame.
 ---@field GetGlobalConfig fun(self: ECMFrame): table Gets the global configuration section.
 ---@field GetConfigSection fun(self: ECMFrame): table Gets the specific config section for this frame.
+---@field ShouldShow fun(self: ECMFrame): boolean Determines whether the frame should be shown at this moment.
 ---@field CreateFrame fun(self: ECMFrame): Frame Creates the inner frame.
 ---@field SetHidden fun(self: ECMFrame, hide: boolean) Sets whether the frame is hidden.
 ---@field UpdateLayout fun(self: ECMFrame): boolean Updates the visual layout of the frame.
@@ -94,6 +99,10 @@ function ECMFrame:GetInnerFrame()
     return self._innerFrame
 end
 
+function ECMFrame:GetIsHidden()
+    return self._hidden
+end
+
 --- Gets the configuration table for this frame.
 --- Asserts if the config has not been set via `AddMixin` or `SetConfig`.
 ---@return table config The frame's configuration table
@@ -127,7 +136,7 @@ function ECMFrame:CreateFrame()
     frame.Background = frame:CreateTexture(nil, "BACKGROUND")
     frame.Background:SetAllPoints()
 
-    -- Optional border frame (shown when cfg.border.enabled)
+    -- Optional border frame
     frame.Border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     frame.Border:SetFrameLevel(frame:GetFrameLevel() + 3)
     frame.Border:Hide()
@@ -140,11 +149,13 @@ function ECMFrame:SetHidden(hide)
 end
 
 function ECMFrame:UpdateLayout()
+    local globalConfig = self:GetGlobalConfig()
     local configSection = self:GetConfigSection()
     local mode = configSection.anchorMode
     local frame = self:GetInnerFrame()
+    local borderConfig = configSection.border
 
-    if self._hidden or not (configSection and configSection.enabled) then
+    if not self:ShouldShow() then
         frame:Hide()
         return false
     end
@@ -156,7 +167,7 @@ function ECMFrame:UpdateLayout()
         anchor = GetNextChainAnchor(self.Name, configSection)
         offsetX = 0
         offsetY = configSection.offsetY and -configSection.offsetY or 0
-        height = configSection.height
+        height = configSection.height or globalConfig.barHeight
         width = nil -- Width will be set by anchoring
     elseif mode == "independent" then
         assert(false, "NYI")
@@ -166,7 +177,7 @@ function ECMFrame:UpdateLayout()
     local anchorRelativePoint = "BOTTOMLEFT"
     local layoutCache = self._layoutCache or {}
 
-    -- Detect whether or not the layout has changed and skip redrawing if not.
+    -- Skip positioning and anchor updates if nothing has changed since last time.
     local layoutChanged = layoutCache.anchor ~= anchor
         or layoutCache.offsetX ~= offsetX
         or layoutCache.offsetY ~= offsetY
@@ -192,7 +203,8 @@ function ECMFrame:UpdateLayout()
         layoutCache.mode = mode
     end
 
-    if height and layoutCache.height ~= height then
+    local heightChanged = height and layoutCache.height ~= height
+    if heightChanged then
         frame:SetHeight(height)
         layoutCache.height = height
         layoutChanged = true
@@ -200,7 +212,8 @@ function ECMFrame:UpdateLayout()
         layoutCache.height = nil
     end
 
-    if width and layoutCache.width ~= width then
+    local widthChanged = width and layoutCache.width ~= width
+    if widthChanged then
         frame:SetWidth(width)
         layoutCache.width = width
         layoutChanged = true
@@ -208,7 +221,82 @@ function ECMFrame:UpdateLayout()
         layoutCache.width = nil
     end
 
-    return layoutChanged
+    local borderChanged = nil
+    if borderConfig then
+        borderChanged = borderConfig.enabled ~= layoutCache.borderEnabled
+            or borderConfig.thickness ~= layoutCache.borderThickness
+            or not Util.AreColorsEqual(borderConfig.color, layoutCache.borderColor)
+
+        -- Update the border
+        local border = frame.Border
+        if borderChanged then
+            if borderConfig.enabled then
+                border:Show()
+                ECM.DebugAssert(borderConfig.thickness, "border thickness required when enabled")
+                local thickness = borderConfig.thickness or 1
+                if layoutCache.borderThickness ~= thickness then
+                    border:SetBackdrop({
+                        edgeFile = "Interface\\Buttons\\WHITE8X8",
+                        edgeSize = thickness,
+                    })
+                end
+                border:ClearAllPoints()
+                border:SetPoint("TOPLEFT", -thickness, thickness)
+                border:SetPoint("BOTTOMRIGHT", thickness, -thickness)
+                border:SetBackdropBorderColor(borderConfig.color.r, borderConfig.color.g, borderConfig.color.b, borderConfig.color.a)
+                border:Show()
+
+                -- Update cached avlues
+                layoutCache.borderEnabled = true
+                layoutCache.borderThickness = thickness
+                layoutCache.borderColor = borderConfig.color
+            else
+                border:Hide()
+            end
+        end
+    end
+
+    ECM.DebugAssert(configSection.bgColor or (globalConfig and globalConfig.barBgColor), "bgColor not defined in config for frame " .. self.Name)
+    local bgColor = configSection.bgColor or (globalConfig and globalConfig.barBgColor) or C.DEFAULT_BG_COLOR
+    local bgColorChanged = not Util.AreColorsEqual(bgColor, layoutCache.bgColor)
+
+    if bgColorChanged then
+        frame.Background:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
+        layoutCache.bgColor = bgColor
+    end
+
+    ECM.Log(self.Name, "ECMFrame:UpdateLayout", {
+        layoutChanged = layoutChanged,
+        anchor = anchor,
+        offsetX = offsetX,
+        offsetY = offsetY,
+        widthChanged = widthChanged,
+        width = width,
+        heightChanged = heightChanged,
+        height = height,
+        borderChanged = borderChanged,
+        borderEnabled = borderConfig and borderConfig.enabled,
+        borderThickness = borderConfig and borderConfig.thickness,
+        borderColor = borderConfig and borderConfig.color,
+        bgColorChanged = bgColorChanged,
+        bgColor = bgColor,
+    })
+end
+
+--- Determines whether this frame should be shown at this particular moment. Can be overridden.
+function ECMFrame:ShouldShow()
+    return true
+end
+
+--- Handles common refresh logic for ECMFrame-derived frames.
+--- @return boolean continue True if the frame should continue refreshing, false to skip.
+function ECMFrame:Refresh()
+    local config = self:GetConfigSection()
+    if self._hidden or not (config and config.enabled) then
+        return false
+    end
+
+    return true
 end
 
 function ECMFrame.AddMixin(target, name)

@@ -6,6 +6,7 @@ local _, ns = ...
 
 local Util = ns.Util or {}
 ns.Util = Util
+local ECM = ns.Addon
 local C = ns.Constants
 local LSM = LibStub("LibSharedMedia-3.0", true)
 
@@ -16,6 +17,29 @@ local function FetchLSM(mediaType, key)
     return nil
 end
 
+function Util.DebugAssert(condition, message)
+    local debug = ns.Addon and ns.Addon.db and ns.Addon.db.profile and ns.Addon.db.profile.debug
+    if not debug then
+        return
+    end
+    assert(condition, message)
+end
+
+--- Compares two ECM_Color tables for equality.
+--- @param c1 ECM_Color|nil
+--- @param c2 ECM_Color|nil
+--- @return boolean
+function Util.AreColorsEqual(c1, c2)
+    if c1 == nil and c2 == nil then
+        return true
+    end
+    if c1 == nil or c2 == nil then
+        return false
+    end
+    local c1m = ColorMixin.CreateColor(c1.r, c1.g, c1.b, c1.a)
+    local c2m = ColorMixin.CreateColor(c2.r, c2.g, c2.b, c2.a)
+    return c1m:IsEqualTo(c2m)
+end
 
 --- Returns a statusbar texture path (LSM-resolved when available).
 ---@param texture string|nil Name of the texture in LSM or a file path.
@@ -40,10 +64,40 @@ end
 ---@param fontKey string|nil
 ---@param fallback string|nil
 ---@return string
-function Util.GetFont(fontKey, fallback)
+function Util.GetFontPath(fontKey, fallback)
     local fallbackPath = fallback or "Interface\\AddOns\\EnhancedCooldownManager\\media\\Fonts\\Expressway.ttf"
 
     return FetchLSM("font", fontKey) or fallbackPath
+end
+
+--- Applies font settings to a FontString.
+---@param fontString FontString
+---@param profile table|nil Full profile table
+function Util.ApplyFont(fontString, profile)
+    if not fontString then
+        return
+    end
+
+    local gbl = profile and profile.global
+    local fontPath = Util.GetFontPath(gbl and gbl.font)
+    local fontSize = (gbl and gbl.fontSize) or 11
+    local fontOutline = (gbl and gbl.fontOutline) or "OUTLINE"
+
+    if fontOutline == "NONE" then
+        fontOutline = ""
+    end
+
+    local hasShadow = gbl and gbl.fontShadow
+    local fontKey = table.concat({ fontPath, tostring(fontSize), fontOutline, tostring(hasShadow) }, "|")
+
+    fontString:SetFont(fontPath, fontSize, fontOutline)
+
+    if hasShadow then
+        fontString:SetShadowColor(0, 0, 0, 1)
+        fontString:SetShadowOffset(1, -1)
+    else
+        fontString:SetShadowOffset(0, 0)
+    end
 end
 
 --- Pixel-snaps a number to the nearest pixel for the current UI scale.

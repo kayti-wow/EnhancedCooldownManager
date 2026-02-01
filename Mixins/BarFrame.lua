@@ -11,7 +11,6 @@ local ECM = ns.Addon
 local ECMFrame = ns.Mixins.ECMFrame
 local Util = ns.Util
 local C = ns.Constants
-local FONT_CACHE = setmetatable({}, { __mode = "k" })
 
 -- owns:
 --  StatusBar
@@ -19,118 +18,17 @@ local FONT_CACHE = setmetatable({}, { __mode = "k" })
 --  Text overlay
 --  Tick marks
 
-local function GetTickPool(self, poolKey)
-    poolKey = poolKey or "tickPool"
-    local pool = self[poolKey]
-    if not pool then
-        pool = {}
-        self[poolKey] = pool
-    end
-    return pool
-end
-
---- Applies font settings to a FontString.
----@param fontString FontString
----@param profile table|nil Full profile table
-function BarFrame.ApplyFont(fontString, profile)
-    if not fontString then
-        return
-    end
-
-    local gbl = profile and profile.global
-    local fontPath = BarFrame.GetFontPath(gbl and gbl.font)
-    local fontSize = (gbl and gbl.fontSize) or 11
-    local fontOutline = (gbl and gbl.fontOutline) or "OUTLINE"
-
-    if fontOutline == "NONE" then
-        fontOutline = ""
-    end
-
-    local hasShadow = gbl and gbl.fontShadow
-    local fontKey = table.concat({ fontPath, tostring(fontSize), fontOutline, tostring(hasShadow) }, "|")
-    if FONT_CACHE[fontString] == fontKey then
-        return
-    end
-    FONT_CACHE[fontString] = fontKey
-
-    fontString:SetFont(fontPath, fontSize, fontOutline)
-
-    if hasShadow then
-        fontString:SetShadowColor(0, 0, 0, 1)
-        fontString:SetShadowOffset(1, -1)
-    else
-        fontString:SetShadowOffset(0, 0)
-    end
-end
+-- local function GetTickPool(self, poolKey)
+--     poolKey = poolKey or "tickPool"
+--     local pool = self[poolKey]
+--     if not pool then
+--         pool = {}
+--         self[poolKey] = pool
+--     end
+--     return pool
+-- end
 
 
-function BarFrame:SetValue(minVal, maxVal, currentVal, r, g, b)
-    ECM.Log(self.Name, "SetValue", {
-        minVal = minVal,
-        maxVal = maxVal,
-        currentVal = currentVal,
-        color = { r = r, g = g, b = b, a = 1 }
-    })
-    self.StatusBar:SetMinMaxValues(minVal, maxVal)
-    self.StatusBar:SetValue(currentVal)
-    self.StatusBar:SetStatusBarColor(r, g, b)
-end
-
-function BarFrame:RefreshAppearance()
-    local globalConfig = self:GetTextGetGlobalConfig()
-    local cfg = self:GetConfigSection()
-    local frame = self:GetInnerFrame()
-
-    -- Update the background color
-    ---@type ECM_Color|nil
-    local bgColor = (cfg and cfg.bgColor) or (globalConfig and globalConfig.barBgColor)
-    assert(bgColor, "bgColor not defined in config for frame " .. self.Name)
-
-    if frame.Background and frame.Background.SetColorTexture then
-        frame.Background:SetColorTexture(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
-    end
-
-    -- Update the texture (if it changed)
-    local tex = Util.GetTexture((cfg and cfg.texture) or (globalConfig and globalConfig.texture))
-    if frame.StatusBar and frame.StatusBar.SetStatusBarTexture then
-        frame.StatusBar:SetStatusBarTexture(tex)
-    end
-
-    -- TODO: move to ECMFrame.
-    --
-    -- Update the border
-    -- local border = frame.Border
-    -- local borderCfg = cfg and cfg.border
-    -- if border and borderCfg and borderCfg.enabled then
-    --     local thickness = borderCfg.thickness or 1
-    --     local color = borderCfg.color or { r = 1, g = 1, b = 1, a = 1 }
-    --     local borderR, borderG, borderB, borderA = RequireColor(color, 1)
-    --     if self._lastBorderThickness ~= thickness then
-    --         border:SetBackdrop({
-    --             edgeFile = "Interface\\Buttons\\WHITE8X8",
-    --             edgeSize = thickness,
-    --         })
-    --         self._lastBorderThickness = thickness
-    --     end
-    --     border:ClearAllPoints()
-    --     border:SetPoint("TOPLEFT", -thickness, thickness)
-    --     border:SetPoint("BOTTOMRIGHT", thickness, -thickness)
-    --     border:SetBackdropBorderColor(borderR, borderG, borderB, borderA)
-    --     border:Show()
-    -- elseif border then
-    --     border:Hide()
-    -- end
-
-    local logR, logG, logB, logA = RequireColor(bgColor, 1)
-    ECM.Log(self.Name, "SetAppearance", {
-        textureOverride = (cfg and cfg.texture) or (globalConfig and globalConfig.texture),
-        texture = tex,
-        bgColor = table.concat({ tostring(logR), tostring(logG), tostring(logB), tostring(logA) }, ","),
-        border = border and borderCfg and borderCfg.enabled
-    })
-
-    return tex
-end
 
 --- Adds a text overlay to an existing bar frame.
 --- Creates TextFrame container and TextValue FontString.
@@ -347,24 +245,30 @@ end
 --     end
 -- end
 
-function BarFrame:GetText()
-    return nil
+--- Gets the color for the player's resource from config.
+--- @param configSection table|nil Configuration section for the bar
+--- @return ECM_Color Color table
+local function GetColorForPlayerResource(configSection)
+    local resource = UnitPowerType("player")
+    local color = configSection and configSection.colors[resource]
+    Util.DebugAssert(color, "Color for resource " .. tostring(resource) .. " not defined in config")
+    return color or C.COLOR_WHITE
 end
 
 --- Gets the current value for the bar.
----@return number|nil max
 ---@return number|nil current
+---@return number|nil max
 ---@return number|nil displayValue
----@return string|nil valueType
-function BarFrame:GetValue()
-    return nil, nil, nil, nil
+---@return boolean isFraction valueType
+function BarFrame:GetStatusBarValues()
+    return -1, -1, -1, false
 end
 
 --- Refreshes the frame if enough time has passed since the last update.
 --- Uses the global `updateFrequency` setting to throttle refresh calls.
 ---@return boolean refreshed True if Refresh() was called, false if skipped due to throttling
 function BarFrame:ThrottledRefresh()
-    local config = self.GetGlobalConfig()
+    local config = self:GetGlobalConfig()
     local freq = (config and tonumber(config.updateFrequency)) or C.Defaults.global.updateFrequency
     if GetTime() - (self._lastUpdate or 0) < freq then
         return false
@@ -375,50 +279,51 @@ function BarFrame:ThrottledRefresh()
     return true
 end
 
-function BarFrame:Refresh(...)
-    return
-end
-
-
 function BarFrame:Refresh(event, unitID, powerType)
-    if unitID ~= "player" then
-        return
+    local continue = ECMFrame.Refresh(self)
+    if not continue or unitID ~= "player" then
+        return false
     end
 
-    ---@type ECM_BarConfigBase
-    local configSection = self:GetConfigSection()
     local frame = self:GetInnerFrame()
-    local resource = UnitPowerType("player")
-    ---@type ECM_Color|nil
-    local color = configSection and configSection.colors[resource]
-    assert(color, "color not defined in config for frame " .. self.Name)
-    local max, current, displayValue, valueType = GetValue(resource, configSection)
+    local globalConfig = self:GetGlobalConfig()
+    local configSection = self:GetConfigSection()
 
-    if valueType == "percent" then
+    -- Values
+    local current, max, displayValue, isFraction = self:GetStatusBarValues()
+    frame.StatusBar:SetValue(current)
+    frame.StatusBar:SetMinMaxValues(0, max)
+
+    -- Text
+    if isFraction then
         frame:SetText(string.format("%.0f%%", displayValue))
     else
         frame:SetText(tostring(displayValue))
     end
-
-    ECM.Log(self:GetName(), "Refresh", {
-        resource = resource,
-        max = max,
-        current = current,
-        displayValue = displayValue,
-        valueType = valueType,
-        text = frame:GetText()
-    })
-
-    self.StatusBar:SetMinMaxValues(0, max)
-    self.StatusBar:SetValue(current)
-    self.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
-
     frame:SetTextVisible(configSection.showText ~= false)
+
+    -- TODO: apply font
+
+    -- Texture
+    -- TODO: create a better mixin for tracking changes on frames
+    local tex = Util.GetTexture((configSection and configSection.texture) or (globalConfig and globalConfig.texture)) or C.DEFAULT_STATUSBAR_TEXTURE
+    frame.StatusBar:SetStatusBarTexture(tex)
+
+    -- TODO: segments
+
+    -- Status bar color
+    local statusBarColor = GetColorForPlayerResource(configSection)
+    frame.StatusBar:SetStatusBarColor(statusBarColor.r, statusBarColor.g, statusBarColor.b)
+
     frame:Show()
-
-    self:RefreshAppearance()
-
-    ECM.Log(self:GetName(), "Refreshed")
+    ECM.Log(self:GetName(), "BarFrame:Refresh", {
+        current = current,
+        max = max,
+        displayValue = displayValue,
+        isFraction = isFraction,
+        texture = tex,
+        color = statusBarColor,
+    })
 end
 
 function BarFrame:CreateFrame()
@@ -428,7 +333,7 @@ function BarFrame:CreateFrame()
     frame.StatusBar = CreateFrame("StatusBar", nil, frame)
     frame.StatusBar:SetAllPoints()
     frame.StatusBar:SetFrameLevel(frame:GetFrameLevel() + 1)
-    ECM.Log(self.Name, "CreateFrame", "Success")
+    ECM.Log(self.Name, "BarFrame:CreateFrame", "Success")
     return frame
 end
 

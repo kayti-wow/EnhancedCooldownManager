@@ -10,6 +10,7 @@ local Util = ns.Util
 local LSM = LibStub("LibSharedMedia-3.0", true)
 ECM.Log = Util.Log
 ECM.Print = Util.Print
+ECM.DebugAssert = Util.DebugAssert
 
 local POPUP_CONFIRM_RELOAD_UI = "ECM_CONFIRM_RELOAD_UI"
 local POPUP_EXPORT_PROFILE = "ECM_EXPORT_PROFILE"
