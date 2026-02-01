@@ -156,6 +156,7 @@ function ECMFrame:UpdateLayout()
     local borderConfig = configSection.border
 
     if not self:ShouldShow() then
+        Util.Log(self.Name, "ECMFrame:UpdateLayout", "ShouldShow returned false, hiding frame")
         frame:Hide()
         return false
     end
@@ -285,7 +286,8 @@ end
 
 --- Determines whether this frame should be shown at this particular moment. Can be overridden.
 function ECMFrame:ShouldShow()
-    return true
+    local config = self:GetConfigSection()
+    return not self._hidden and not (config and config.enabled == false)
 end
 
 --- Handles common refresh logic for ECMFrame-derived frames.

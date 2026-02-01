@@ -261,6 +261,7 @@ end
 ---@return number|nil displayValue
 ---@return boolean isFraction valueType
 function BarFrame:GetStatusBarValues()
+    Util.DebugAssert(false, "GetStatusBarValues not implemented in derived class")
     return -1, -1, -1, false
 end
 
@@ -268,6 +269,7 @@ end
 --- Uses the global `updateFrequency` setting to throttle refresh calls.
 ---@return boolean refreshed True if Refresh() was called, false if skipped due to throttling
 function BarFrame:ThrottledRefresh()
+    -- TODO: should this move into ECMFrame?
     local config = self:GetGlobalConfig()
     local freq = (config and tonumber(config.updateFrequency)) or C.Defaults.global.updateFrequency
     if GetTime() - (self._lastUpdate or 0) < freq then
@@ -337,6 +339,11 @@ function BarFrame:CreateFrame()
     return frame
 end
 
+function BarFrame:ShouldShow()
+    -- Pass through so derived classes don't have to override ECMFrame
+    return ECMFrame.ShouldShow(self)
+end
+
 function BarFrame:OnEnable()
 end
 
@@ -355,8 +362,5 @@ function BarFrame.AddMixin(module, name)
     end
 
     ECMFrame.AddMixin(module, name)
-
-    -- Register refresh events
-    module:RegisterEvent("UNIT_POWER_UPDATE", "ThrottledRefresh")
     module._lastUpdate = GetTime()
 end

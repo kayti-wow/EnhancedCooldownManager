@@ -14,6 +14,8 @@ local constants = {
 
     COLOR_WHITE = { r = 1, g = 1, b = 1, a = 1 },
 
+    SHOW_MANABAR_FOR_DPS_CLASSES = { MAGE = true, WARLOCK = true, DRUID = true }
+
     CONFIG_SECTION_GLOBAL = "global",
 }
 

@@ -5,50 +5,9 @@
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
 local BarFrame = ns.Mixins.BarFrame
+local C = ns.Constants
 local PowerBar = ECM:NewModule("PowerBar", "AceEvent-3.0")
 ECM.PowerBar = PowerBar
-
---- Returns max/current/display values for primary resource formatting.
----@param resource Enum.PowerType|nil
----@param cfg table|nil
----@return number|nil max
----@return number|nil current
----@return number|nil displayValue
----@return string|nil valueType
-local function GetPrimaryResourceValue(resource, cfg)
-    if not resource then
-        return nil, nil, nil, nil
-    end
-
-    local current = UnitPower("player", resource)
-    local max = UnitPowerMax("player", resource)
-
-    if cfg and cfg.showManaAsPercent and resource == Enum.PowerType.Mana then
-        return max, current, UnitPowerPercent("player", resource, false, CurveConstants.ScaleTo100), "percent"
-    end
-
-    return max, current, current, "number"
-end
-
-
-local function ShouldShowPowerBar()
-    local profile = ECM.db and ECM.db.profile
-    if not (profile and profile.powerBar and profile.powerBar.enabled) then
-        return false
-    end
-
-    local _, class = UnitClass("player")
-    local powerType = UnitPowerType("player")
-
-    -- Hide mana bar for DPS specs, except mage/warlock/caster-form druid
-    local role = GetSpecializationRole(GetSpecialization())
-    if role == "DAMAGER" and powerType == Enum.PowerType.Mana then
-        local manaClasses = { MAGE = true, WARLOCK = true, DRUID = true }
-        return manaClasses[class] or false
-    end
-
-    return true
-end
 
 --- Returns the tick marks configured for the current class and spec.
 ---@return ECM_TickMark[]|nil
@@ -73,11 +32,6 @@ function PowerBar:GetCurrentTicks()
 
     return classMappings[specID]
 end
-
-
---------------------------------------------------------------------------------
--- Layout and Rendering
---------------------------------------------------------------------------------
 
 --- Updates tick markers on the power bar based on per-class/spec configuration.
 ---@param bar ECM_PowerBarFrame
@@ -168,32 +122,47 @@ end
 --     })
 -- end
 
-function PowerBar:OnUnitPower(_, unit)
-    self:RegisterEvent("UNIT_POWER_UPDATE", "Refresh")
-    local profile = ECM.db and ECM.db.profile
-    if unit ~= "player" or self:IsHidden() or not (profile and profile.powerBar and profile.powerBar.enabled) then
-        return
+function PowerBar:GetStatusBarValues()
+    local resource = UnitPowerType("player")
+    local current = UnitPower("player", resource)
+    local max = UnitPowerMax("player", resource)
+    local cfg = self:GetConfigSection()
+
+    if cfg and cfg.showManaAsPercent and resource == Enum.PowerType.Mana then
+        return max, current, UnitPowerPercent("player", resource, false, CurveConstants.ScaleTo100), true
     end
 
-    self:ThrottledRefresh()
+    return max, current, current, false
 end
 
+function PowerBar:ShouldShow()
+    -- Base handles hidden and enabled checks
+    local show = BarFrame.ShouldShow(self)
+    if show then
+        local _, class = UnitClass("player")
+        local powerType = UnitPowerType("player")
+
+        -- Hide mana bar for DPS specs, except mage/warlock/caster-form druid
+        local role = GetSpecializationRole(GetSpecialization())
+        if role == "DAMAGER" and powerType == Enum.PowerType.Mana then
+            return C.SHOW_MANABAR_FOR_DPS_CLASSES[class] or false
+        end
+
+        return true
+    end
+
+    return false
+end
 
 function PowerBar:OnEnable()
     BarFrame.AddMixin(PowerBar, "PowerBar")
-
-    -- call parent OnEnable
     BarFrame.OnEnable(self)
-
-    ECM.Log(self.Name, "Enabled")
+    self:RegisterEvent("UNIT_POWER_UPDATE", "ThrottledRefresh")
+    ECM.Log(self.Name, "PowerBar:Enabled")
 end
 
 function PowerBar:OnDisable()
     self:UnregisterAllEvents()
     BarFrame.OnDisable(self)
-    ECM.Log(self.Name, "Disabled")
+    ECM.Log(self.Name, "PowerBar:Disabled")
 end
-
-local REFRESH_EVENTS = {
-    { event = "UNIT_POWER_UPDATE", handler = "OnUnitPower" },
-}
