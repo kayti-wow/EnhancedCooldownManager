@@ -2,31 +2,12 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
----@class Frame Base UI frame type.
-
----@class StatusBar : Frame Status bar frame type.
-
----@class ECM_BuffBarChild : Frame Buff bar child frame.
----@field Bar StatusBar Status bar region for the buff bar.
----@field Icon Frame Icon texture frame.
----@field IconFrame Frame Icon container frame.
----@field IconButton Frame Icon button frame.
----@field __ecmAnchorHooked boolean|nil True when anchor hooks are installed.
----@field __ecmStyled boolean|nil True when ECM styling is applied.
-
----@class ECM_BuffBarViewer : ECM_PositionedFrame Buff bar viewer frame.
----@field _layoutCache table|nil Cached layout parameters.
----@field ApplyLayout fun(self: ECM_BuffBarViewer, params: table): boolean Applies layout parameters.
----@field InvalidateLayout fun(self: ECM_BuffBarViewer): nil Invalidates cached layout.
----@field __ecmHooked boolean|nil True when viewer hooks are installed.
----@field __ecmLayoutRunning boolean|nil True while ECM layout is running.
-
----@class ECM_BuffBarsModule : ECMFrame Buff bars module.
 
 local _, ns = ...
 local ECM = ns.Addon
 local Util = ns.Util
 local ECMFrame = ns.Mixins.ECMFrame
+local C = ns.Constants
 
 -- Helper functions for accessing texture/color utilities
 local BarHelpers = {
@@ -36,7 +17,7 @@ local BarHelpers = {
     GetBgColor = function(cfg, profile)
         local globalConfig = profile and profile.global
         local bgColor = (cfg and cfg.bgColor) or (globalConfig and globalConfig.barBgColor)
-        return bgColor or { r = 0, g = 0, b = 0, a = 1 }
+        return bgColor or C.COLOR_BLACK
     end,
     ApplyFont = function(fontString, profile)
         if not fontString or not fontString.SetFont then
@@ -120,10 +101,28 @@ end
 ---@param module ECM_BuffBarsModule
 ---@return table|nil profile
 local function GetProfile(module)
-    if module and module._config then
+    if not module then
+        return nil
+    end
+
+    -- Try to get from module's cached config first
+    if module._config then
         return module._config
     end
-    return ECM.db and ECM.db.profile
+
+    -- Fallback: build profile from module's config fields
+    -- This should rarely be needed if _config is properly set
+    local globalConfig = module.GlobalConfig
+    local moduleConfig = module.ModuleConfig
+
+    if not globalConfig or not moduleConfig then
+        return nil
+    end
+
+    return {
+        global = globalConfig,
+        buffBars = moduleConfig
+    }
 end
 
 --- Ensures nested tables exist for buff bar color storage.
@@ -488,19 +487,19 @@ end
 
 --- Override ShouldShow to check buffBars.enabled config.
 function BuffBars:ShouldShow()
-    local config = self:GetConfigSection()
-    return not self._hidden and config.enabled ~= false
+    local config = self.ModuleConfig
+    return not self.IsHidden and config.enabled ~= false
 end
 
 --- Override UpdateLayout to position the BuffBarViewer and apply styling to children.
 function BuffBars:UpdateLayout()
-    local viewer = self:GetInnerFrame()
+    local viewer = self.InnerFrame
     if not viewer then
         return false
     end
 
-    local globalConfig = self:GetGlobalConfig()
-    local cfg = self:GetConfigSection()
+    local globalConfig = self.GlobalConfig
+    local cfg = self.ModuleConfig
 
     if not self:ShouldShow() then
         Util.Log(self.Name, "BuffBars:UpdateLayout", "ShouldShow returned false, hiding viewer")
@@ -520,8 +519,9 @@ function BuffBars:UpdateLayout()
 
     -- Style all visible children
     local visibleChildren = GetSortedVisibleChildren(viewer)
+    local profile = { global = globalConfig, buffBars = cfg }
     for barIndex, entry in ipairs(visibleChildren) do
-        ApplyCooldownBarStyle(entry.frame, ECM.db.profile, barIndex)
+        ApplyCooldownBarStyle(entry.frame, profile, barIndex)
         HookChildAnchoring(entry.frame, self)
     end
 

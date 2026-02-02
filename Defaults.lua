@@ -205,7 +205,6 @@ local defaults = {
             -- texture    = nil,
             -- bgColor    = nil,
             anchorMode = "chain",
-            max        = 6,
             color      = { r = 0.87, g = 0.10, b = 0.22, a = 1 }, -- DK class colour red
         },
         buffBars = {

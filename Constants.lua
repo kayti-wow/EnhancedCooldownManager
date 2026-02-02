@@ -17,6 +17,7 @@ local constants = {
     DEFAULT_STATUSBAR_TEXTURE = "Interface\\TARGETINGFRAME\\UI-StatusBar",
 
     -- Colors
+    COLOR_BLACK = { r = 0, g = 0, b = 0, a = 1 },
     COLOR_WHITE = { r = 1, g = 1, b = 1, a = 1 },
 
     -- Module-specific constants and configuration
@@ -25,6 +26,7 @@ local constants = {
     RESOURCEBAR_VOID_FRAGMENTS_SPELLID = 1225789, -- tracks progress towards void meta form (35 fragments)
     RESOURCEBAR_COLLAPSING_STAR_SPELLID = 1227702, -- when in void meta, tracks progress towards collapsing star (30 stacks)
     RESOURCEBAR_VENGEANCE_SOULS_MAX = 6 ,
+    RUNEBAR_MAX_RUNES = 6,
 
     DEMONHUNTER_CLASS_ID = 12,
     DEMONHUNTER_VENGEANCE_SPEC_INDEX = 2,

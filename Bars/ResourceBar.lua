@@ -21,48 +21,6 @@ local discreteResourceTypes = {
     [Enum.PowerType.Essence] = true,
 }
 
--- local function TransitioningToVoidMeta(self)
---     local isVoidMeta = GetDevourerVoidMetaState()
---     if isVoidMeta == nil then
---         return false
---     end
-
---     if self._lastVoidMeta == nil then
---         self._lastVoidMeta = isVoidMeta
---         return false
---     end
-
---     if isVoidMeta ~= self._lastVoidMeta then
---         self._lastVoidMeta = isVoidMeta
---         self:Refresh(true)
---         self._lastUpdate = GetTime()
---         return true
---     end
-
---     return false
--- end
-
---- Returns whether the Devourer DH is in void meta form.
----@return boolean|nil isVoidMeta
-local function GetDevourerVoidMetaState()
-    local _, class = UnitClass("player")
-    if class ~= "DEMONHUNTER" or GetSpecialization() ~= C.DEMONHUNTER_DEVOURER_SPEC_INDEX then
-        return nil
-    end
-
-    local collapsingStar = C_UnitAuras.GetUnitAuraBySpellID("player", 1227702)
-    if collapsingStar then
-        return true
-    end
-
-    local voidFragments = C_UnitAuras.GetUnitAuraBySpellID("player", 1225789)
-    if voidFragments then
-        return false
-    end
-
-    return false
-end
-
 -- Gets the resource type for the player given their class, spec and current shapeshift form (if applicable).
 ---@return Enum.PowerType|nil powerType The current resource type, or nil if none.
 local function GetActiveDiscreteResourceType()
@@ -85,12 +43,11 @@ local function GetActiveDiscreteResourceType()
 end
 
 --- Returns resource bar values based on class/power type.
----@param configSection table the resourceBar config section
 ---@return number|nil maxResources
 ---@return number|nil currentValue
 ---@return Enum.PowerType|string|nil kind
 ---@return boolean|nil isVoidMeta
-local function GetValues(configSection)
+local function GetValues(moduleConfig)
     local _, class = UnitClass("player")
 
     -- Demon hunter souls can still be tracked by their aura stacks (thank the lord)
@@ -101,10 +58,10 @@ local function GetValues(configSection)
             local collapsingStar = C_UnitAuras.GetUnitAuraBySpellID("player", C.RESOURCEBAR_COLLAPSING_STAR_SPELLID)
             if collapsingStar then
                 -- return 6, (collapsingStar.applications or 0) / 5, "souls", true
-                return 30, collapsingStar.applications or 0, "souls", true
+                return 30, collapsingStar.applications or 0, "devourerMeta", true
             end
 
-            return 35, voidFragments and voidFragments.applications or 0, "souls", false
+            return 35, voidFragments and voidFragments.applications or 0, "devourerNormal", false
             -- return 7, (voidFragments.applications or 0) / 5, "souls", false
         elseif GetSpecialization() == C.DEMONHUNTER_VENGEANCE_SPEC_INDEX then
             -- Vengeance use the same type of soul fragments. The value can be tracked by checking
@@ -150,7 +107,7 @@ function ResourceBar:ShouldShow()
 end
 
 function ResourceBar:GetStatusBarValues()
-    local maxResources, currentValue, kind, isVoidMeta = GetValues(self:GetConfigSection())
+    local maxResources, currentValue, kind, isVoidMeta = GetValues(self.ModuleConfig)
 
     if not maxResources or maxResources <= 0 then
         return 0, 1, 0, false
@@ -165,16 +122,17 @@ end
 --------------------------------------------------------------------------------
 
 function ResourceBar:Refresh(force)
-    -- Base refresh checks (enabled, hidden, etc.)
-    local continue = BarFrame.Refresh(self, force)
+    -- Use ECMFrame.Refresh instead of BarFrame.Refresh since we manage
+    -- our own StatusBar with custom color logic for DH souls
+    local continue = ECMFrame.Refresh(self, force)
     if not continue then
         Util.Log(self.Name, "ResourceBar:Refresh", "Skipping refresh (base checks)")
         return false
     end
 
-    local globalConfig = self:GetGlobalConfig()
-    local cfg = self:GetConfigSection()
-    local frame = self:GetInnerFrame()
+    local globalConfig = self.GlobalConfig
+    local cfg = self.ModuleConfig
+    local frame = self.InnerFrame
 
     -- Get resource values
     local maxResources, currentValue, kind, isVoidMeta = GetValues(cfg)
@@ -197,18 +155,16 @@ function ResourceBar:Refresh(force)
         end
     end
 
-    -- Track void meta state changes
-    -- if isDevourer then
-    --     self._lastVoidMeta = not not isVoidMeta
-    -- else
-    --     self._lastVoidMeta = nil
-    -- end
     color = color or C.COLOR_WHITE
+    Util.Log(self.Name, "ResourceBar:Refresh", {
+        cfgColors = cfg.colors,
+        color = color,
+    })
 
     -- Update StatusBar
     frame.StatusBar:SetMinMaxValues(0, maxResources)
     frame.StatusBar:SetValue(currentValue)
-    frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b)
+    frame.StatusBar:SetStatusBarColor(color.r, color.g, color.b, color.a)
 
     -- Set texture
     local tex = Util.GetTexture((cfg and cfg.texture) or (globalConfig and globalConfig.texture))
@@ -238,7 +194,7 @@ function ResourceBar:Refresh(force)
         -- Render tick dividers between resources
         local tickCount = math.max(0, maxResources - 1)
         self:EnsureTicks(tickCount, frame.TicksFrame, "tickPool")
-        self:LayoutResourceTicks(maxResources, { r = 0, g = 0, b = 0, a = 1 }, 1, "tickPool")
+        self:LayoutResourceTicks(maxResources, C.COLOR_BLACK, 1, "tickPool")
     end
 
     frame:Show()

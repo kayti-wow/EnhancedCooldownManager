@@ -5,43 +5,13 @@
 local ADDON_NAME, ns = ...
 local ECM = ns.Addon
 local Util = ns.Util
+local C = ns.Constants
 
 local BarFrame = ns.Mixins.BarFrame
 local ECMFrame = ns.Mixins.ECMFrame
 
 local RuneBar = ECM:NewModule("RuneBar", "AceEvent-3.0")
 ECM.RuneBar = RuneBar
-
---- Returns rune bar values.
----@param profile table
----@return number maxRunes
----@return number currentValue
----@return string kind
-local function GetResourceValue(profile)
-    local cfg = profile and profile.runeBar
-    local maxRunes = (cfg and cfg.max)
-    assert(maxRunes ~= nil, "Expected max config to be present.")
-    assert(type(maxRunes) == "number", "Expected max to be a number.")
-
-    local current = 0
-    local now = GetTime()
-
-    for i = 1, maxRunes do
-        local start, duration, runeReady = GetRuneCooldown(i)
-        if runeReady or not start or start == 0 or not duration or duration == 0 then
-            current = current + 1
-        else
-            local elapsed = now - (tonumber(start) or now)
-            local dur = tonumber(duration) or 0
-            if dur > 0 then
-                local pct = math.max(0, math.min(1, elapsed / dur))
-                current = current + pct
-            end
-        end
-    end
-
-    return maxRunes, current, "runes"
-end
 
 --------------------------------------------------------------------------------
 -- Fragmented Bars (DK Runes - individual bars per rune with recharge timers)
@@ -50,16 +20,11 @@ end
 --- Creates or returns fragmented sub-bars for runes.
 ---@param bar Frame
 ---@param maxResources number
-local function EnsureFragmentedBars(bar, maxResources)
-    -- TODO: use methods to get config
-    -- local profile = ECM.db and ECM.db.profile
-    -- local cfg = profile and profile.runeBar
-    -- local gbl = self:GetGlobalConfig()
-    -- local globalConfig = ECM.db and ECM.db.profile and ECM.db.profile.global
-    -- local configSection = cfg
-
+---@param moduleConfig table
+---@param globalConfig table
+local function EnsureFragmentedBars(bar, maxResources, moduleConfig, globalConfig)
     -- Get texture
-    local texKey = (configSection and configSection.texture) or (globalConfig and globalConfig.texture)
+    local texKey = (moduleConfig and moduleConfig.texture) or (globalConfig and globalConfig.texture)
     local tex = Util.GetTexture(texKey)
 
     for i = 1, maxResources do
@@ -85,7 +50,9 @@ end
 --- Only repositions bars when rune ready states change to avoid flickering.
 ---@param bar Frame
 ---@param maxRunes number
-local function UpdateFragmentedRuneDisplay(bar, maxRunes)
+---@param moduleConfig table
+---@param globalConfig table
+local function UpdateFragmentedRuneDisplay(bar, maxRunes, moduleConfig, globalConfig)
     if not GetRuneCooldown then
         return
     end
@@ -94,16 +61,13 @@ local function UpdateFragmentedRuneDisplay(bar, maxRunes)
         return
     end
 
-    local profile = ECM.db and ECM.db.profile
-    local cfg = profile and profile.runeBar
+    local cfg = moduleConfig
 
     local barWidth = bar:GetWidth()
     local barHeight = bar:GetHeight()
     if barWidth <= 0 or barHeight <= 0 then
         return
     end
-
-    bar.StatusBar:SetAlpha(0)
 
     local r, g, b = cfg.color.r, cfg.color.g, cfg.color.b
     local readySet = {}
@@ -154,8 +118,7 @@ local function UpdateFragmentedRuneDisplay(bar, maxRunes)
             table.insert(bar._displayOrder, v.index)
         end
 
-        local gbl = profile and profile.global
-        local texKey = (cfg and cfg.texture) or (gbl and gbl.texture)
+        local texKey = (cfg and cfg.texture) or (globalConfig and globalConfig.texture)
         local tex = Util.GetTexture(texKey)
 
         -- Use same positioning logic as BarFrame tick layout to avoid sub-pixel gaps
@@ -222,20 +185,9 @@ function RuneBar:CreateFrame()
 end
 
 function RuneBar:ShouldShow()
-    local config = self:GetConfigSection()
+    local config = self.ModuleConfig
     local _, class = UnitClass("player")
-    return not self._hidden and config.enabled and class == "DEATHKNIGHT"
-end
-
-function RuneBar:GetStatusBarValues()
-    local profile = ECM.db and ECM.db.profile
-    local maxRunes, currentValue = GetResourceValue(profile)
-
-    if not maxRunes or maxRunes <= 0 then
-        return 0, 1, 0, false
-    end
-
-    return currentValue, maxRunes, currentValue, false
+    return ECMFrame.ShouldShow(self) and class == "DEATHKNIGHT"
 end
 
 --------------------------------------------------------------------------------
@@ -243,17 +195,22 @@ end
 --------------------------------------------------------------------------------
 
 function RuneBar:Refresh(force)
-    local continue = BarFrame.Refresh(self, force)
+    local _, class = UnitClass("player")
+    assert(class == "DEATHKNIGHT", "RuneBar should only be enabled for Death Knights")
+
+    -- Use ECMFrame.Refresh instead of BarFrame.Refresh since we manage
+    -- our own fragmented bars and don't use the standard StatusBar
+    local continue = ECMFrame.Refresh(self, force)
     if not continue then
         Util.Log(self.Name, "RuneBar:Refresh", "Skipping refresh")
         return false
     end
 
-    local profile = ECM.db and ECM.db.profile
-    local cfg = self:GetConfigSection()
-    local frame = self:GetInnerFrame()
+    local cfg = self.ModuleConfig
+    local globalConfig = self.GlobalConfig
+    local frame = self.InnerFrame
 
-    local maxRunes = GetResourceValue(profile)
+    local maxRunes = C.RUNEBAR_MAX_RUNES
     if not maxRunes or maxRunes <= 0 then
         frame:Hide()
         return
@@ -267,12 +224,12 @@ function RuneBar:Refresh(force)
 
     frame.StatusBar:SetMinMaxValues(0, maxRunes)
 
-    EnsureFragmentedBars(frame, maxRunes)
+    EnsureFragmentedBars(frame, maxRunes, cfg, globalConfig)
 
     local tickCount = math.max(0, maxRunes - 1)
     self:EnsureTicks(tickCount, frame.TicksFrame, "tickPool")
 
-    UpdateFragmentedRuneDisplay(frame, maxRunes)
+    UpdateFragmentedRuneDisplay(frame, maxRunes, cfg, globalConfig)
     self:LayoutResourceTicks(maxRunes, { r = 0, g = 0, b = 0, a = 1 }, 1, "tickPool")
 
     frame:Show()
@@ -286,8 +243,12 @@ end
 --------------------------------------------------------------------------------
 
 function RuneBar:OnEnable()
-    BarFrame.AddMixin(self, "RuneBar")
+    local _, class = UnitClass("player")
+    if class ~= "DEATHKNIGHT" then
+        return
+    end
 
+    BarFrame.AddMixin(self, "RuneBar")
     self:RegisterEvent("RUNE_POWER_UPDATE", "ThrottledRefresh")
 end
 

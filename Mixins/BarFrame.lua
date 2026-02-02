@@ -87,7 +87,7 @@ function BarFrame:LayoutResourceTicks(maxResources, color, tickWidth, poolKey)
         return
     end
 
-    local frame = self:GetInnerFrame()
+    local frame = self.InnerFrame
     local barWidth = frame:GetWidth()
     local barHeight = frame:GetHeight()
     if barWidth <= 0 or barHeight <= 0 then
@@ -136,7 +136,7 @@ function BarFrame:LayoutValueTicks(statusBar, ticks, maxValue, defaultColor, def
         return
     end
 
-    local frame = self:GetInnerFrame()
+    local frame = self.InnerFrame
     local barWidth = statusBar:GetWidth()
     local barHeight = frame:GetHeight()
     if barWidth <= 0 or barHeight <= 0 then
@@ -176,11 +176,11 @@ function BarFrame:LayoutValueTicks(statusBar, ticks, maxValue, defaultColor, def
 end
 
 --- Gets the color for the player's resource from config.
---- @param configSection table|nil Configuration section for the bar
+--- @param moduleConfig table|nil Module configuration table
 --- @return ECM_Color Color table
-local function GetColorForPlayerResource(configSection)
+local function GetColorForPlayerResource(moduleConfig)
     local resource = UnitPowerType("player")
-    local color = configSection and configSection.colors[resource]
+    local color = moduleConfig and moduleConfig.colors[resource]
     Util.DebugAssert(color, "Color for resource " .. tostring(resource) .. " not defined in config")
     return color or C.COLOR_WHITE
 end
@@ -213,7 +213,7 @@ end
 ---@return boolean refreshed True if Refresh() was called, false if skipped due to throttling
 function BarFrame:ThrottledRefresh()
     -- TODO: should this move into ECMFrame?
-    local config = self:GetGlobalConfig()
+    local config = self.GlobalConfig
     local freq = (config and config.updateFrequency and tonumber(config.updateFrequency)) or C.Defaults.global.updateFrequency
     if GetTime() - (self._lastUpdate or 0) < freq then
         return false
@@ -235,9 +235,9 @@ function BarFrame:Refresh(force)
     end
     Util.Log(self.Name, "BarFrame:Refresh", "Starting refresh")
 
-    local frame = self:GetInnerFrame()
-    local globalConfig = self:GetGlobalConfig()
-    local configSection = self:GetConfigSection()
+    local frame = self.InnerFrame
+    local globalConfig = self.GlobalConfig
+    local moduleConfig = self.ModuleConfig
 
     -- Values
     local current, max, displayValue, isFraction = self:GetStatusBarValues()
@@ -245,7 +245,7 @@ function BarFrame:Refresh(force)
     frame.StatusBar:SetMinMaxValues(0, max)
 
     -- Text overlay
-    local showText = configSection.showText ~= false
+    local showText = moduleConfig.showText ~= false
     if showText and frame.TextValue then
         frame:SetText(displayValue)
 
@@ -255,12 +255,12 @@ function BarFrame:Refresh(force)
     frame:SetTextVisible(showText)
 
     -- Texture
-    local tex = Util.GetTexture((configSection and configSection.texture) or (globalConfig and globalConfig.texture)) or C.DEFAULT_STATUSBAR_TEXTURE
+    local tex = Util.GetTexture((moduleConfig and moduleConfig.texture) or (globalConfig and globalConfig.texture)) or C.DEFAULT_STATUSBAR_TEXTURE
     frame.StatusBar:SetStatusBarTexture(tex)
 
     -- Status bar color
-    local statusBarColor = GetColorForPlayerResource(configSection)
-    frame.StatusBar:SetStatusBarColor(statusBarColor.r, statusBarColor.g, statusBarColor.b)
+    local statusBarColor = GetColorForPlayerResource(moduleConfig)
+    frame.StatusBar:SetStatusBarColor(statusBarColor.r, statusBarColor.g, statusBarColor.b, statusBarColor.a)
 
     frame:Show()
     Util.Log(self.Name, "BarFrame:Refresh", {

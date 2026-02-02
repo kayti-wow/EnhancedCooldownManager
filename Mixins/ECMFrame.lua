@@ -37,13 +37,13 @@ ns.Mixins.ECMFrame = ECMFrame
 ---@field _config table|nil Reference to the frame's configuration profile section.
 ---@field _configKey string|nil Config key for this frame's section.
 ---@field _layoutCache ECM_LayoutCache|nil Cached layout parameters.
----@field _innerFrame Frame|nil Inner WoW frame owned by this mixin.
----@field _hidden boolean|nil Whether the frame is currently hidden.
+---@field IsHidden boolean|nil Whether the frame is currently hidden.
 ---@field IsECMFrame boolean True to identify this as an ECMFrame mixin instance.
+---@field InnerFrame Frame|nil Inner WoW frame owned by this mixin.
+---@field GlobalConfig table|nil Cached reference to the global config section.
+---@field ModuleConfig table|nil Cached reference to this module's config section.
 ---@field Name string  Name of the frame.
 ---@field GetInnerFrame fun(self: ECMFrame): Frame Gets the inner frame.
----@field GetGlobalConfig fun(self: ECMFrame): table Gets the global configuration section.
----@field GetConfigSection fun(self: ECMFrame): table Gets the specific config section for this frame.
 ---@field ShouldShow fun(self: ECMFrame): boolean Determines whether the frame should be shown at this moment.
 ---@field CreateFrame fun(self: ECMFrame): Frame Creates the inner frame.
 ---@field SetHidden fun(self: ECMFrame, hide: boolean) Sets whether the frame is hidden.
@@ -51,7 +51,10 @@ ns.Mixins.ECMFrame = ECMFrame
 ---@field AddMixin fun(target: table, name: string) Adds ECMFrame methods and initializes state on target.
 
 --- Determine the correct anchor for this specific frame in the fixed order.
-local function GetNextChainAnchor(frameName, config)
+--- @param frameName string|nil The name of the current frame, or nil if first in chain.
+--- @return Frame The frame to anchor to.
+--- @return boolean isFirst True if this is the first frame in the chain.
+local function GetNextChainAnchor(frameName)
     -- Find the ideal position
     local stopIndex = #C.CHAIN_ORDER + 1
     if frameName then
@@ -69,51 +72,34 @@ local function GetNextChainAnchor(frameName, config)
         local barName = C.CHAIN_ORDER[i]
         local barModule = ECM:GetModule(barName, true)
         if barModule and barModule:IsEnabled() then
-            local barFrame = barModule:GetInnerFrame()
+            local barFrame = barModule.InnerFrame
             if barFrame and barFrame:IsVisible() then
-                return barFrame
+                return barFrame, i == 1
             end
         end
     end
 
     -- If none of the preceeding frames in the chain are valid, anchor to the viewer as the first.
-    return _G[C.VIEWER] or UIParent
+    return _G[C.VIEWER] or UIParent, true
 end
 
-function ECMFrame:GetInnerFrame()
-    assert(self._innerFrame, "innerFrame not created for frame " .. self.Name)
-    return self._innerFrame
+function ECMFrame:SetHidden(hide)
+    self.IsHidden = hide
 end
 
-function ECMFrame:GetIsHidden()
-    return self._hidden
-end
-
---- Gets the configuration table for this frame.
---- Asserts if the config has not been set via `AddMixin` or `SetConfig`.
----@return table config The frame's configuration table
-function ECMFrame:GetGlobalConfig()
-    assert(self._config, "config not set for frame " .. self.Name)
-    return self._config[C.CONFIG_SECTION_GLOBAL]
-end
-
---- Gets the specific configuration section for this frame.
----@return table configSection The frame's specific configuration section
-function ECMFrame:GetConfigSection()
-    assert(self._config, "config not set for frame " .. self.Name)
-    assert(self._configKey, "configKey not set for frame " .. self.Name)
-    local section = self._config[self._configKey]
-    assert(section, "config section '" .. self._configKey .. "' not found for frame " .. self.Name)
-    return section
+function ECMFrame:SetConfig(config)
+    assert(config, "config required")
+    self.GlobalConfig = config and config[C.CONFIG_SECTION_GLOBAL]
+    self.ModuleConfig = config and config[self._configKey]
 end
 
 function ECMFrame:CreateFrame()
-    local globalConfig = self:GetGlobalConfig()
-    local configSection = self:GetConfigSection()
+    local globalConfig = self.GlobalConfig
+    local moduleConfig = self.ModuleConfig
     local name = "ECM" .. self.Name
     local frame = CreateFrame("Frame", name, UIParent)
 
-    local barHeight = (configSection and configSection.height)
+    local barHeight = (moduleConfig and moduleConfig.height)
         or (globalConfig and globalConfig.barHeight)
         or C.DEFAULT_BAR_HEIGHT
 
@@ -130,16 +116,12 @@ function ECMFrame:CreateFrame()
     return frame
 end
 
-function ECMFrame:SetHidden(hide)
-    self._hidden = hide
-end
-
 function ECMFrame:UpdateLayout()
-    local globalConfig = self:GetGlobalConfig()
-    local configSection = self:GetConfigSection()
-    local mode = configSection.anchorMode
-    local frame = self:GetInnerFrame()
-    local borderConfig = configSection.border
+    local globalConfig = self.GlobalConfig
+    local moduleConfig = self.ModuleConfig
+    local mode = moduleConfig.anchorMode
+    local frame = self.InnerFrame
+    local borderConfig = moduleConfig.border
 
     if not self:ShouldShow() then
         Util.Log(self.Name, "ECMFrame:UpdateLayout", "ShouldShow returned false, hiding frame")
@@ -149,12 +131,12 @@ function ECMFrame:UpdateLayout()
 
     -- Determine the layout parameters based on the anchor mode. Chain mode will
     -- append this frame to the previous in the chain and inherit its width.
-    local anchor, offsetX, offsetY, width, height
+    local anchor, isFirst, offsetX, offsetY, width, height
     if mode == "chain" then
-        anchor = GetNextChainAnchor(self.Name, configSection)
+        anchor, isFirst = GetNextChainAnchor(self.Name)
         offsetX = 0
-        offsetY = (configSection.offsetY and -configSection.offsetY) or -globalConfig.offsetY
-        height = configSection.height or globalConfig.barHeight
+        offsetY = (moduleConfig.offsetY and -moduleConfig.offsetY) or (isFirst and -globalConfig.offsetY) or 0
+        height = moduleConfig.height or globalConfig.barHeight
         width = nil -- Width will be set by anchoring
     elseif mode == "independent" then
         assert(false, "NYI")
@@ -243,8 +225,8 @@ function ECMFrame:UpdateLayout()
         end
     end
 
-    ECM.DebugAssert(configSection.bgColor or (globalConfig and globalConfig.barBgColor), "bgColor not defined in config for frame " .. self.Name)
-    local bgColor = configSection.bgColor or (globalConfig and globalConfig.barBgColor) or C.DEFAULT_BG_COLOR
+    ECM.DebugAssert(moduleConfig.bgColor or (globalConfig and globalConfig.barBgColor), "bgColor not defined in config for frame " .. self.Name)
+    local bgColor = moduleConfig.bgColor or (globalConfig and globalConfig.barBgColor) or C.DEFAULT_BG_COLOR
     local bgColorChanged = not Util.AreColorsEqual(bgColor, layoutCache.bgColor)
 
     if bgColorChanged and frame.Background then
@@ -255,6 +237,7 @@ function ECMFrame:UpdateLayout()
     ECM.Log(self.Name, "ECMFrame:UpdateLayout", {
         layoutChanged = layoutChanged,
         anchor = anchor:GetName(),
+        isFirst = isFirst,
         offsetX = offsetX,
         offsetY = offsetY,
         widthChanged = widthChanged,
@@ -275,8 +258,8 @@ end
 
 --- Determines whether this frame should be shown at this particular moment. Can be overridden.
 function ECMFrame:ShouldShow()
-    local config = self:GetConfigSection()
-    return not self._hidden and not (config and config.rd == false)
+    local config = self.ModuleConfig
+    return not self.IsHidden and not (config and config.rd == false)
 end
 
 --- Handles common refresh logic for ECMFrame-derived frames.
@@ -287,8 +270,8 @@ function ECMFrame:Refresh(force)
         return true
     end
 
-    local config = self:GetConfigSection()
-    if self._hidden or not (config and config.enabled) then
+    local config = self.ModuleConfig
+    if self.IsHidden or not (config and config.enabled) then
         Util.Log(self.Name, "ECMFrame:Refresh", "Frame is hidden or disabled, skipping refresh")
         return false
     end
@@ -316,9 +299,11 @@ function ECMFrame.AddMixin(target, name)
     target._config = configRoot
     target._configKey = name:sub(1,1):lower() .. name:sub(2) -- camelCase-ish
     target._layoutCache = {}
-    target._hidden = false
-    target._innerFrame = target:CreateFrame()
+    target.IsHidden = false
+    target.InnerFrame = target:CreateFrame()
     target.IsECMFrame = true
+    target.GlobalConfig = configRoot and configRoot[C.CONFIG_SECTION_GLOBAL]
+    target.ModuleConfig = configRoot and configRoot[target._configKey]
 
     -- Registering this frame allows us to receive layout update events such as global hideWhenMounted.
     ECM.RegisterFrame(target)
