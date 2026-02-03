@@ -72,10 +72,6 @@ function PowerBar:GetStatusBarValues()
     return current, max, current, false
 end
 
---------------------------------------------------------------------------------
--- Layout and Refresh
---------------------------------------------------------------------------------
-
 function PowerBar:Refresh(force)
     local result = BarFrame.Refresh(self, force)
     if not result then

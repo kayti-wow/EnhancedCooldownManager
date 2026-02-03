@@ -127,10 +127,6 @@ function ResourceBar:GetStatusBarColor()
     return color or C.COLOR_WHITE
 end
 
---------------------------------------------------------------------------------
--- Layout and Refresh
---------------------------------------------------------------------------------
-
 function ResourceBar:Refresh(force)
     local continue = BarFrame.Refresh(self, force)
     if not continue then
@@ -157,11 +153,6 @@ function ResourceBar:Refresh(force)
 
     return true
 end
-
---------------------------------------------------------------------------------
--- Event Handling
---------------------------------------------------------------------------------
-
 
 --------------------------------------------------------------------------------
 -- Module Lifecycle

@@ -190,10 +190,6 @@ function RuneBar:ShouldShow()
     return ECMFrame.ShouldShow(self) and class == "DEATHKNIGHT"
 end
 
---------------------------------------------------------------------------------
--- Layout and Refresh
---------------------------------------------------------------------------------
-
 function RuneBar:Refresh(force)
     local _, class = UnitClass("player")
     assert(class == "DEATHKNIGHT", "RuneBar should only be enabled for Death Knights")

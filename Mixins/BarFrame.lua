@@ -202,26 +202,6 @@ function BarFrame:ShouldShow()
     return ECMFrame.ShouldShow(self)
 end
 
---------------------------------------------------------------------------------
--- Layout and Refresh
---------------------------------------------------------------------------------
-
---- Refreshes the frame if enough time has passed since the last update.
---- Uses the global `updateFrequency` setting to throttle refresh calls.
----@return boolean refreshed True if Refresh() was called, false if skipped due to throttling
-function BarFrame:ThrottledRefresh()
-    -- TODO: should this move into ECMFrame?
-    local config = self.GlobalConfig
-    local freq = (config and config.updateFrequency and tonumber(config.updateFrequency)) or C.Defaults.global.updateFrequency
-    if GetTime() - (self._lastUpdate or 0) < freq then
-        return false
-    end
-
-    self:Refresh()
-    self._lastUpdate = GetTime()
-    return true
-end
-
 --- Refreshes the bar frame layout and values.
 ---@param force boolean|nil If true, forces a refresh even if not needed.
 ---@return boolean continue True if refresh completed, false if skipped
@@ -271,6 +251,26 @@ function BarFrame:Refresh(force)
         statusBarColor = statusBarColor,
     })
 
+    return true
+end
+
+--------------------------------------------------------------------------------
+-- Layout and Refresh
+--------------------------------------------------------------------------------
+
+--- Refreshes the frame if enough time has passed since the last update.
+--- Uses the global `updateFrequency` setting to throttle refresh calls.
+---@return boolean refreshed True if Refresh() was called, false if skipped due to throttling
+function BarFrame:ThrottledRefresh()
+    -- TODO: should this move into ECMFrame?
+    local config = self.GlobalConfig
+    local freq = (config and config.updateFrequency and tonumber(config.updateFrequency)) or C.Defaults.global.updateFrequency
+    if GetTime() - (self._lastUpdate or 0) < freq then
+        return false
+    end
+
+    self:Refresh()
+    self._lastUpdate = GetTime()
     return true
 end
 
