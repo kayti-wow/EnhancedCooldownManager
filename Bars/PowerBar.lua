@@ -97,7 +97,7 @@ function PowerBar:ShouldShow()
         -- Hide mana bar for DPS specs, except mage/warlock/caster-form druid
         local role = GetSpecializationRole(GetSpecialization())
         if role == "DAMAGER" and powerType == Enum.PowerType.Mana then
-            return C.POWER_BAR_SHOW_MANA[class] or false
+            return C.POWERBAR_SHOW_MANABAR[class] or false
         end
 
         return true

@@ -241,15 +241,15 @@ function BarFrame:Refresh(force)
     frame.StatusBar:SetStatusBarColor(statusBarColor.r, statusBarColor.g, statusBarColor.b, statusBarColor.a)
 
     frame:Show()
-    Util.Log(self.Name, "BarFrame:Refresh", {
-        current = current,
-        max = max,
-        displayValue = displayValue,
-        isFraction = isFraction,
-        showText = showText,
-        texture = tex,
-        statusBarColor = statusBarColor,
-    })
+    -- Util.Log(self.Name, "BarFrame:Refresh", {
+    --     current = current,
+    --     max = max,
+    --     displayValue = displayValue,
+    --     isFraction = isFraction,
+    --     showText = showText,
+    --     texture = tex,
+    --     statusBarColor = statusBarColor,
+    -- })
 
     return true
 end

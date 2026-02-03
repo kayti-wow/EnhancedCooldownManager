@@ -89,7 +89,6 @@ function Util.ApplyFont(fontString, globalConfig)
     end
 
     local hasShadow = globalConfig and globalConfig.fontShadow
-    local fontKey = table.concat({ fontPath, tostring(fontSize), fontOutline, tostring(hasShadow) }, "|")
 
     fontString:SetFont(fontPath, fontSize, fontOutline)
 

@@ -132,7 +132,7 @@ function ECMFrame:UpdateLayout()
     -- append this frame to the previous in the chain and inherit its width.
     local anchor, isFirst, offsetX, offsetY, width, height
     if mode == C.ANCHORMODE_CHAIN then
-        anchor, isFirst = _GetNextChainAnchor(self.Name)
+        anchor, isFirst = self:GetNextChainAnchor(self.Name)
         offsetX = 0
         offsetY = (moduleConfig.offsetY and -moduleConfig.offsetY) or (isFirst and -globalConfig.offsetY) or 0
         height = moduleConfig.height or globalConfig.barHeight

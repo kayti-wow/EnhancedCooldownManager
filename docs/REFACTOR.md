@@ -352,6 +352,50 @@ end
 - ❌ More complex than standard bars (child management, edit mode hooks)
 - ❌ Can't use BarFrame utilities (but doesn't need them)
 
+### Phase 6: Layout.lua (ViewerHook Replacement) ✅ Complete
+
+**Migrated all ViewerHook functionality to Layout.lua:**
+1. ✅ Created comprehensive event handling system
+   - 11 events: mount, rest, combat, zone, spec, target, shapeshift
+   - Event-specific delays (0-0.4s) for smooth transitions
+   - Combat state tracking for rest-area hiding logic
+2. ✅ Implemented global hidden state management
+   - `SetGloballyHidden(hidden, reason)` controls all frames
+   - Hide reasons: "mounted", "rest", "cvar"
+   - Priority: CVar check -> mounted check -> rest check
+3. ✅ Dual frame type management
+   - ECMFrames: Uses `frame:SetHidden()` for clean integration
+   - Blizzard frames: Direct show/hide on 4 viewers
+4. ✅ Debounced layout updates
+   - `ScheduleLayoutUpdate(delay)` prevents redundant updates
+   - `UpdateAllLayouts()` calls `UpdateLayout()` on all registered ECMFrames
+5. ✅ Removed ViewerHook.lua entirely
+   - Updated Options.lua to use `ECM.ScheduleLayoutUpdate()`
+   - Removed TOC entry for ViewerHook
+   - Combat fade feature deferred (can be added later)
+6. ✅ Updated documentation
+   - CLAUDE.md reflects new Layout.lua responsibilities
+   - Removed ViewerHook from "files to be removed" list
+
+**Key Features:**
+- Hide when mounted (configurable)
+- Hide when resting out of combat (configurable)
+- Hide when cooldownViewerEnabled CVar is false
+- Event-driven updates with appropriate delays
+- Automatic registration via ECMFrame.AddMixin
+- Clean separation: Layout.lua handles global state, ECMFrame handles per-frame logic
+
+**Configuration:**
+- `profile.hideWhenMounted` - Hide all frames when mounted
+- `profile.hideOutOfCombatInRestAreas` - Hide when resting and not in combat
+- Settings accessed directly from profile (not profile.global)
+
+**Design Notes:**
+- ViewerHook was 509 lines, Layout.lua is ~200 lines (cleaner, focused)
+- Combat fade feature not migrated (visual polish, can be added later)
+- No dependency on AceEvent-3.0 (uses plain event frame)
+- Blizzard frames managed alongside ECMFrames for consistency
+
 ## Next Steps
 
 ### Immediate Testing
@@ -374,11 +418,9 @@ end
 ### Short-term
 1. Remove deprecated files:
    - `Mixins/PositionStrategy.lua` (replaced by ECMFrame layout)
-   - `Modules/ViewerHook.lua` (replace with Layout.lua)
-2. Implement Layout.lua:
-   - Global hide-when-mounted functionality
-   - Broadcast layout updates to all ECMFrames
-   - Replace ViewerHook pattern
+2. Optional enhancements:
+   - Add combat fade feature to Layout.lua (visual polish)
+   - Extract chain anchor logic to ECMFrame (currently local function)
 
 ### Long-term
 1. Consider extracting chain anchor logic to ECMFrame (currently local function)

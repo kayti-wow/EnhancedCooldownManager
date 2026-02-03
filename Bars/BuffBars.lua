@@ -28,13 +28,10 @@ local BarHelpers = {
         return bgColor or C.COLOR_BLACK
     end,
     ApplyFont = function(fontString, globalConfig)
-        if not fontString or not fontString.SetFont then
+        if not fontString then
             return
         end
-        local font = globalConfig and globalConfig.font
-        if font then
-            fontString:SetFont(font, fontString:GetStringHeight() or 10)
-        end
+        Util.ApplyFont(fontString, globalConfig)
     end,
     GetBarHeight = function(moduleConfig, globalConfig, fallback)
         local height = (moduleConfig and moduleConfig.height) or (globalConfig and globalConfig.barHeight) or (fallback or 13)
@@ -246,7 +243,7 @@ local function HookChildAnchoring(child, module)
     -- Hook SetPoint to detect when Blizzard re-anchors this child
     hooksecurefunc(child, "SetPoint", function()
         -- Only re-layout if we're not already running a layout
-        local viewer = module:GetViewer()
+        local viewer = _G[C.VIEWER_BUFFBAR]
         if viewer and not module._layoutRunning then
             module:ScheduleLayoutUpdate()
         end
@@ -260,6 +257,30 @@ local function HookChildAnchoring(child, module)
     child:HookScript("OnHide", function()
         module:ScheduleLayoutUpdate()
     end)
+end
+
+--- Enforces visibility settings for icon, spell name, and duration.
+--- This must be called frequently because Blizzard resets these when cooldowns update.
+---@param child ECM_BuffBarChild
+---@param moduleConfig table
+local function ApplyVisibilitySettings(child, moduleConfig)
+    if not (child and child.Bar) then
+        return
+    end
+
+    local bar = child.Bar
+    local iconFrame = child.Icon or child.IconFrame or child.IconButton
+
+    -- Apply visibility settings from buffBars config (default to shown)
+    if iconFrame then
+        iconFrame:SetShown(moduleConfig and moduleConfig.showIcon ~= false)
+    end
+    if bar.Name then
+        bar.Name:SetShown(moduleConfig and moduleConfig.showSpellName ~= false)
+    end
+    if bar.Duration then
+        bar.Duration:SetShown(moduleConfig and moduleConfig.showDuration ~= false)
+    end
 end
 
 --- Applies styling to a single cooldown bar child.
@@ -325,16 +346,8 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
 
     local iconFrame = child.Icon or child.IconFrame or child.IconButton
 
-    -- Apply visibility settings from buffBars config (default to shown)
-    if iconFrame then
-        iconFrame:SetShown(moduleConfig and moduleConfig.showIcon ~= false)
-    end
-    if bar.Name then
-        bar.Name:SetShown(moduleConfig and moduleConfig.showSpellName ~= false)
-    end
-    if bar.Duration then
-        bar.Duration:SetShown(moduleConfig and moduleConfig.showDuration ~= false)
-    end
+    -- Apply visibility settings (extracted to separate function for frequent reapplication)
+    ApplyVisibilitySettings(child, moduleConfig)
 
     if iconFrame and height and height > 0 then
         iconFrame:SetSize(height, height)
@@ -358,6 +371,14 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
 
     -- Mark as styled
     child.__ecmStyled = true
+
+    Util.Log("BuffBars", "Applied style to bar", {
+        barIndex = barIndex,
+        showIcon = moduleConfig and moduleConfig.showIcon ~= false,
+        showSpellName = moduleConfig and moduleConfig.showSpellName ~= false,
+        showDuration = moduleConfig and moduleConfig.showDuration ~= false,
+        height = height,
+    })
 end
 
 --------------------------------------------------------------------------------
@@ -397,16 +418,26 @@ function BuffBars:UpdateLayout()
 
     -- Apply positioning
     viewer:ClearAllPoints()
-    if params.width then
-        viewer:SetWidth(params.width)
+    if mode == C.ANCHORMODE_CHAIN then
+        -- Chain mode: dual-point anchoring to inherit width from anchor frame
+        viewer:SetPoint("TOPLEFT", params.anchor, "BOTTOMLEFT", params.offsetX, params.offsetY)
+        viewer:SetPoint("TOPRIGHT", params.anchor, "BOTTOMRIGHT", params.offsetX, params.offsetY)
+    else
+        -- Independent mode: explicit width and single-point anchoring
+        if params.width then
+            viewer:SetWidth(params.width)
+        end
+        viewer:SetPoint(params.anchorPoint, params.anchor, params.relativePoint, params.offsetX, params.offsetY)
     end
-    viewer:SetPoint(params.anchorPoint, params.anchor, params.relativePoint, params.offsetX, params.offsetY)
 
     -- Style all visible children (skip already-styled unless markers were reset)
     local visibleChildren = GetSortedVisibleChildren(viewer)
     for barIndex, entry in ipairs(visibleChildren) do
         if not entry.frame.__ecmStyled then
             ApplyCooldownBarStyle(entry.frame, cfg, globalConfig, barIndex)
+        else
+            -- Always reapply visibility settings because Blizzard resets them on cooldown updates
+            ApplyVisibilitySettings(entry.frame, cfg)
         end
         HookChildAnchoring(entry.frame, self)
     end
@@ -418,6 +449,12 @@ function BuffBars:UpdateLayout()
     Util.Log(self.Name, "BuffBars:UpdateLayout", {
         mode = mode,
         childCount = #visibleChildren,
+        viewerWidth = params.width or -1,
+        anchor = params.anchor and params.anchor:GetName() or "nil",
+        anchorPoint = params.anchorPoint,
+        relativePoint = params.relativePoint,
+        offsetX = params.offsetX,
+        offsetY = params.offsetY,
     })
 
     return true
@@ -429,7 +466,7 @@ end
 
 --- Positions all bar children in a vertical stack, preserving edit mode order.
 function BuffBars:LayoutBars()
-    local viewer = self:GetViewer()
+    local viewer = _G[C.VIEWER_BUFFBAR]
     if not viewer then
         return
     end
@@ -459,7 +496,7 @@ end
 
 --- Resets all styled markers so bars get fully re-styled on next update.
 function BuffBars:ResetStyledMarkers()
-    local viewer = self:GetViewer()
+    local viewer = _G[C.VIEWER_BUFFBAR]
     if not viewer then
         return
     end
@@ -491,7 +528,7 @@ end
 
 --- Hooks the BuffBarCooldownViewer for automatic updates.
 function BuffBars:HookViewer()
-    local viewer = self:GetViewer()
+    local viewer = _G[C.VIEWER_BUFFBAR]
     if not viewer then
         return
     end
@@ -538,7 +575,7 @@ function BuffBars:HookEditMode()
         self:ResetStyledMarkers()
         -- Use immediate update (not scheduled) so the cache is rebuilt before
         -- the user opens Options. Edit mode exit is infrequent, so no throttling needed.
-        local viewer = self:GetViewer()
+        local viewer = _G[C.VIEWER_BUFFBAR]
         if viewer and viewer:IsShown() then
             self:UpdateLayout()
         end

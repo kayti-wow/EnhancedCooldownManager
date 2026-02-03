@@ -62,8 +62,8 @@ MANDATORY: Files should have the following comment headings: "Helpers" -> "Optio
 [Modules\Layout.lua](Modules\Layout.lua) owns
 - Registering events that affect every ECMFrame such as hiding when the player mounts.
 - Tells ECMFrames when to show/hide themselves, or when to refresh in response to global events.
-
-The goal is to replace ViewerHook and then remove it.
+- Managing both ECMFrames and Blizzard cooldown viewer frames.
+- Global hidden state based on mount, rest area, and CVar conditions.
 
 ## Secret Values
 
@@ -90,6 +90,5 @@ The following files are partially rewritten:
 
 The following file will probably be removed:
 - [Mixins\PositionStrategy.lua](Mixins\PositionStrategy.lua)
-- [Modules\ViewerHook.lua](Modules\ViewerHook.lua) (replace with Layout.lua)
 
 Store architectural details, status, and design choices and trade off decisions in [REFACTOR.md](docs\REFACTOR.md) so that you can reload your progress later. It is okay to make suggestions for design and architecture and layout, if it is a significant improvement or if the current design deviates wildly from what a reasonable developer in the WoW addon space would do.
