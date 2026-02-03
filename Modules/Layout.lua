@@ -98,13 +98,13 @@ local function UpdateHiddenState()
     end
 
     -- Check mounted
-    if profile and profile.hideWhenMounted and IsMounted() then
+    if profile and profile.global.hideWhenMounted and IsMounted() then
         SetGloballyHidden(true, "mounted")
         return
     end
 
     -- Check resting (only out of combat)
-    if profile and profile.hideOutOfCombatInRestAreas
+    if profile and profile.global.hideOutOfCombatInRestAreas
        and not _inCombat and IsResting() then
         SetGloballyHidden(true, "rest")
         return

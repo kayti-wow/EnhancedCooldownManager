@@ -11,7 +11,7 @@ local Type, Version = "ECM_PositionModeSelector", 1
 if (AceGUI:GetWidgetVersion(Type) or 0) >= Version then return end
 
 local AUTO_ICON = "Interface\\Icons\\inv_12_profession_blacksmithing_blacksmithstoolkit_purple"
-local CUSTOM_ICON = "Interface\\Icons\\inv_blacksmithing_toolbox_02"
+local FREE_ICON = "Interface\\Icons\\inv_blacksmithing_toolbox_02"
 
 local BUTTON_HEIGHT = 40
 local BUTTON_GAP = 6
@@ -73,9 +73,9 @@ end
 function methods:SetList(list)
     self.list = list
     local autoLabel = list and list.chain or "Position Automatically"
-    local customLabel = list and list.custom or "Custom Positioning"
+    local freeLabel = list and list.free or "Free Positioning"
     self.autoButton.label:SetText(autoLabel)
-    self.customButton.label:SetText(customLabel)
+    self.freeButton.label:SetText(freeLabel)
 end
 
 function methods:SetLabel(text)
@@ -90,7 +90,7 @@ function methods:SetLabel(text)
 end
 
 function methods:SetValue(value)
-    if value ~= "chain" and value ~= "custom" then
+    if value ~= "chain" and value ~= "free" then
         value = "chain"
     end
     self.value = value
@@ -104,14 +104,14 @@ end
 function methods:SetDisabled(disabled)
     self.disabled = disabled
     self.autoButton:SetEnabled(not disabled)
-    self.customButton:SetEnabled(not disabled)
+    self.freeButton:SetEnabled(not disabled)
     self.frame:SetAlpha(disabled and 0.5 or 1)
 end
 
 function methods:OnWidthSet(width)
     local buttonWidth = math.max(1, (width - BUTTON_GAP) / 2)
     self.autoButton:SetWidth(buttonWidth)
-    self.customButton:SetWidth(buttonWidth)
+    self.freeButton:SetWidth(buttonWidth)
 end
 
 function methods:UpdateVisuals()
@@ -129,7 +129,7 @@ function methods:UpdateVisuals()
     end
 
     Apply(self.autoButton, self.value == "chain")
-    Apply(self.customButton, self.value == "custom")
+    Apply(self.freeButton, self.value == "free")
 end
 
 local function Constructor()
@@ -149,18 +149,18 @@ local function Constructor()
     autoButton:SetPoint("RIGHT", frame, "CENTER", -BUTTON_GAP / 2, 0)
     autoButton.icon:SetTexture(AUTO_ICON)
 
-    local customButton = CreateOptionButton(frame)
-    customButton:SetPoint("TOPRIGHT", label, "BOTTOMRIGHT", 0, -BUTTON_GAP)
-    customButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-    customButton:SetPoint("LEFT", frame, "CENTER", BUTTON_GAP / 2, 0)
-    customButton.icon:SetTexture(CUSTOM_ICON)
+    local freeButton = CreateOptionButton(frame)
+    freeButton:SetPoint("TOPRIGHT", label, "BOTTOMRIGHT", 0, -BUTTON_GAP)
+    freeButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+    freeButton:SetPoint("LEFT", frame, "CENTER", BUTTON_GAP / 2, 0)
+    freeButton.icon:SetTexture(FREE_ICON)
 
     local widget = {
         frame = frame,
         type = Type,
         label = label,
         autoButton = autoButton,
-        customButton = customButton,
+        freeButton = freeButton,
     }
 
     for method, func in pairs(methods) do
@@ -175,11 +175,11 @@ local function Constructor()
         end
     end)
 
-    customButton:SetScript("OnClick", function()
+    freeButton:SetScript("OnClick", function()
         if widget.disabled then return end
-        if widget.value ~= "custom" then
-            widget:SetValue("custom")
-            widget:Fire("OnValueChanged", "custom")
+        if widget.value ~= "free" then
+            widget:SetValue("free")
+            widget:Fire("OnValueChanged", "free")
         end
     end)
 

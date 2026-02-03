@@ -191,6 +191,141 @@ local function MakeResetHandler(path, refreshFunc)
     end
 end
 
+--------------------------------------------------------------------------------
+-- Helper: Generate positioning settings args (width, offsetX, offsetY)
+--------------------------------------------------------------------------------
+--- Generates positioning settings for a bar (width, offsetX, offsetY with reset buttons).
+--- @param configPath string The config path (e.g., "powerBar", "buffBars")
+--- @param options table Options: { includeOffsets = true, widthLabel = "Width", widthDesc = "..." }
+--- @return table args table for positioning settings
+local function MakePositioningSettingsArgs(configPath, options)
+    options = options or {}
+    local includeOffsets = options.includeOffsets ~= false  -- Default true
+    local widthLabel = options.widthLabel or "Width"
+    local widthDesc = options.widthDesc or "Width when free positioning is enabled."
+    local offsetXDesc = options.offsetXDesc or "\nHorizontal offset when free positioning is enabled."
+    local offsetYDesc = options.offsetYDesc or "\nVertical offset when free positioning is enabled."
+
+    local db = ECM.db
+    local configTable = GetNestedValue(db.profile, configPath)
+
+    local args = {
+        widthDesc = {
+            type = "description",
+            name = widthDesc,
+            order = 3,
+            hidden = function() return not IsAnchorModeFree(GetNestedValue(db.profile, configPath)) end,
+        },
+        width = {
+            type = "range",
+            name = widthLabel,
+            order = 4,
+            width = "double",
+            min = 100,
+            max = 600,
+            step = 10,
+            hidden = function() return not IsAnchorModeFree(GetNestedValue(db.profile, configPath)) end,
+            get = function()
+                local cfg = GetNestedValue(db.profile, configPath)
+                return cfg.width or C.DEFAULT_BAR_WIDTH
+            end,
+            set = function(_, val)
+                local cfg = GetNestedValue(db.profile, configPath)
+                cfg.width = val
+                ECM.ScheduleLayoutUpdate(0)
+            end,
+        },
+        widthReset = {
+            type = "execute",
+            name = "X",
+            order = 5,
+            width = 0.3,
+            hidden = function()
+                return not IsAnchorModeFree(GetNestedValue(db.profile, configPath))
+                    or not IsValueChanged(configPath .. ".width")
+            end,
+            func = MakeResetHandler(configPath .. ".width"),
+        },
+    }
+
+    if includeOffsets then
+        args.offsetXDesc = {
+            type = "description",
+            name = offsetXDesc,
+            order = 6,
+            hidden = function() return not IsAnchorModeFree(GetNestedValue(db.profile, configPath)) end,
+        }
+        args.offsetX = {
+            type = "range",
+            name = "Offset X",
+            order = 7,
+            width = "double",
+            min = -800,
+            max = 800,
+            step = 1,
+            hidden = function() return not IsAnchorModeFree(GetNestedValue(db.profile, configPath)) end,
+            get = function()
+                local cfg = GetNestedValue(db.profile, configPath)
+                return cfg.offsetX or 0
+            end,
+            set = function(_, val)
+                local cfg = GetNestedValue(db.profile, configPath)
+                cfg.offsetX = val ~= 0 and val or nil
+                ECM.ScheduleLayoutUpdate(0)
+            end,
+        }
+        args.offsetXReset = {
+            type = "execute",
+            name = "X",
+            order = 8,
+            width = 0.3,
+            hidden = function()
+                return not IsAnchorModeFree(GetNestedValue(db.profile, configPath))
+                    or not IsValueChanged(configPath .. ".offsetX")
+            end,
+            func = MakeResetHandler(configPath .. ".offsetX"),
+        }
+        args.offsetYDesc = {
+            type = "description",
+            name = offsetYDesc,
+            order = 9,
+            hidden = function() return not IsAnchorModeFree(GetNestedValue(db.profile, configPath)) end,
+        }
+        args.offsetY = {
+            type = "range",
+            name = "Offset Y",
+            order = 10,
+            width = "double",
+            min = -800,
+            max = 800,
+            step = 1,
+            hidden = function() return not IsAnchorModeFree(GetNestedValue(db.profile, configPath)) end,
+            get = function()
+                local cfg = GetNestedValue(db.profile, configPath)
+                return cfg.offsetY or 0
+            end,
+            set = function(_, val)
+                local cfg = GetNestedValue(db.profile, configPath)
+                cfg.offsetY = val ~= 0 and val or nil
+                ECM.ScheduleLayoutUpdate(0)
+            end,
+        }
+        args.offsetYReset = {
+            type = "execute",
+            name = "X",
+            order = 11,
+            width = 0.3,
+            hidden = function()
+                return not IsAnchorModeFree(GetNestedValue(db.profile, configPath))
+                    or not IsValueChanged(configPath .. ".offsetY")
+            end,
+            func = MakeResetHandler(configPath .. ".offsetY"),
+        }
+    end
+
+    return args
+end
+
 local function GeneralOptionsTable()
     local db = ECM.db
     return {
@@ -214,9 +349,9 @@ local function GeneralOptionsTable()
                         name = "Hide when mounted",
                         order = 4,
                         width = "full",
-                        get = function() return db.profile.hideWhenMounted end,
+                        get = function() return db.profile.global.hideWhenMounted end,
                         set = function(_, val)
-                            db.profile.hideWhenMounted = val
+                            db.profile.global.hideWhenMounted = val
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -225,9 +360,9 @@ local function GeneralOptionsTable()
                         name = "Always hide when out of combat in rest areas",
                         order = 6,
                         width = "full",
-                        get = function() return db.profile.hideOutOfCombatInRestAreas end,
+                        get = function() return db.profile.global.hideOutOfCombatInRestAreas end,
                         set = function(_, val)
-                            db.profile.hideOutOfCombatInRestAreas = val
+                            db.profile.global.hideOutOfCombatInRestAreas = val
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -273,9 +408,9 @@ local function GeneralOptionsTable()
                         min = 0,
                         max = 20,
                         step = 1,
-                        get = function() return db.profile.offsetY end,
+                        get = function() return db.profile.global.offsetY end,
                         set = function(_, val)
-                            db.profile.offsetY = val
+                            db.profile.global.offsetY = val
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -284,8 +419,8 @@ local function GeneralOptionsTable()
                         name = "X",
                         order = 3,
                         width = 0.3,
-                        hidden = function() return not IsValueChanged("offsetY") end,
-                        func = MakeResetHandler("offsetY"),
+                        hidden = function() return not IsValueChanged("global.offsetY") end,
+                        func = MakeResetHandler("global.offsetY"),
                     },
                 },
             },
@@ -532,12 +667,8 @@ local function PowerBarOptionsTable()
                     },
                 },
             },
-            positioningSettings = {
-                type = "group",
-                name = "Positioning",
-                inline = true,
-                order = 3,
-                args = {
+            positioningSettings = (function()
+                local positioningArgs = {
                     modeDesc = {
                         type = "description",
                         name = "Choose how the bar is positioned. Automatic keeps the bar attached to the Cooldown Manager. Custom lets you position it anywhere on the screen and configure its size.",
@@ -564,95 +695,22 @@ local function PowerBarOptionsTable()
                         name = " ",
                         order = 2.5,
                     },
-                    widthDesc = {
-                        type = "description",
-                        name = "Width when free positioning is enabled.",
-                        order = 3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) end,
-                    },
-                    width = {
-                        type = "range",
-                        name = "Width",
-                        order = 4,
-                        width = "double",
-                        min = 100,
-                        max = 600,
-                        step = 10,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) end,
-                        get = function() return db.profile.powerBar.width or C.DEFAULT_BAR_WIDTH end,
-                        set = function(_, val)
-                            db.profile.powerBar.width = val
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    widthReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 5,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) or not IsValueChanged("powerBar.width") end,
-                        func = MakeResetHandler("powerBar.width"),
-                    },
-                    offsetXDesc = {
-                        type = "description",
-                        name = "\nHorizontal offset when free positioning is enabled.",
-                        order = 6,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) end,
-                    },
-                    offsetX = {
-                        type = "range",
-                        name = "Offset X",
-                        order = 7,
-                        width = "double",
-                        min = -800,
-                        max = 800,
-                        step = 1,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) end,
-                        get = function() return db.profile.powerBar.offsetX or 0 end,
-                        set = function(_, val)
-                            db.profile.powerBar.offsetX = val ~= 0 and val or nil
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    offsetXReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 8,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) or not IsValueChanged("powerBar.offsetX") end,
-                        func = MakeResetHandler("powerBar.offsetX"),
-                    },
-                    offsetYDesc = {
-                        type = "description",
-                        name = "\nVertical offset when free positioning is enabled.",
-                        order = 9,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) end,
-                    },
-                    offsetY = {
-                        type = "range",
-                        name = "Offset Y",
-                        order = 10,
-                        width = "double",
-                        min = -800,
-                        max = 800,
-                        step = 1,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) end,
-                        get = function() return db.profile.powerBar.offsetY or 0 end,
-                        set = function(_, val)
-                            db.profile.powerBar.offsetY = val ~= 0 and val or nil
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    offsetYReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 11,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.powerBar) or not IsValueChanged("powerBar.offsetY") end,
-                        func = MakeResetHandler("powerBar.offsetY"),
-                    },
-                },
-            },
+                }
+
+                -- Add width, offsetX, offsetY settings
+                local positioningSettings = MakePositioningSettingsArgs("powerBar")
+                for k, v in pairs(positioningSettings) do
+                    positioningArgs[k] = v
+                end
+
+                return {
+                    type = "group",
+                    name = "Positioning",
+                    inline = true,
+                    order = 3,
+                    args = positioningArgs,
+                }
+            end)(),
             tickMarks = tickMarks,
         },
     }
@@ -711,12 +769,8 @@ local function ResourceBarOptionsTable()
                     },
                 },
             },
-            positioningSettings = {
-                type = "group",
-                name = "Positioning",
-                inline = true,
-                order = 2,
-                args = {
+            positioningSettings = (function()
+                local positioningArgs = {
                     modeDesc = {
                         type = "description",
                         name = "Choose how the bar is positioned. Automatic keeps the bar attached to the Cooldown Manager. Custom lets you position it anywhere on the screen and configure its size.",
@@ -743,95 +797,22 @@ local function ResourceBarOptionsTable()
                         name = " ",
                         order = 2.5,
                     },
-                    widthDesc = {
-                        type = "description",
-                        name = "Width when free positioning is enabled.",
-                        order = 3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) end,
-                    },
-                    width = {
-                        type = "range",
-                        name = "Width",
-                        order = 4,
-                        width = "double",
-                        min = 100,
-                        max = 600,
-                        step = 10,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) end,
-                        get = function() return db.profile.resourceBar.width or C.DEFAULT_BAR_WIDTH end,
-                        set = function(_, val)
-                            db.profile.resourceBar.width = val
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    widthReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 5,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) or not IsValueChanged("resourceBar.width") end,
-                        func = MakeResetHandler("resourceBar.width"),
-                    },
-                    offsetXDesc = {
-                        type = "description",
-                        name = "\nHorizontal offset when free positioning is enabled.",
-                        order = 6,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) end,
-                    },
-                    offsetX = {
-                        type = "range",
-                        name = "Offset X",
-                        order = 7,
-                        width = "double",
-                        min = -800,
-                        max = 800,
-                        step = 1,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) end,
-                        get = function() return db.profile.resourceBar.offsetX or 0 end,
-                        set = function(_, val)
-                            db.profile.resourceBar.offsetX = val ~= 0 and val or nil
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    offsetXReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 8,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) or not IsValueChanged("resourceBar.offsetX") end,
-                        func = MakeResetHandler("resourceBar.offsetX"),
-                    },
-                    offsetYDesc = {
-                        type = "description",
-                        name = "\nVertical offset when free positioning is enabled.",
-                        order = 9,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) end,
-                    },
-                    offsetY = {
-                        type = "range",
-                        name = "Offset Y",
-                        order = 10,
-                        width = "double",
-                        min = -800,
-                        max = 800,
-                        step = 1,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) end,
-                        get = function() return db.profile.resourceBar.offsetY or 0 end,
-                        set = function(_, val)
-                            db.profile.resourceBar.offsetY = val ~= 0 and val or nil
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    offsetYReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 11,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.resourceBar) or not IsValueChanged("resourceBar.offsetY") end,
-                        func = MakeResetHandler("resourceBar.offsetY"),
-                    },
-                },
-            },
+                }
+
+                -- Add width, offsetX, offsetY settings
+                local positioningSettings = MakePositioningSettingsArgs("resourceBar")
+                for k, v in pairs(positioningSettings) do
+                    positioningArgs[k] = v
+                end
+
+                return {
+                    type = "group",
+                    name = "Positioning",
+                    inline = true,
+                    order = 2,
+                    args = positioningArgs,
+                }
+            end)(),
             resourceColors = {
                 type = "group",
                 name = "Display Options",
@@ -1154,12 +1135,8 @@ local function RuneBarOptionsTable()
                     },
                 },
             },
-            positioningSettings = {
-                type = "group",
-                name = "Positioning",
-                inline = true,
-                order = 3,
-                args = {
+            positioningSettings = (function()
+                local positioningArgs = {
                     modeDesc = {
                         type = "description",
                         name = "Choose how the bar is positioned. Automatic keeps the bar attached to the Cooldown Manager. Custom lets you position it anywhere on the screen and configure its size.",
@@ -1184,95 +1161,26 @@ local function RuneBarOptionsTable()
                         name = " ",
                         order = 2.5,
                     },
-                    widthDesc = {
-                        type = "description",
-                        name = "Width when custom positioning is enabled.",
-                        order = 3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) end,
-                    },
-                    width = {
-                        type = "range",
-                        name = "Width",
-                        order = 4,
-                        width = "double",
-                        min = 100,
-                        max = 600,
-                        step = 10,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) end,
-                        get = function() return db.profile.runeBar.width or C.DEFAULT_BAR_WIDTH end,
-                        set = function(_, val)
-                            db.profile.runeBar.width = val
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    widthReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 5,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) or not IsValueChanged("runeBar.width") end,
-                        func = MakeResetHandler("runeBar.width"),
-                    },
-                    offsetXDesc = {
-                        type = "description",
-                        name = "\nHorizontal offset when custom positioning is enabled.",
-                        order = 6,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) end,
-                    },
-                    offsetX = {
-                        type = "range",
-                        name = "Offset X",
-                        order = 7,
-                        width = "double",
-                        min = -800,
-                        max = 800,
-                        step = 1,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) end,
-                        get = function() return db.profile.runeBar.offsetX or 0 end,
-                        set = function(_, val)
-                            db.profile.runeBar.offsetX = val ~= 0 and val or nil
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    offsetXReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 8,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) or not IsValueChanged("runeBar.offsetX") end,
-                        func = MakeResetHandler("runeBar.offsetX"),
-                    },
-                    offsetYDesc = {
-                        type = "description",
-                        name = "\nVertical offset when custom positioning is enabled.",
-                        order = 9,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) end,
-                    },
-                    offsetY = {
-                        type = "range",
-                        name = "Offset Y",
-                        order = 10,
-                        width = "double",
-                        min = -800,
-                        max = 800,
-                        step = 1,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) end,
-                        get = function() return db.profile.runeBar.offsetY or 0 end,
-                        set = function(_, val)
-                            db.profile.runeBar.offsetY = val ~= 0 and val or nil
-                            ECM.ScheduleLayoutUpdate(0)
-                        end,
-                    },
-                    offsetYReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 11,
-                        width = 0.3,
-                        hidden = function() return not IsAnchorModeFree(db.profile.runeBar) or not IsValueChanged("runeBar.offsetY") end,
-                        func = MakeResetHandler("runeBar.offsetY"),
-                    },
-                },
-            },
+                }
+
+                -- Add width, offsetX, offsetY settings
+                local positioningSettings = MakePositioningSettingsArgs("runeBar", {
+                    widthDesc = "Width when custom positioning is enabled.",
+                    offsetXDesc = "\nHorizontal offset when custom positioning is enabled.",
+                    offsetYDesc = "\nVertical offset when custom positioning is enabled.",
+                })
+                for k, v in pairs(positioningSettings) do
+                    positioningArgs[k] = v
+                end
+
+                return {
+                    type = "group",
+                    name = "Positioning",
+                    inline = true,
+                    order = 3,
+                    args = positioningArgs,
+                }
+            end)(),
         },
     }
 end
@@ -1336,12 +1244,8 @@ local function AuraBarsOptionsTable()
                     },
                 },
             },
-            positioningSettings = {
-                type = "group",
-                name = "Positioning",
-                inline = true,
-                order = 2,
-                args = {
+            positioningSettings = (function()
+                local positioningArgs = {
                     modeDesc = {
                         type = "description",
                         name = "Choose how the aura bars are positioned. Automatic keeps them attached to the Cooldown Manager. Custom lets you position them anywhere on the screen and configure their size.",
@@ -1366,43 +1270,26 @@ local function AuraBarsOptionsTable()
                         name = " ",
                         order = 2.5,
                     },
-                    widthDesc = {
-                        type = "description",
-                        name = "\nWidth of the buff bars when automatic positioning is disabled.",
-                        order = 4,
-                        hidden = function() return not IsAnchorModeFree(db.profile.buffBars) end,
+                }
 
-                    },
-                    width = {
-                        type = "range",
-                        name = "Buff Bar Width",
-                        order = 5,
-                        width = "double",
-                        min = 100,
-                        max = 600,
-                        step = 10,
-                        hidden = function() return not IsAnchorModeFree(db.profile.buffBars) end,
-                        get = function() return db.profile.buffBars.width end,
-                        set = function(_, val)
-                            db.profile.buffBars.width = val
-                            local buffBars = ECM.BuffBars
-                            if buffBars then
-                                buffBars:UpdateLayout()
-                            end
-                        end,
-                    },
-                    widthReset = {
-                        type = "execute",
-                        name = "X",
-                        order = 6,
-                        width = 0.3,
-                        hidden = function()
-                            return IsAnchorModeFree(db.profile.buffBars) or not IsValueChanged("buffBars.width")
-                        end,
-                        func = MakeResetHandler("buffBars.width"),
-                    },
-                },
-            },
+                -- Add width setting only (no offsets for BuffBars)
+                local positioningSettings = MakePositioningSettingsArgs("buffBars", {
+                    includeOffsets = false,
+                    widthLabel = "Buff Bar Width",
+                    widthDesc = "\nWidth of the buff bars when automatic positioning is disabled.",
+                })
+                for k, v in pairs(positioningSettings) do
+                    positioningArgs[k] = v
+                end
+
+                return {
+                    type = "group",
+                    name = "Positioning",
+                    inline = true,
+                    order = 2,
+                    args = positioningArgs,
+                }
+            end)(),
             colors = colors,
         },
     }
@@ -2022,16 +1909,16 @@ local function AboutOptionsTable()
                         min = 0.04,
                         max = 0.5,
                         step = 0.04,
-                        get = function() return db.profile.updateFrequency end,
-                        set = function(_, val) db.profile.updateFrequency = val end,
+                        get = function() return db.profile.global.updateFrequency end,
+                        set = function(_, val) db.profile.global.updateFrequency = val end,
                     },
                     updateFrequencyReset = {
                         type = "execute",
                         name = "X",
                         order = 3,
                         width = 0.3,
-                        hidden = function() return not IsValueChanged("updateFrequency") end,
-                        func = MakeResetHandler("updateFrequency"),
+                        hidden = function() return not IsValueChanged("global.updateFrequency") end,
+                        func = MakeResetHandler("global.updateFrequency"),
                     },
                 },
             },

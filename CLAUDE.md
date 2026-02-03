@@ -1,3 +1,5 @@
+Ensure this document and /docs are kept up to date after refactoring and API changes.
+
 ## Design
 
 MANDATORY: **ALL constants** are to be stored in Constants.lua.
