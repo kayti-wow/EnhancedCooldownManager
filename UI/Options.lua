@@ -115,12 +115,17 @@ end
 --------------------------------------------------------------------------------
 local function IsValueChanged(path)
     local profile = ECM.db and ECM.db.profile
-    local defaults = ns.defaults and ns.defaults.profile
+    local defaults = ECM.db and ECM.db.defaults and ECM.db.defaults.profile
     if not profile or not defaults then return false end
 
     local currentVal = GetNestedValue(profile, path)
     local defaultVal = GetNestedValue(defaults, path)
 
+    Util.Log("Options", "IsValueChanged", {
+        path = path,
+        currentVal = currentVal,
+        defaultVal = defaultVal,
+    })
     return not DeepEquals(currentVal, defaultVal)
 end
 

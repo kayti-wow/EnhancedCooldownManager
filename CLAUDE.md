@@ -31,6 +31,7 @@ The intention is to use mixins as a kind of class hierarchy:
 | CreateFrame   | fun(self: ECMFrame): Frame | Creates the inner frame. |
 | SetHidden     | fun(self: ECMFrame, hide: boolean) | Sets whether the frame is hidden. |
 | SetConfig     | fun(self: ECMFrame, config: table) | Sets GlobalConfig and ModuleConfig from config root. |
+| CalculateLayoutParams | fun(self: ECMFrame): table | Calculates layout params (mode, anchor, offsets, size). Override for custom positioning. |
 | UpdateLayout  | fun(self: ECMFrame): boolean | Updates the visual layout of the frame. |
 | Refresh       | fun(self: ECMFrame, force: boolean\|nil): boolean | Handles refresh logic, returns true if should continue. |
 | ScheduleDebounced | fun(self: ECMFrame, flagName: string, callback: function) | Schedules a debounced callback. |
@@ -79,9 +80,10 @@ When a derived class calls a parent mixin method, it must call the immediate par
 
 1. Events trigger `module:ScheduleLayoutUpdate()` (debounced)
 2. `ScheduleLayoutUpdate` calls `UpdateLayout()` after throttle delay
-3. `UpdateLayout()` determines positioning, size, border, background
-4. `UpdateLayout()` calls `Refresh()` at the end to update values
-5. `Refresh()` updates status bar values, text, colors, and ticks
+3. `UpdateLayout()` calls `CalculateLayoutParams()` for positioning parameters
+4. `UpdateLayout()` applies positioning, size, border, background
+5. `UpdateLayout()` calls `Refresh()` at the end to update values
+6. `Refresh()` updates status bar values, text, colors, and ticks
 
 MANDATORY: Modules that derive from ECMFrame, must use the config fields and never `ECM.db` or `ECM.db.profile` directly. NEVER create an intermediate table for profile/config.
 - `self.GlobalConfig` for the `global` config block

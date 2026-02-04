@@ -101,34 +101,6 @@ local function GetPaletteColor(barIndex, paletteName)
     return palette[colorIndex]
 end
 
---- Calculates positioning parameters for BuffBarViewer based on chain/free anchor mode.
----@param module ECM_BuffBarsModule
----@return table params, string mode
-local function CalculateBuffBarsLayout(module)
-    local cfg = module.ModuleConfig
-    local mode = cfg and cfg.anchorMode or C.ANCHORMODE_CHAIN
-    local params = {}
-
-    if mode == C.ANCHORMODE_CHAIN then
-        -- Chain mode: Use the shared ECMFrame chain anchor logic
-        local anchor, isFirst = module:GetNextChainAnchor(C.BUFFBARS)
-        params.anchor = anchor
-        params.anchorPoint = "TOPLEFT"
-        params.relativePoint = "BOTTOMLEFT"
-        params.offsetX = 0
-        params.offsetY = cfg.offsetY and -cfg.offsetY or 0
-    else
-        -- Independent mode: use custom anchoring
-        params.anchor = UIParent
-        params.anchorPoint = cfg.anchorPoint or "CENTER"
-        params.relativePoint = cfg.relativePoint or "CENTER"
-        params.offsetX = cfg.offsetX or 0
-        params.offsetY = cfg.offsetY or 0
-        params.width = cfg.width
-    end
-
-    return params, mode
-end
 
 --- Returns color for bar at index for current class/spec, or palette/default if not set.
 ---@param barIndex number 1-based index in layout order
@@ -385,6 +357,37 @@ end
 -- ECMFrame Overrides
 --------------------------------------------------------------------------------
 
+--- Override to support custom anchor points in free mode.
+---@return table params Layout parameters
+function BuffBars:CalculateLayoutParams()
+    local globalConfig = self.GlobalConfig
+    local cfg = self.ModuleConfig
+    local mode = cfg and cfg.anchorMode or C.ANCHORMODE_CHAIN
+
+    local params = { mode = mode }
+
+    if mode == C.ANCHORMODE_CHAIN then
+        local anchor, isFirst = self:GetNextChainAnchor(C.BUFFBARS)
+        params.anchor = anchor
+        params.isFirst = isFirst
+        params.anchorPoint = "TOPLEFT"
+        params.anchorRelativePoint = "BOTTOMLEFT"
+        params.offsetX = 0
+        params.offsetY = (isFirst and -(globalConfig and globalConfig.offsetY or 0)) or 0
+    else
+        -- Free mode: BuffBars supports custom anchor points from config
+        params.anchor = UIParent
+        params.isFirst = false
+        params.anchorPoint = cfg.anchorPoint or "CENTER"
+        params.anchorRelativePoint = cfg.relativePoint or "CENTER"
+        params.offsetX = cfg.offsetX or 0
+        params.offsetY = cfg.offsetY or 0
+        params.width = cfg.width
+    end
+
+    return params
+end
+
 --- Override CreateFrame to return the Blizzard BuffBarCooldownViewer instead of creating a new one.
 function BuffBars:CreateFrame()
     local viewer = _G[C.VIEWER_BUFFBAR]
@@ -413,8 +416,9 @@ function BuffBars:UpdateLayout()
         return false
     end
 
-    -- Calculate positioning parameters
-    local params, mode = CalculateBuffBarsLayout(self)
+    -- Calculate positioning parameters using overridable method
+    local params = self:CalculateLayoutParams()
+    local mode = params.mode
 
     -- Apply positioning
     viewer:ClearAllPoints()
@@ -427,7 +431,7 @@ function BuffBars:UpdateLayout()
         if params.width then
             viewer:SetWidth(params.width)
         end
-        viewer:SetPoint(params.anchorPoint, params.anchor, params.relativePoint, params.offsetX, params.offsetY)
+        viewer:SetPoint(params.anchorPoint, params.anchor, params.anchorRelativePoint, params.offsetX, params.offsetY)
     end
 
     -- Style all visible children (skip already-styled unless markers were reset)
@@ -452,7 +456,7 @@ function BuffBars:UpdateLayout()
         viewerWidth = params.width or -1,
         anchor = params.anchor and params.anchor:GetName() or "nil",
         anchorPoint = params.anchorPoint,
-        relativePoint = params.relativePoint,
+        anchorRelativePoint = params.anchorRelativePoint,
         offsetX = params.offsetX,
         offsetY = params.offsetY,
     })

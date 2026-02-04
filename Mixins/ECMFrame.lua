@@ -66,13 +66,15 @@ function ECMFrame:GetNextChainAnchor(frameName)
     end
 
     -- Work backwards to identify the first valid frame to anchor to.
-    -- Valid frames are those that are enabled and visible.
+    -- Valid frames are those that are enabled, visible, and using chain anchor mode.
     for i = stopIndex - 1, 1, -1 do
         local barName = C.CHAIN_ORDER[i]
         local barModule = ECM:GetModule(barName, true)
         if barModule and barModule:IsEnabled() then
+            local moduleConfig = barModule.ModuleConfig
+            local isChainMode = moduleConfig and moduleConfig.anchorMode == C.ANCHORMODE_CHAIN
             local barFrame = barModule.InnerFrame
-            if barFrame and barFrame:IsVisible() then
+            if isChainMode and barFrame and barFrame:IsVisible() then
                 return barFrame, false
             end
         end
@@ -90,6 +92,39 @@ function ECMFrame:SetConfig(config)
     assert(config, "config required")
     self.GlobalConfig = config and config[C.CONFIG_SECTION_GLOBAL]
     self.ModuleConfig = config and config[self._configKey]
+end
+
+--- Calculates layout parameters based on anchor mode. Override for custom positioning logic.
+---@return table params Layout parameters: mode, anchor, isFirst, anchorPoint, anchorRelativePoint, offsetX, offsetY, width, height
+function ECMFrame:CalculateLayoutParams()
+    local globalConfig = self.GlobalConfig
+    local moduleConfig = self.ModuleConfig
+    local mode = moduleConfig.anchorMode
+
+    local params = { mode = mode }
+
+    if mode == C.ANCHORMODE_CHAIN then
+        local anchor, isFirst = self:GetNextChainAnchor(self.Name)
+        params.anchor = anchor
+        params.isFirst = isFirst
+        params.anchorPoint = "TOPLEFT"
+        params.anchorRelativePoint = "BOTTOMLEFT"
+        params.offsetX = 0
+        params.offsetY = (isFirst and -globalConfig.offsetY) or 0
+        params.height = moduleConfig.height or globalConfig.barHeight
+        params.width = nil -- Width set by dual-point anchoring
+    elseif mode == C.ANCHORMODE_FREE then
+        params.anchor = UIParent
+        params.isFirst = false
+        params.anchorPoint = "CENTER"
+        params.anchorRelativePoint = "CENTER"
+        params.offsetX = moduleConfig.offsetX or 0
+        params.offsetY = moduleConfig.offsetY or C.DEFAULT_FREE_ANCHOR_OFFSET_Y
+        params.height = moduleConfig.height or globalConfig.barHeight
+        params.width = moduleConfig.width or globalConfig.barWidth
+    end
+
+    return params
 end
 
 function ECMFrame:CreateFrame()
@@ -118,7 +153,6 @@ end
 function ECMFrame:UpdateLayout()
     local globalConfig = self.GlobalConfig
     local moduleConfig = self.ModuleConfig
-    local mode = moduleConfig.anchorMode
     local frame = self.InnerFrame
     local borderConfig = moduleConfig.border
 
@@ -128,21 +162,18 @@ function ECMFrame:UpdateLayout()
         return false
     end
 
-    -- Determine the layout parameters based on the anchor mode. Chain mode will
-    -- append this frame to the previous in the chain and inherit its width.
-    local anchor, isFirst, offsetX, offsetY, width, height
-    if mode == C.ANCHORMODE_CHAIN then
-        anchor, isFirst = self:GetNextChainAnchor(self.Name)
-        offsetX = 0
-        offsetY = (moduleConfig.offsetY and -moduleConfig.offsetY) or (isFirst and -globalConfig.offsetY) or 0
-        height = moduleConfig.height or globalConfig.barHeight
-        width = nil -- Width will be set by anchoring
-    elseif mode == C.ANCHORMODE_FREE then
-        assert(false, "NYI")
-    end
+    -- Get layout parameters from overridable method
+    local params = self:CalculateLayoutParams()
+    local mode = params.mode
+    local anchor = params.anchor
+    local isFirst = params.isFirst
+    local anchorPoint = params.anchorPoint
+    local anchorRelativePoint = params.anchorRelativePoint
+    local offsetX = params.offsetX
+    local offsetY = params.offsetY
+    local width = params.width
+    local height = params.height
 
-    local anchorPoint = "TOPLEFT"
-    local anchorRelativePoint = "BOTTOMLEFT"
     local layoutCache = self._layoutCache or {}
 
     -- Skip positioning and anchor updates if nothing has changed since last time.
