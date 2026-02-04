@@ -150,75 +150,76 @@ function ECMFrame:CreateFrame()
     return frame
 end
 
+--- Applies positioning to a frame based on layout parameters.
+--- Handles ShouldShow check, layout calculation, and anchor positioning.
+--- Does not handle caching - callers manage their own _layoutCache.
+--- @param frame Frame The frame to position
+--- @return table|nil params Layout params if shown, nil if hidden
+function ECMFrame:ApplyFramePosition(frame)
+    if not self:ShouldShow() then
+        Util.Log(self.Name, "ECMFrame:ApplyFramePosition", "ShouldShow returned false, hiding frame")
+        frame:Hide()
+        return nil
+    end
+
+    local params = self:CalculateLayoutParams()
+    local mode = params.mode
+    local anchor = params.anchor
+    local offsetX, offsetY = params.offsetX, params.offsetY
+    local anchorPoint = params.anchorPoint
+    local anchorRelativePoint = params.anchorRelativePoint
+
+    frame:ClearAllPoints()
+    if mode == C.ANCHORMODE_CHAIN then
+        frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", offsetX, offsetY)
+        frame:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", offsetX, offsetY)
+    else
+        assert(anchor ~= nil, "anchor required for free anchor mode")
+        frame:SetPoint(anchorPoint, anchor, anchorRelativePoint, offsetX, offsetY)
+    end
+
+    return params
+end
+
 function ECMFrame:UpdateLayout()
     local globalConfig = self.GlobalConfig
     local moduleConfig = self.ModuleConfig
     local frame = self.InnerFrame
     local borderConfig = moduleConfig.border
 
-    if not self:ShouldShow() then
-        Util.Log(self.Name, "ECMFrame:UpdateLayout", "ShouldShow returned false, hiding frame")
-        frame:Hide()
+    -- Apply positioning and get params (returns nil if frame should be hidden)
+    local params = self:ApplyFramePosition(frame)
+    if not params then
         return false
     end
 
-    -- Get layout parameters from overridable method
-    local params = self:CalculateLayoutParams()
     local mode = params.mode
     local anchor = params.anchor
     local isFirst = params.isFirst
-    local anchorPoint = params.anchorPoint
-    local anchorRelativePoint = params.anchorRelativePoint
-    local offsetX = params.offsetX
-    local offsetY = params.offsetY
     local width = params.width
     local height = params.height
 
     local layoutCache = self._layoutCache or {}
 
-    -- Skip positioning and anchor updates if nothing has changed since last time.
-    local layoutChanged = layoutCache.anchor ~= anchor
-        or layoutCache.offsetX ~= offsetX
-        or layoutCache.offsetY ~= offsetY
-        or layoutCache.anchorPoint ~= anchorPoint
-        or layoutCache.anchorRelativePoint ~= anchorRelativePoint
-        or layoutCache.mode ~= mode
-
-    if layoutChanged then
-        frame:ClearAllPoints()
-        if mode == C.ANCHORMODE_CHAIN then
-            frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", offsetX, offsetY)
-            frame:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", offsetX, offsetY)
-        else
-            assert(anchor ~= nil, "anchor required for free anchor mode")
-            frame:SetPoint(anchorPoint, anchor, anchorRelativePoint, offsetX, offsetY)
-        end
-
-        layoutCache.anchor = anchor
-        layoutCache.offsetX = offsetX
-        layoutCache.offsetY = offsetY
-        layoutCache.anchorPoint = anchorPoint
-        layoutCache.anchorRelativePoint = anchorRelativePoint
-        layoutCache.mode = mode
-    end
-
+    -- Apply height if specified
     local heightChanged = height and layoutCache.height ~= height
     if heightChanged then
         frame:SetHeight(height)
         layoutCache.height = height
-        layoutChanged = true
     elseif height == nil then
         layoutCache.height = nil
     end
 
+    -- Apply width if specified
     local widthChanged = width and layoutCache.width ~= width
     if widthChanged then
         frame:SetWidth(width)
         layoutCache.width = width
-        layoutChanged = true
     elseif width == nil then
         layoutCache.width = nil
     end
+
+    local layoutChanged = heightChanged or widthChanged
 
     local borderChanged = nil
     if borderConfig then
@@ -265,11 +266,8 @@ function ECMFrame:UpdateLayout()
     end
 
     ECM.Log(self.Name, "ECMFrame:UpdateLayout", {
-        layoutChanged = layoutChanged,
         anchor = anchor:GetName(),
         isFirst = isFirst,
-        offsetX = offsetX,
-        offsetY = offsetY,
         widthChanged = widthChanged,
         width = width,
         heightChanged = heightChanged,

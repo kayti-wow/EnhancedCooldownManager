@@ -410,28 +410,20 @@ function BuffBars:UpdateLayout()
     local globalConfig = self.GlobalConfig
     local cfg = self.ModuleConfig
 
+    -- Check visibility first
     if not self:ShouldShow() then
         Util.Log(self.Name, "BuffBars:UpdateLayout", "ShouldShow returned false, hiding viewer")
         viewer:Hide()
         return false
     end
 
-    -- Calculate positioning parameters using overridable method
     local params = self:CalculateLayoutParams()
-    local mode = params.mode
 
-    -- Apply positioning
-    viewer:ClearAllPoints()
-    if mode == C.ANCHORMODE_CHAIN then
-        -- Chain mode: dual-point anchoring to inherit width from anchor frame
+    -- Only apply anchoring in chain mode; free mode is handled by Blizzard's edit mode
+    if params.mode == C.ANCHORMODE_CHAIN then
+        viewer:ClearAllPoints()
         viewer:SetPoint("TOPLEFT", params.anchor, "BOTTOMLEFT", params.offsetX, params.offsetY)
         viewer:SetPoint("TOPRIGHT", params.anchor, "BOTTOMRIGHT", params.offsetX, params.offsetY)
-    else
-        -- Independent mode: explicit width and single-point anchoring
-        if params.width then
-            viewer:SetWidth(params.width)
-        end
-        viewer:SetPoint(params.anchorPoint, params.anchor, params.anchorRelativePoint, params.offsetX, params.offsetY)
     end
 
     -- Style all visible children (skip already-styled unless markers were reset)
@@ -451,7 +443,7 @@ function BuffBars:UpdateLayout()
 
     viewer:Show()
     Util.Log(self.Name, "BuffBars:UpdateLayout", {
-        mode = mode,
+        mode = params.mode,
         childCount = #visibleChildren,
         viewerWidth = params.width or -1,
         anchor = params.anchor and params.anchor:GetName() or "nil",

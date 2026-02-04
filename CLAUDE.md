@@ -32,6 +32,7 @@ The intention is to use mixins as a kind of class hierarchy:
 | SetHidden     | fun(self: ECMFrame, hide: boolean) | Sets whether the frame is hidden. |
 | SetConfig     | fun(self: ECMFrame, config: table) | Sets GlobalConfig and ModuleConfig from config root. |
 | CalculateLayoutParams | fun(self: ECMFrame): table | Calculates layout params (mode, anchor, offsets, size). Override for custom positioning. |
+| ApplyFramePosition | fun(self: ECMFrame, frame: Frame): table\|nil | Applies positioning to a frame. Handles ShouldShow check and returns params or nil if hidden. |
 | UpdateLayout  | fun(self: ECMFrame): boolean | Updates the visual layout of the frame. |
 | Refresh       | fun(self: ECMFrame, force: boolean\|nil): boolean | Handles refresh logic, returns true if should continue. |
 | ScheduleDebounced | fun(self: ECMFrame, flagName: string, callback: function) | Schedules a debounced callback. |

@@ -186,7 +186,7 @@ local defaults = {
             },
             colors              = {
                 souls = { r = 0.259, g = 0.6, b = 0.91, a = 1 },
-                devourerNormal = { r = 0.55, g = 0.39, b = 0.114, a = 1 },
+                devourerNormal = { r = 0.216, g = 0.153, b = 0.447, a = 1 },
                 devourerMeta = { r = 0.275, g = 0.169, b = 1.0, a = 1 },
                 [Enum.PowerType.ComboPoints] = { r = 0.75, g = 0.15, b = 0.15, a = 1 },
                 [Enum.PowerType.Chi] = { r = 0.00, g = 1.00, b = 0.59, a = 1 },
