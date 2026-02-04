@@ -75,6 +75,11 @@ local C = ns.Constants
 ---@field showDuration boolean|nil Whether to show durations.
 ---@field colors ECM_BuffBarColorsConfig Per-bar color settings.
 
+---@class ECM_TrinketIconsConfig Trinket icons configuration.
+---@field enabled boolean Whether trinket icons are enabled.
+---@field showTrinket1 boolean Whether to show trinket slot 1 (if on-use).
+---@field showTrinket2 boolean Whether to show trinket slot 2 (if on-use).
+
 ---@class ECM_TickMark Tick mark definition.
 ---@field value number Tick mark value.
 ---@field color ECM_Color Tick mark color.
@@ -100,6 +105,7 @@ local C = ns.Constants
 ---@field resourceBar ECM_ResourceBarConfig Resource bar settings.
 ---@field runeBar ECM_RuneBarConfig Rune bar settings.
 ---@field buffBars ECM_BuffBarsConfig Buff bars configuration.
+---@field trinketIcons ECM_TrinketIconsConfig Trinket icons configuration.
 
 local DEFAULT_BORDER_THICKNESS = 4
 local DEFAULT_BORDER_COLOR = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 }
@@ -220,6 +226,11 @@ local defaults = {
                 defaultColor = { r = 228 / 255, g = 233 / 255, b = 235 / 255, a = 1 },
                 selectedPalette = nil,
             },
+        },
+        trinketIcons = {
+            enabled = true,
+            showTrinket1 = true,
+            showTrinket2 = true,
         },
     },
 }

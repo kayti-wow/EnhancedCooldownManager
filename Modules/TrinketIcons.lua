@@ -30,8 +30,6 @@ ECM.TrinketIcons = TrinketIcons
 -- Helpers
 --------------------------------------------------------------------------------
 
-local TRINKET_SLOTS = { C.TRINKET_SLOT_1, C.TRINKET_SLOT_2 }
-
 --- Checks if a trinket slot has an on-use effect.
 ---@param slotId number Inventory slot ID (13 or 14).
 ---@return ECM_TrinketData|nil trinketData Trinket data if on-use, nil otherwise.
@@ -41,8 +39,8 @@ local function GetTrinketData(slotId)
         return nil
     end
 
-    local spellName, spellId = C_Item.GetItemSpell(itemId)
-    if not spellName then
+    local _, spellId = C_Item.GetItemSpell(itemId)
+    if not spellId then
         return nil
     end
 
@@ -107,11 +105,11 @@ local function CreateTrinketIcon(parent, size)
     icon.Cooldown:SetSwipeTexture([[Interface\HUD\UI-HUD-CoolDownManager-Icon-Swipe]], 0, 0, 0, 0.2)
     icon.Cooldown:SetEdgeTexture([[Interface\Cooldown\UI-HUD-ActionBar-SecondaryCooldown]])
 
-    -- Border overlay - OVERLAY layer (1.35x size, centered)
+    -- Border overlay - OVERLAY layer (scaled size, centered)
     icon.Border = icon:CreateTexture(nil, "OVERLAY")
     icon.Border:SetAtlas("UI-HUD-CoolDownManager-IconOverlay")
     icon.Border:SetPoint("CENTER")
-    icon.Border:SetSize(size * 1.35, size * 1.35)
+    icon.Border:SetSize(size * C.TRINKET_ICON_BORDER_SCALE, size * C.TRINKET_ICON_BORDER_SCALE)
 
     -- Shadow overlay
     icon.Shadow = icon:CreateTexture(nil, "OVERLAY")
@@ -134,9 +132,26 @@ local function UpdateIconCooldown(icon, slotId)
     end
 end
 
+--- Restores UtilityCooldownViewer to its original position.
+---@param self ECM_TrinketIconsModule The module instance.
+local function RestoreViewerPosition(self)
+    if not self._viewerOriginalPoint then
+        return
+    end
+
+    local utilityViewer = _G[C.VIEWER_UTILITY]
+    if not utilityViewer then
+        return
+    end
+
+    local orig = self._viewerOriginalPoint
+    utilityViewer:ClearAllPoints()
+    utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4], orig[5])
+end
+
 --- Gets the icon size from UtilityCooldownViewer's children.
 --- Falls back to DEFAULT_TRINKET_ICON_SIZE if viewer is unavailable.
---- The Blizzard icons use a 1.35x overlay, so we measure the visual size
+--- The Blizzard icons use a border overlay, so we measure the visual size
 --- (including overlay) and derive the base icon size from that.
 ---@return number iconSize The icon size in pixels.
 local function GetUtilityViewerIconSize()
@@ -152,7 +167,7 @@ local function GetUtilityViewerIconSize()
             if size and size > 0 then
                 -- Blizzard's overlay extends beyond the base frame, making icons
                 -- appear larger. Scale up to match the visual appearance.
-                return size * 1.35
+                return size * C.TRINKET_ICON_BORDER_SCALE
             end
         end
     end
@@ -170,8 +185,12 @@ function TrinketIcons:CreateFrame()
     frame:SetFrameStrata("MEDIUM")
     frame:SetSize(1, 1) -- Will be resized in UpdateLayout
 
-    -- Pool of icon frames (reused as trinkets change)
+    -- Pool of icon frames (pre-allocate for both trinket slots)
     frame._iconPool = {}
+    local initialSize = C.DEFAULT_TRINKET_ICON_SIZE
+    for i = 1, 2 do
+        frame._iconPool[i] = CreateTrinketIcon(frame, initialSize)
+    end
 
     return frame
 end
@@ -230,12 +249,7 @@ function TrinketIcons:UpdateLayout()
 
     -- If no trinkets, restore viewer position and hide container
     if numTrinkets == 0 then
-        -- Restore viewer to original position if we have it stored
-        if self._viewerOriginalPoint then
-            local orig = self._viewerOriginalPoint
-            utilityViewer:ClearAllPoints()
-            utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4], orig[5])
-        end
+        RestoreViewerPosition(self)
         frame:Hide()
         return false
     end
@@ -260,12 +274,6 @@ function TrinketIcons:UpdateLayout()
     utilityViewer:ClearAllPoints()
     utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4] + viewerOffsetX, orig[5])
 
-    -- Ensure we have enough icons in the pool
-    while #frame._iconPool < numTrinkets do
-        local icon = CreateTrinketIcon(frame, iconSize)
-        frame._iconPool[#frame._iconPool + 1] = icon
-    end
-
     -- Position and configure each icon
     local xOffset = 0
     for i, trinketData in ipairs(trinkets) do
@@ -273,19 +281,20 @@ function TrinketIcons:UpdateLayout()
         icon:SetSize(iconSize, iconSize)
         icon.Icon:SetSize(iconSize, iconSize)
         icon.Mask:SetSize(iconSize, iconSize)
-        icon.Border:SetSize(iconSize * 1.35, iconSize * 1.35)
+        icon.Border:SetSize(iconSize * C.TRINKET_ICON_BORDER_SCALE, iconSize * C.TRINKET_ICON_BORDER_SCALE)
         icon.slotId = trinketData.slotId
 
-        -- Set texture
-        icon.Icon:SetTexture(trinketData.texture)
+        -- Set texture (handle nil case if item not loaded)
+        if trinketData.texture then
+            icon.Icon:SetTexture(trinketData.texture)
+        else
+            icon.Icon:SetTexture(nil)
+        end
 
         -- Position
         icon:ClearAllPoints()
         icon:SetPoint("LEFT", frame, "LEFT", xOffset, 0)
         icon:Show()
-
-        -- Update cooldown
-        UpdateIconCooldown(icon, trinketData.slotId)
 
         xOffset = xOffset + iconSize + spacing
     end
@@ -301,6 +310,9 @@ function TrinketIcons:UpdateLayout()
         spacing = spacing,
         totalWidth = totalWidth,
     })
+
+    -- Update cooldowns after layout is complete (CLAUDE.md mandate)
+    self:ThrottledRefresh()
 
     return true
 end
@@ -331,7 +343,7 @@ end
 --------------------------------------------------------------------------------
 
 function TrinketIcons:OnBagUpdateCooldown()
-    self:Refresh()
+    self:ThrottledRefresh()
 end
 
 function TrinketIcons:OnPlayerEquipmentChanged(_, slotId)
@@ -359,12 +371,7 @@ function TrinketIcons:HookUtilityViewer()
     end)
 
     utilityViewer:HookScript("OnHide", function()
-        -- Restore viewer to original position
-        if self._viewerOriginalPoint then
-            local orig = self._viewerOriginalPoint
-            utilityViewer:ClearAllPoints()
-            utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4], orig[5])
-        end
+        RestoreViewerPosition(self)
         if self.InnerFrame then
             self.InnerFrame:Hide()
         end
@@ -401,15 +408,7 @@ end
 function TrinketIcons:OnDisable()
     self:UnregisterAllEvents()
 
-    -- Restore viewer to original position
-    if self._viewerOriginalPoint then
-        local utilityViewer = _G[C.VIEWER_UTILITY]
-        if utilityViewer then
-            local orig = self._viewerOriginalPoint
-            utilityViewer:ClearAllPoints()
-            utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4], orig[5])
-        end
-    end
+    RestoreViewerPosition(self)
 
     if self.InnerFrame then
         self.InnerFrame:Hide()

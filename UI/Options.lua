@@ -1465,6 +1465,77 @@ ColoursOptionsTable = function()
 end
 
 
+local function TrinketIconsOptionsTable()
+    local db = ECM.db
+    return {
+        type = "group",
+        name = "Trinket Icons",
+        order = 6,
+        args = {
+            basicSettings = {
+                type = "group",
+                name = "Basic Settings",
+                inline = true,
+                order = 1,
+                args = {
+                    desc = {
+                        type = "description",
+                        name = "Displays icons for equipped trinkets with on-use effects next to the Utility Cooldown Viewer. Icon size automatically matches the viewer's Edit Mode settings.",
+                        order = 1,
+                        fontSize = "medium",
+                    },
+                    enabled = {
+                        type = "toggle",
+                        name = "Enable trinket icons",
+                        order = 2,
+                        width = "full",
+                        get = function() return db.profile.trinketIcons.enabled end,
+                        set = function(_, val)
+                            db.profile.trinketIcons.enabled = val
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
+                    },
+                },
+            },
+            slotSettings = {
+                type = "group",
+                name = "Trinket Slots",
+                inline = true,
+                order = 2,
+                args = {
+                    slotsDesc = {
+                        type = "description",
+                        name = "Choose which trinket slots to display. Icons only appear for trinkets with on-use effects.",
+                        order = 1,
+                    },
+                    showTrinket1 = {
+                        type = "toggle",
+                        name = "Show Trinket 1 (top slot)",
+                        order = 2,
+                        width = "full",
+                        get = function() return db.profile.trinketIcons.showTrinket1 end,
+                        set = function(_, val)
+                            db.profile.trinketIcons.showTrinket1 = val
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
+                    },
+                    showTrinket2 = {
+                        type = "toggle",
+                        name = "Show Trinket 2 (bottom slot)",
+                        order = 3,
+                        width = "full",
+                        get = function() return db.profile.trinketIcons.showTrinket2 end,
+                        set = function(_, val)
+                            db.profile.trinketIcons.showTrinket2 = val
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
+                    },
+                },
+            },
+        },
+    }
+end
+
 local function ProfileOptionsTable()
     local db = ECM.db
     -- Use AceDBOptions to generate a full profile management UI
@@ -1970,6 +2041,7 @@ local function GetOptionsTable()
             resourceBar = ResourceBarOptionsTable(),
             runeBar = RuneBarOptionsTable(),
             auraBars = AuraBarsOptionsTable(),
+            trinketIcons = TrinketIconsOptionsTable(),
             profile = ProfileOptionsTable(),
             about = AboutOptionsTable(),
         },

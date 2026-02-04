@@ -294,12 +294,7 @@ end
 --- @param force boolean|nil Whether to force a refresh, even if the bar is hidden.
 --- @return boolean continue True if the frame should continue refreshing, false to skip.
 function ECMFrame:Refresh(force)
-    if force then
-        return true
-    end
-
-    local config = self.ModuleConfig
-    if self.IsHidden or not (config and config.enabled) then
+    if not force and not self:ShouldShow() then
         Util.Log(self.Name, "ECMFrame:Refresh", "Frame is hidden or disabled, skipping refresh")
         return false
     end

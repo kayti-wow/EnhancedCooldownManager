@@ -8,10 +8,12 @@ local constants = {
     RESOURCEBAR = "ResourceBar",
     RUNEBAR = "RuneBar",
     BUFFBARS = "BuffBars",
+    TRINKETICONS = "TrinketIcons",
 
     -- Blizzard frame names
     VIEWER = "EssentialCooldownViewer",
     VIEWER_BUFFBAR = "BuffBarCooldownViewer",
+    VIEWER_UTILITY = "UtilityCooldownViewer",
 
     -- Default or fallback values for configuration
     DEFAULT_REFRESH_FREQUENCY = 0.066,
@@ -38,6 +40,15 @@ local constants = {
     DEMONHUNTER_CLASS_ID = 12,
     DEMONHUNTER_VENGEANCE_SPEC_INDEX = 2,
     DEMONHUNTER_DEVOURER_SPEC_INDEX = 3,
+
+    -- Trinket slots
+    TRINKET_SLOT_1 = 13,
+    TRINKET_SLOT_2 = 14,
+
+    -- Trinket icon defaults
+    DEFAULT_TRINKET_ICON_SIZE = 32,
+    DEFAULT_TRINKET_ICON_SPACING = 2,
+    TRINKET_ICON_BORDER_SCALE = 1.35,
 
     -- Configuration section names
     CONFIG_SECTION_GLOBAL = "global",

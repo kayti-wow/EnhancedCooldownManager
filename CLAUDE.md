@@ -9,6 +9,7 @@ The profile is split into GLOBAL and a SECTION specific to the module (typically
 The intention is to use mixins as a kind of class hierarchy:
  ECMFrame -> BarFrame -> PowerBar|ResourceBar|RuneBar
  ECMFrame -> BuffBars
+ ECMFrame -> TrinketIcons
 
 [ECMFrame](Mixins\ECMFrame.lua) owns:
 - The "inner" Blizzard Frame
@@ -70,12 +71,21 @@ BarFrame should work with any bar-style frame the addon is responsible for drawi
 
 These responsibilities can change over time so update this document if so however responsibilities should not cross mixins by reaching into the internals of another. Always use public interfaces. Internal fields are prefixed by an underscore.
 
+[Icons\TrinketIcons.lua](Icons\TrinketIcons.lua) owns:
+- Displaying equipped trinkets with on-use effects as icons
+- Positioning relative to UtilityCooldownViewer (right side)
+- Cooldown sweep display using CooldownFrameTemplate
+- Icon creation and pooling
+
+TrinketIcons uses ECMFrame directly (does not use BarFrame) since it displays icons, not bars.
+
 ### Method Call Chains
 
 When a derived class calls a parent mixin method, it must call the immediate parent:
 - `PowerBar:Refresh` calls `BarFrame.Refresh(self)` which calls `ECMFrame.Refresh(self)`
 - `PowerBar:ShouldShow` calls `BarFrame.ShouldShow(self)` which calls `ECMFrame.ShouldShow(self)`
 - `BuffBars:UpdateLayout` calls `ECMFrame` methods directly (BuffBars does not use BarFrame)
+- `TrinketIcons:ShouldShow` calls `ECMFrame.ShouldShow(self)` directly (TrinketIcons does not use BarFrame)
 
 ### Layout Update Flow
 
