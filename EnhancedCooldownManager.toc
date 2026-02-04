@@ -38,9 +38,10 @@ Modules\Layout.lua
 UI\Widgets\PositionModeSelector.lua
 UI\Options.lua
 
-Mixins\ECMFrame.lua
-Mixins\BarFrame.lua
+Modules\ECMFrame.lua
+Modules\BarFrame.lua
 Bars\PowerBar.lua
 Bars\ResourceBar.lua
 Bars\RuneBar.lua
 Bars\BuffBars.lua
+Modules\TrinketIcons.lua
