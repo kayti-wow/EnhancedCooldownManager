@@ -102,19 +102,19 @@ local function GetPaletteColor(barIndex, paletteName)
 end
 
 
---- Returns color for bar at index for current class/spec, or palette/default if not set.
+--- Returns cached color for bar at index for current class/spec, or palette/default if not set.
 ---@param barIndex number 1-based index in layout order
 ---@param cfg table|nil
 ---@return ECM_Color
-local function GetBarColor(barIndex, cfg)
+local function GetCachedBarColor(barIndex, cfg)
     if not cfg then
         return C.BUFFBARS_DEFAULT_COLOR
     end
 
     local classID, specID = GetCurrentClassSpec()
-    local colors = cfg.colors.perBar
-    if classID and specID and colors[classID] and colors[classID][specID] then
-        local c = colors[classID][specID][barIndex]
+    local cache = cfg.colors.cache
+    if classID and specID and cache[classID] and cache[classID][specID] and cache[classID][specID][barIndex] then
+        local c = cache[classID][specID][barIndex].color
         if c then
             return c
         end
@@ -128,7 +128,7 @@ local function GetBarColor(barIndex, cfg)
     return cfg.colors.defaultColor or C.BUFFBARS_DEFAULT_COLOR
 end
 
---- Returns color for bar at index for current class/spec, or palette/default if not set.
+--- Returns color for spell with name spellName for current class/spec, or palette/default if not set.
 ---@param spellName string
 ---@param cfg table|nil
 ---@return ECM_Color
@@ -172,8 +172,9 @@ local function UpdateBarCache(barIndex, spellName, cfg)
     cache[classID] = cache[classID] or {}
     cache[classID][specID] = cache[classID][specID] or {}
 
+    local spellColor = GetSpellColor(spellName, cfg)
     cache[classID][specID][barIndex] = {
-        color = GetSpellColor(spellName, cfg),
+        color = spellColor,
         spellName = spellName,
         lastSeen = GetTime(),
     }
@@ -301,12 +302,6 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
     local tex = BarHelpers.GetTexture(texKey)
     bar:SetStatusBarTexture(tex)
 
-    -- Apply bar color from per-bar settings or default
-    if bar.SetStatusBarColor and barIndex then
-        local color = GetBarColor(barIndex, moduleConfig)
-        bar:SetStatusBarColor(color.r, color.g, color.b, 1.0)
-    end
-
     -- Update bar cache for Options UI (extract spell name safely)
     -- NOTE: Spell names from GetText() can be secret values - cannot compare them
     if barIndex then
@@ -316,9 +311,16 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
             -- Check if we can access the value before using it
             if ok and text and (type(canaccessvalue) ~= "function" or canaccessvalue(text)) then
                 spellName = text
+
+                UpdateBarCache(barIndex, spellName, moduleConfig)
             end
         end
-        UpdateBarCache(barIndex, spellName, moduleConfig)
+    end
+
+    -- Apply bar color from per-bar settings or default
+    if bar.SetStatusBarColor and barIndex then
+        local color = GetCachedBarColor(barIndex, moduleConfig)
+        bar:SetStatusBarColor(color.r, color.g, color.b, 1.0)
     end
 
     local bgColor = BarHelpers.GetBgColor(moduleConfig, globalConfig)
