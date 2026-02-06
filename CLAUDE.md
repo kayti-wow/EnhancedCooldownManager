@@ -42,6 +42,7 @@ The intention is to use mixins as a kind of class hierarchy:
 | AddMixin      | fun(target: table, name: string) | Adds ECMFrame methods and initializes state on target. |
 
 ECMFrame should work with _any_ frame the addon needs to position or hide.
+For chain anchoring, predecessor visibility (`InnerFrame:IsVisible()`) must not be required; rely on module enabled state, `ShouldShow()`, chain mode, and existing `InnerFrame`.
 
 [BarFrame](Mixins\BarFrame.lua) owns:
 - StatusBar (values, color, texture)
@@ -121,11 +122,12 @@ MANDATORY: Files should have section headings to organize code. Use these headin
 Not all files will have all sections. For example, mixins don't have event handlers.
 
 [Modules\Layout.lua](Modules\Layout.lua) owns
-- Registering events that affect every ECMFrame such as hiding when the player mounts.
+- Registering events that affect every ECMFrame such as hiding when the player mounts or enters a vehicle.
 - Tells ECMFrames when to show/hide themselves, or when to refresh in response to global events.
 - Managing both ECMFrames and Blizzard cooldown viewer frames.
-- Global hidden state based on mount, rest area, and CVar conditions.
+- Global hidden state based on mount/vehicle, rest area, and CVar conditions.
 - Registering and unregistering ECMFrames via `ECM.RegisterFrame(frame)` / `ECM.UnregisterFrame(frame)` so module-level enable/disable can fully opt frames in/out.
+- Running deterministic layout passes: chain modules in `C.CHAIN_ORDER` first, then remaining modules.
 
 ## Secret Values
 

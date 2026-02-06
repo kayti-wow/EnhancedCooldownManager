@@ -363,12 +363,12 @@ local function GeneralOptionsTable()
                 args = {
                     hideWhenMountedDesc = {
                         type = "description",
-                        name = "Automatically hide icons and bars when mounted and show them when dismounted.",
+                        name = "Automatically hide icons and bars when mounted or in a vehicle, and show them when dismounted or out of vehicle.",
                         order = 3,
                     },
                     hideWhenMounted = {
                         type = "toggle",
-                        name = "Hide when mounted",
+                        name = "Hide when mounted or in vehicle",
                         order = 4,
                         width = "full",
                         get = function() return db.profile.global.hideWhenMounted end,

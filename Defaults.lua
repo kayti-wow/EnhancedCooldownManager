@@ -39,7 +39,7 @@ local C = ns.Constants
 ---@alias ECM_ResourceType number|string Resource type identifier.
 
 ---@class ECM_GlobalConfig Global configuration.
----@field hideWhenMounted boolean Whether to hide when mounted.
+---@field hideWhenMounted boolean Whether to hide when mounted or in a vehicle.
 ---@field hideOutOfCombatInRestAreas boolean Whether to hide out of combat in rest areas.
 ---@field updateFrequency number Update frequency in seconds.
 ---@field barHeight number Default bar height.

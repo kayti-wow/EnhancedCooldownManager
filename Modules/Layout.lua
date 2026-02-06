@@ -13,6 +13,9 @@ local Util = ns.Util
 
 local LAYOUT_EVENTS = {
     PLAYER_MOUNT_DISPLAY_CHANGED = { delay = 0 },
+    UNIT_ENTERED_VEHICLE = { delay = 0 },
+    UNIT_EXITED_VEHICLE = { delay = 0 },
+    VEHICLE_UPDATE = { delay = 0 },
     PLAYER_UPDATE_RESTING = { delay = 0 },
     PLAYER_SPECIALIZATION_CHANGED = { delay = 0 },
     PLAYER_ENTERING_WORLD = { delay = 0.4 },
@@ -111,8 +114,8 @@ local function UpdateFadeAndHiddenStates()
         return
     end
 
-    -- Check mounted
-    if globalConfig.hideWhenMounted and IsMounted() then
+    -- Check mounted or in vehicle
+    if globalConfig.hideWhenMounted and (IsMounted() or UnitInVehicle("player")) then
         SetGloballyHidden(true, "mounted")
         return
     end
@@ -152,8 +155,23 @@ end
 
 --- Calls UpdateLayout on all registered ECMFrames.
 local function UpdateAllLayouts()
-    for _, ecmFrame in pairs(_ecmFrames) do
-        ecmFrame:UpdateLayout()
+    local updated = {}
+
+    -- Chain frames must update in deterministic order so downstream bars can
+    -- resolve anchors against already-laid-out predecessors.
+    for _, moduleName in ipairs(C.CHAIN_ORDER) do
+        local ecmFrame = _ecmFrames[moduleName]
+        if ecmFrame then
+            ecmFrame:UpdateLayout()
+            updated[moduleName] = true
+        end
+    end
+
+    -- Update all remaining frames (non-chain modules).
+    for frameName, ecmFrame in pairs(_ecmFrames) do
+        if not updated[frameName] then
+            ecmFrame:UpdateLayout()
+        end
     end
 end
 
@@ -214,6 +232,10 @@ end
 eventFrame:RegisterEvent("CVAR_UPDATE")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
+    if (event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE") and arg1 ~= "player" then
+        return
+    end
+
     -- Handle CVAR_UPDATE specially
     if event == "CVAR_UPDATE" then
         if arg1 == "cooldownViewerEnabled" then

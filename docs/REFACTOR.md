@@ -23,6 +23,8 @@ The addon is undergoing a significant refactor to introduce a mixin-based archit
 - `UpdateLayout()` is the single entry point for all layout changes
 - Supports two anchor modes: CHAIN (auto-stacking) and FREE (manual positioning)
 - Debouncing via `ScheduleLayoutUpdate()` prevents excessive updates during rapid events
+- Chain predecessor selection in `GetNextChainAnchor` does not require predecessor visibility; it uses enabled state, `ShouldShow()`, chain mode, and existing `InnerFrame`
+- Global layout passes run chain modules in `C.CHAIN_ORDER` first to keep anchor resolution deterministic
 
 #### BarFrame Mixin (Mixins\BarFrame.lua)
 **Status:** Fully implemented
