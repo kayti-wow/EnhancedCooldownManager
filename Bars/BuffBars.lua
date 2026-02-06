@@ -844,8 +844,6 @@ function BuffBars:OnEnable()
         ECM.RegisterFrame(self)
     end
 
-    self:MigrateToPerSpellColorsIfNeeded()
-
     -- Register events with dedicated handlers
     self:RegisterEvent("UNIT_AURA", "OnUnitAura")
 
@@ -866,68 +864,4 @@ function BuffBars:OnDisable()
         ECM.UnregisterFrame(self)
     end
     Util.Log("BuffBars", "Disabled")
-end
-
---------------------------------------------------------------------------------
--- Module Lifecycle
---------------------------------------------------------------------------------
-
-function BuffBars:MigrateToPerSpellColorsIfNeeded()
-    local cfg, classID, specID = GetColorContext(self)
-    if not cfg or not classID or not specID then
-        return
-    end
-
-    local perBar = cfg.colors.perBar
-    local cache = cfg.colors.cache
-
-    if not perBar then
-        return
-    end
-
-    if not cfg.colors.perSpell then
-        cfg.colors.perSpell = {}
-    end
-
-    if not cfg.colors.perSpell[classID] then
-    cfg.colors.perSpell[classID] = {}
-    end
-
-    if not cfg.colors.perSpell[classID][specID] then
-        cfg.colors.perSpell[classID][specID] = {}
-    end
-
-    if not cache[classID] or not cache[classID][specID] or not perBar[classID] or not perBar[classID][specID] then
-        return
-    end
-
-    for i,v in ipairs(cache[classID][specID]) do
-        if v.color then
-            return
-        end
-
-        print("Migrating cached bar to per-spell colors", i,v.spellName)
-
-        local bc = perBar[classID][specID][i]
-
-        if bc then
-            cfg.colors.perSpell[classID][specID][v.spellName] = bc
-
-            cache[classID][specID][i] = {
-                lastSeen = v.lastSeen,
-                spellName = v.spellName,
-                color = bc
-            }
-        end
-     end
-
-     if perBar[classID] and perBar[classID][specID] then
-        perBar[classID][specID] = nil
-     end
-
-     if perBar[classID] then
-        if not perBar[classID][1] then
-            perBar[classID] = nil
-        end
-    end
 end
