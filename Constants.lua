@@ -8,7 +8,7 @@ local constants = {
     RESOURCEBAR = "ResourceBar",
     RUNEBAR = "RuneBar",
     BUFFBARS = "BuffBars",
-    TRINKETICONS = "TrinketIcons",
+    ITEMICONS = "ItemIcons",
 
     -- Blizzard frame names
     VIEWER = "EssentialCooldownViewer",
@@ -36,6 +36,7 @@ local constants = {
     RESOURCEBAR_VENGEANCE_SOULS_MAX = 6 ,
     RUNEBAR_MAX_RUNES = 6,
     BUFFBARS_DEFAULT_COLOR = { r = 0.9, g = 0.9, b = 0.9, a = 1 },
+    GROUP_INSTANCE_TYPES = { party = true, raid = true, arena = true, pvp = true, delve = true }, -- keyed by IsInInstance()[2]
 
     DEMONHUNTER_CLASS_ID = 12,
     DEMONHUNTER_VENGEANCE_SPEC_INDEX = 2,
@@ -45,10 +46,17 @@ local constants = {
     TRINKET_SLOT_1 = 13,
     TRINKET_SLOT_2 = 14,
 
-    -- Trinket icon defaults
-    DEFAULT_TRINKET_ICON_SIZE = 32,
-    DEFAULT_TRINKET_ICON_SPACING = 2,
-    TRINKET_ICON_BORDER_SCALE = 1.35,
+    -- Consumable item IDs (priority-ordered: best first)
+    COMBAT_POTIONS = { 212265, 212264, 212263 },           -- Tempered Potion R3, R2, R1
+    HEALTH_POTIONS = { 211880, 211879, 211878,             -- Algari Healing Potion R3, R2, R1
+                       212244, 212243, 212242 },            -- Cavedweller's Delight R3, R2, R1
+    HEALTHSTONE_ITEM_ID = 5512,
+    ITEM_ICONS_MAX = 5,
+
+    -- Item icon defaults
+    DEFAULT_ITEM_ICON_SIZE = 32,
+    DEFAULT_ITEM_ICON_SPACING = 2,
+    ITEM_ICON_BORDER_SCALE = 1.35,
 
     -- Configuration section names
     CONFIG_SECTION_GLOBAL = "global",
@@ -57,7 +65,15 @@ local constants = {
     ANCHORMODE_FREE = "free",
 }
 
+local BLIZZARD_FRAMES = {
+    constants.VIEWER,
+    constants.VIEWER_UTILITY,
+    "BuffIconCooldownViewer",
+    constants.VIEWER_BUFFBAR,
+}
+
 local order = { constants.POWERBAR, constants.RESOURCEBAR, constants.RUNEBAR, constants.BUFFBARS }
 constants.CHAIN_ORDER = order
+constants.BLIZZARD_FRAMES = BLIZZARD_FRAMES
 
 ns.Constants = constants

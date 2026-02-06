@@ -11,13 +11,6 @@ local Util = ns.Util
 -- Constants
 --------------------------------------------------------------------------------
 
-local BLIZZARD_FRAMES = {
-    "EssentialCooldownViewer",
-    "UtilityCooldownViewer",
-    "BuffIconCooldownViewer",
-    "BuffBarCooldownViewer",
-}
-
 local LAYOUT_EVENTS = {
     PLAYER_MOUNT_DISPLAY_CHANGED = { delay = 0 },
     PLAYER_UPDATE_RESTING = { delay = 0 },
@@ -41,6 +34,7 @@ local _globallyHidden = false
 local _hideReason = nil
 local _inCombat = InCombatLockdown()
 local _layoutPending = false
+local _lastAlpha = 1
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -49,7 +43,7 @@ local _layoutPending = false
 --- Iterates over all Blizzard cooldown viewer frames.
 --- @param fn fun(frame: Frame, name: string)
 local function ForEachBlizzardFrame(fn)
-    for _, name in ipairs(BLIZZARD_FRAMES) do
+    for _, name in ipairs(C.BLIZZARD_FRAMES) do
         local frame = _G[name]
         if frame then
             fn(frame, name)
@@ -87,10 +81,25 @@ local function SetGloballyHidden(hidden, reason)
     end
 end
 
---- Checks all hide conditions and updates global hidden state.
-local function UpdateHiddenState()
-    local profile = ECM.db and ECM.db.profile
 
+local function SetAlpha(alpha)
+    if _lastAlpha == alpha then
+        return
+    end
+
+    ForEachBlizzardFrame(function(frame)
+        frame:SetAlpha(alpha)
+    end)
+
+    for _, ecmFrame in pairs(_ecmFrames) do
+        ecmFrame:SetAlpha(alpha)
+    end
+
+    _lastAlpha = alpha
+end
+
+--- Checks all fade and hide conditions and updates global state.
+local function UpdateFadeAndHiddenStates(module)
     -- Check CVar first
     if not C_CVar.GetCVarBool("cooldownViewerEnabled") then
         SetGloballyHidden(true, "cvar")
@@ -98,20 +107,43 @@ local function UpdateHiddenState()
     end
 
     -- Check mounted
-    if profile and profile.global.hideWhenMounted and IsMounted() then
+    if module.hideWhenMounted and IsMounted() then
         SetGloballyHidden(true, "mounted")
         return
     end
 
-    -- Check resting (only out of combat)
-    if profile and profile.global.hideOutOfCombatInRestAreas
-       and not _inCombat and IsResting() then
-        SetGloballyHidden(true, "rest")
-        return
+    if not _inCombat then
+        if module.hideOutOfCombatInRestAreas and IsResting() then
+            SetGloballyHidden(true, "rest")
+            return
+        end
+
+        if not module.outOfCombatFade.enable then
+            SetAlpha(1)
+            return
+        end
+
+        -- TODO finish the logic in all thhits function
+        if module.outOfCombatFade.exceptInInstance then
+            local inInstance, instanceType = IsInInstance()
+            if inInstance and C.GROUP_INSTANCE_TYPES[instanceType] then
+                SetAlpha(module.outOfCombatFade.opacity / 100 or 1)
+                return
+            end
+        end
+
+        if module.outOfCombatFade.exceptIfTargetCanBeAttacked and UnitExists("target") and UnitCanAttack("player", "target") then
+            SetAlpha(module.outOfCombatFade.opacity / 100 or 1)
+            return
+        end
     end
+
+
+
 
     -- No hide reason, show everything
     SetGloballyHidden(false, nil)
+    SetAlpha(1)
 end
 
 --- Calls UpdateLayout on all registered ECMFrames.
@@ -137,7 +169,7 @@ local function ScheduleLayoutUpdate(delay)
     _layoutPending = true
     C_Timer.After(delay or 0, function()
         _layoutPending = false
-        UpdateHiddenState()
+        UpdateFadeAndHiddenStates()
         UpdateAllLayouts()
     end)
 end
@@ -189,11 +221,11 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
     -- Schedule update with delay
     if config.delay and config.delay > 0 then
         C_Timer.After(config.delay, function()
-            UpdateHiddenState()
+            UpdateFadeAndHiddenStates()
             UpdateAllLayouts()
         end)
     else
-        UpdateHiddenState()
+        UpdateFadeAndHiddenStates()
         UpdateAllLayouts()
     end
 end)

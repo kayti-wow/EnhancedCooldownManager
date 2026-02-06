@@ -44,4 +44,4 @@ Bars\PowerBar.lua
 Bars\ResourceBar.lua
 Bars\RuneBar.lua
 Bars\BuffBars.lua
-Modules\TrinketIcons.lua
+Modules\ItemIcons.lua

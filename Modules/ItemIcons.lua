@@ -10,19 +10,19 @@ local C = ns.Constants
 
 local ECMFrame = ns.Mixins.ECMFrame
 
-local TrinketIcons = ECM:NewModule("TrinketIcons", "AceEvent-3.0")
-ECM.TrinketIcons = TrinketIcons
+local ItemIcons = ECM:NewModule("ItemIcons", "AceEvent-3.0")
+ECM.ItemIcons = ItemIcons
 
----@class ECM_TrinketIconsModule : ECMFrame
+---@class ECM_ItemIconsModule : ECMFrame
 
----@class ECM_TrinketData
----@field slotId number Inventory slot ID (13 or 14).
+---@class ECM_IconData
 ---@field itemId number Item ID.
 ---@field texture string|number Icon texture.
----@field spellId number On-use spell ID.
+---@field slotId number|nil Inventory slot ID (trinkets only, nil for bag items).
 
----@class ECM_TrinketIcon : Button
----@field slotId number Inventory slot ID this icon represents.
+---@class ECM_ItemIcon : Button
+---@field slotId number|nil Inventory slot ID this icon represents (trinkets only).
+---@field itemId number|nil Item ID this icon represents (bag items only).
 ---@field Icon Texture The icon texture.
 ---@field Cooldown Cooldown The cooldown overlay frame.
 
@@ -32,7 +32,7 @@ ECM.TrinketIcons = TrinketIcons
 
 --- Checks if a trinket slot has an on-use effect.
 ---@param slotId number Inventory slot ID (13 or 14).
----@return ECM_TrinketData|nil trinketData Trinket data if on-use, nil otherwise.
+---@return ECM_IconData|nil iconData Icon data if on-use, nil otherwise.
 local function GetTrinketData(slotId)
     local itemId = GetInventoryItemID("player", slotId)
     if not itemId then
@@ -46,41 +46,86 @@ local function GetTrinketData(slotId)
 
     local texture = GetInventoryItemTexture("player", slotId)
     return {
-        slotId = slotId,
         itemId = itemId,
         texture = texture,
-        spellId = spellId,
+        slotId = slotId,
     }
 end
 
---- Returns a table of usable trinkets (those with on-use effects).
----@param moduleConfig table Module configuration.
----@return ECM_TrinketData[] trinkets Array of trinket data.
-local function GetUsableTrinkets(moduleConfig)
-    local trinkets = {}
+--- Returns the first item from priorityList that exists in the player's bags.
+---@param priorityList number[] Array of item IDs, ordered by priority.
+---@return ECM_IconData|nil iconData Icon data if found, nil otherwise.
+local function GetBestConsumable(priorityList)
+    for _, itemId in ipairs(priorityList) do
+        if C_Item.GetItemCount(itemId) > 0 then
+            local texture = C_Item.GetItemIconByID(itemId)
+            return {
+                itemId = itemId,
+                texture = texture,
+                slotId = nil,
+            }
+        end
+    end
+    return nil
+end
 
+--- Returns all display items in display order: Trinkets > Combat Potion > Health Potion > Healthstone.
+---@param moduleConfig table Module configuration.
+---@return ECM_IconData[] items Array of icon data.
+local function GetDisplayItems(moduleConfig)
+    local items = {}
+
+    -- Trinkets first
     if moduleConfig.showTrinket1 then
         local data = GetTrinketData(C.TRINKET_SLOT_1)
         if data then
-            trinkets[#trinkets + 1] = data
+            items[#items + 1] = data
         end
     end
 
     if moduleConfig.showTrinket2 then
         local data = GetTrinketData(C.TRINKET_SLOT_2)
         if data then
-            trinkets[#trinkets + 1] = data
+            items[#items + 1] = data
         end
     end
 
-    return trinkets
+    -- Combat potion
+    if moduleConfig.showCombatPotion then
+        local data = GetBestConsumable(C.COMBAT_POTIONS)
+        if data then
+            items[#items + 1] = data
+        end
+    end
+
+    -- Health potion
+    if moduleConfig.showHealthPotion then
+        local data = GetBestConsumable(C.HEALTH_POTIONS)
+        if data then
+            items[#items + 1] = data
+        end
+    end
+
+    -- Healthstone
+    if moduleConfig.showHealthstone then
+        if C_Item.GetItemCount(C.HEALTHSTONE_ITEM_ID) > 0 then
+            local texture = C_Item.GetItemIconByID(C.HEALTHSTONE_ITEM_ID)
+            items[#items + 1] = {
+                itemId = C.HEALTHSTONE_ITEM_ID,
+                texture = texture,
+                slotId = nil,
+            }
+        end
+    end
+
+    return items
 end
 
---- Creates a single trinket icon frame styled like cooldown viewer icons.
+--- Creates a single item icon frame styled like cooldown viewer icons.
 ---@param parent Frame Parent frame to attach to.
 ---@param size number Icon size in pixels.
----@return ECM_TrinketIcon icon The created icon frame.
-local function CreateTrinketIcon(parent, size)
+---@return ECM_ItemIcon icon The created icon frame.
+local function CreateItemIcon(parent, size)
     local icon = CreateFrame("Button", nil, parent)
     icon:SetSize(size, size)
 
@@ -109,7 +154,7 @@ local function CreateTrinketIcon(parent, size)
     icon.Border = icon:CreateTexture(nil, "OVERLAY")
     icon.Border:SetAtlas("UI-HUD-CoolDownManager-IconOverlay")
     icon.Border:SetPoint("CENTER")
-    icon.Border:SetSize(size * C.TRINKET_ICON_BORDER_SCALE, size * C.TRINKET_ICON_BORDER_SCALE)
+    icon.Border:SetSize(size * C.ITEM_ICON_BORDER_SCALE, size * C.ITEM_ICON_BORDER_SCALE)
 
     -- Shadow overlay
     icon.Shadow = icon:CreateTexture(nil, "OVERLAY")
@@ -120,12 +165,23 @@ local function CreateTrinketIcon(parent, size)
     return icon
 end
 
---- Updates the cooldown display on a trinket icon.
----@param icon ECM_TrinketIcon The icon to update.
----@param slotId number The inventory slot ID.
-local function UpdateIconCooldown(icon, slotId)
-    local start, duration, enable = GetInventoryItemCooldown("player", slotId)
-    if enable == 1 and duration > 0 then
+--- Updates the cooldown display on an item icon.
+---@param icon ECM_ItemIcon The icon to update.
+local function UpdateIconCooldown(icon)
+    local start, duration, enable
+
+    if icon.slotId then
+        -- Trinket (equipped item): enable is number (0/1)
+        start, duration, enable = GetInventoryItemCooldown("player", icon.slotId)
+        enable = (enable == 1)
+    elseif icon.itemId then
+        -- Bag item (potion/healthstone): enable is boolean
+        start, duration, enable = C_Item.GetItemCooldown(icon.itemId)
+    else
+        return
+    end
+
+    if enable and duration > 0 then
         icon.Cooldown:SetCooldown(start, duration)
     else
         icon.Cooldown:Clear()
@@ -133,7 +189,7 @@ local function UpdateIconCooldown(icon, slotId)
 end
 
 --- Restores UtilityCooldownViewer to its original position.
----@param self ECM_TrinketIconsModule The module instance.
+---@param self ECM_ItemIconsModule The module instance.
 local function RestoreViewerPosition(self)
     if not self._viewerOriginalPoint then
         return
@@ -155,77 +211,71 @@ end
 --- Returns base (unscaled) sizes - caller should apply scale separately.
 ---@return number iconSize The base icon size in pixels (unscaled).
 ---@return number spacing The base spacing between icons in pixels (unscaled).
----@return number scale The viewer's scale factor from Edit Mode.
+---@return number scale The icon scale factor from Edit Mode (applied to individual icons).
 local function GetUtilityViewerLayout()
     local viewer = _G[C.VIEWER_UTILITY]
     if not viewer or not viewer:IsShown() then
-        return C.DEFAULT_TRINKET_ICON_SIZE, C.DEFAULT_TRINKET_ICON_SPACING, 1.0
+        return C.DEFAULT_ITEM_ICON_SIZE, C.DEFAULT_ITEM_ICON_SPACING, 1.0
     end
-
-    -- Get the viewer's scale (affected by Edit Mode "Icon Size" setting)
-    local viewerScale = viewer:GetScale() or 1.0
 
     local children = { viewer:GetChildren() }
     local iconSize = nil
-    local spacing = C.DEFAULT_TRINKET_ICON_SPACING
+    local iconScale = 1.0
+    local spacing = C.DEFAULT_ITEM_ICON_SPACING
 
-    -- Find first visible icon to get size (this is the scaled size)
+    -- Find first cooldown icon to get size and scale
+    -- Edit Mode "Icon Size" applies scale to individual icons, not the viewer
     for _, child in ipairs(children) do
-        if child and child:IsShown() then
-            local size = child:GetWidth()
-            if size and size > 0 then
-                -- Divide by scale to get the base size
-                iconSize = size / viewerScale
+        if child and child:IsShown() and child.GetSpellID then
+            iconSize = child:GetWidth()    -- base size (unaffected by child scale)
+            iconScale = child:GetScale() or 1.0
+            break
+        end
+    end
+
+    -- Calculate spacing by measuring screen-space gap between two visible icons
+    local prev = nil
+    for _, child in ipairs(children) do
+        if child and child:IsShown() and child.GetSpellID then
+            if prev then
+                local gap = child:GetLeft() - prev:GetRight()
+                if gap > 0 then
+                    -- Convert screen-space gap to base coords
+                    spacing = gap / (child:GetEffectiveScale())
+                end
                 break
             end
+            prev = child
         end
     end
 
-    -- Calculate spacing by measuring gap between first two icons
-    if #children >= 2 then
-        local child1 = children[1]
-        local child2 = children[2]
-        if child1 and child2 and child1:IsShown() and child2:IsShown() then
-            local left1 = child1:GetLeft()
-            local left2 = child2:GetLeft()
-            local width1 = child1:GetWidth()
-            if left1 and left2 and width1 then
-                -- Gap is in screen coordinates, so divide by scale to get base spacing
-                local gap = (left2 - (left1 + width1)) / viewerScale
-                if gap > 0 then
-                    spacing = gap
-                end
-            end
-        end
-    end
-
-    return iconSize or C.DEFAULT_TRINKET_ICON_SIZE, spacing, viewerScale
+    return iconSize or C.DEFAULT_ITEM_ICON_SIZE, spacing, iconScale
 end
 
 --------------------------------------------------------------------------------
 -- ECMFrame Overrides
 --------------------------------------------------------------------------------
 
---- Override CreateFrame to create the container for trinket icons.
+--- Override CreateFrame to create the container for item icons.
 ---@return Frame container The container frame.
-function TrinketIcons:CreateFrame()
-    local frame = CreateFrame("Frame", "ECMTrinketIcons", UIParent)
+function ItemIcons:CreateFrame()
+    local frame = CreateFrame("Frame", "ECMItemIcons", UIParent)
     frame:SetFrameStrata("MEDIUM")
     frame:SetSize(1, 1) -- Will be resized in UpdateLayout
 
-    -- Pool of icon frames (pre-allocate for both trinket slots)
+    -- Pool of icon frames (pre-allocate for max items)
     frame._iconPool = {}
-    local initialSize = C.DEFAULT_TRINKET_ICON_SIZE
-    for i = 1, 2 do
-        frame._iconPool[i] = CreateTrinketIcon(frame, initialSize)
+    local initialSize = C.DEFAULT_ITEM_ICON_SIZE
+    for i = 1, C.ITEM_ICONS_MAX do
+        frame._iconPool[i] = CreateItemIcon(frame, initialSize)
     end
 
     return frame
 end
 
---- Override ShouldShow to check module enabled state and trinket availability.
+--- Override ShouldShow to check module enabled state and item availability.
 ---@return boolean shouldShow Whether the frame should be shown.
-function TrinketIcons:ShouldShow()
+function ItemIcons:ShouldShow()
     if not ECMFrame.ShouldShow(self) then
         return false
     end
@@ -241,7 +291,7 @@ end
 
 --- Override UpdateLayout to position icons relative to UtilityCooldownViewer.
 ---@return boolean success Whether the layout was applied.
-function TrinketIcons:UpdateLayout()
+function ItemIcons:UpdateLayout()
     local frame = self.InnerFrame
     if not frame then
         return false
@@ -264,9 +314,9 @@ function TrinketIcons:UpdateLayout()
         return false
     end
 
-    -- Get usable trinkets
-    local trinkets = GetUsableTrinkets(moduleConfig)
-    local numTrinkets = #trinkets
+    -- Get display items
+    local items = GetDisplayItems(moduleConfig)
+    local numItems = #items
     local iconSize, spacing, viewerScale = GetUtilityViewerLayout()
 
     -- Apply the same scale as the viewer to match Edit Mode settings
@@ -277,22 +327,22 @@ function TrinketIcons:UpdateLayout()
         icon:Hide()
     end
 
-    -- If no trinkets, restore viewer position and hide container
-    if numTrinkets == 0 then
+    -- If no items, restore viewer position and hide container
+    if numItems == 0 then
         RestoreViewerPosition(self)
         frame:Hide()
         return false
     end
 
     -- Calculate container size (using base sizes, scale is applied separately)
-    local totalWidth = (numTrinkets * iconSize) + ((numTrinkets - 1) * spacing)
+    local totalWidth = (numItems * iconSize) + ((numItems - 1) * spacing)
     local totalHeight = iconSize
     frame:SetSize(totalWidth, totalHeight)
 
     -- Calculate offset to keep visual midpoint centered
-    -- The trinket container width plus the gap between viewer and first icon
-    local trinketContainerWidth = totalWidth + spacing
-    local viewerOffsetX = -(trinketContainerWidth / 2)
+    -- The item container width plus the gap between viewer and first icon
+    local itemContainerWidth = totalWidth + spacing
+    local viewerOffsetX = -(itemContainerWidth / 2)
 
     -- Store original viewer position on first call, then apply offset
     if not self._viewerOriginalPoint then
@@ -306,17 +356,18 @@ function TrinketIcons:UpdateLayout()
 
     -- Position and configure each icon
     local xOffset = 0
-    for i, trinketData in ipairs(trinkets) do
+    for i, iconData in ipairs(items) do
         local icon = frame._iconPool[i]
         icon:SetSize(iconSize, iconSize)
         icon.Icon:SetSize(iconSize, iconSize)
         icon.Mask:SetSize(iconSize, iconSize)
-        icon.Border:SetSize(iconSize * C.TRINKET_ICON_BORDER_SCALE, iconSize * C.TRINKET_ICON_BORDER_SCALE)
-        icon.slotId = trinketData.slotId
+        icon.Border:SetSize(iconSize * C.ITEM_ICON_BORDER_SCALE, iconSize * C.ITEM_ICON_BORDER_SCALE)
+        icon.slotId = iconData.slotId
+        icon.itemId = iconData.itemId
 
         -- Set texture (handle nil case if item not loaded)
-        if trinketData.texture then
-            icon.Icon:SetTexture(trinketData.texture)
+        if iconData.texture then
+            icon.Icon:SetTexture(iconData.texture)
         else
             icon.Icon:SetTexture(nil)
         end
@@ -334,8 +385,8 @@ function TrinketIcons:UpdateLayout()
     frame:SetPoint("LEFT", utilityViewer, "RIGHT", spacing, 0)
     frame:Show()
 
-    Util.Log(self.Name, "TrinketIcons:UpdateLayout", {
-        numTrinkets = numTrinkets,
+    Util.Log(self.Name, "ItemIcons:UpdateLayout", {
+        numItems = numItems,
         iconSize = iconSize,
         spacing = spacing,
         totalWidth = totalWidth,
@@ -348,7 +399,7 @@ function TrinketIcons:UpdateLayout()
 end
 
 --- Override Refresh to update cooldown states.
-function TrinketIcons:Refresh()
+function ItemIcons:Refresh()
     if not ECMFrame.Refresh(self) then
         return false
     end
@@ -360,8 +411,8 @@ function TrinketIcons:Refresh()
 
     -- Update cooldowns on all visible icons
     for _, icon in ipairs(frame._iconPool) do
-        if icon:IsShown() and icon.slotId then
-            UpdateIconCooldown(icon, icon.slotId)
+        if icon:IsShown() and (icon.slotId or icon.itemId) then
+            UpdateIconCooldown(icon)
         end
     end
 
@@ -372,23 +423,30 @@ end
 -- Event Handlers
 --------------------------------------------------------------------------------
 
-function TrinketIcons:OnBagUpdateCooldown()
-    self:ThrottledRefresh()
+function ItemIcons:OnBagUpdateCooldown()
+    if self.InnerFrame then
+        self:ThrottledRefresh()
+    end
 end
 
-function TrinketIcons:OnPlayerEquipmentChanged(_, slotId)
+function ItemIcons:OnBagUpdateDelayed()
+    -- Bag contents changed, which consumables to show may have changed
+    self:ScheduleLayoutUpdate()
+end
+
+function ItemIcons:OnPlayerEquipmentChanged(_, slotId)
     -- Only update if a trinket slot changed
     if slotId == C.TRINKET_SLOT_1 or slotId == C.TRINKET_SLOT_2 then
         self:ScheduleLayoutUpdate()
     end
 end
 
-function TrinketIcons:OnPlayerEnteringWorld()
+function ItemIcons:OnPlayerEnteringWorld()
     self:ScheduleLayoutUpdate()
 end
 
 --- Hook the UtilityCooldownViewer to update when it shows/hides or resizes.
-function TrinketIcons:HookUtilityViewer()
+function ItemIcons:HookUtilityViewer()
     local utilityViewer = _G[C.VIEWER_UTILITY]
     if not utilityViewer or self._viewerHooked then
         return
@@ -418,11 +476,12 @@ end
 -- Module Lifecycle
 --------------------------------------------------------------------------------
 
-function TrinketIcons:OnEnable()
-    ECMFrame.AddMixin(self, "TrinketIcons")
+function ItemIcons:OnEnable()
+    ECMFrame.AddMixin(self, "ItemIcons")
 
     -- Register events
     self:RegisterEvent("BAG_UPDATE_COOLDOWN", "OnBagUpdateCooldown")
+    self:RegisterEvent("BAG_UPDATE_DELAYED", "OnBagUpdateDelayed")
     self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "OnPlayerEquipmentChanged")
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
 
@@ -435,10 +494,13 @@ function TrinketIcons:OnEnable()
     Util.Log(self.Name, "OnEnable - module enabled")
 end
 
-function TrinketIcons:OnDisable()
+function ItemIcons:OnDisable()
     self:UnregisterAllEvents()
 
     RestoreViewerPosition(self)
+
+    -- Clear stale position state so it's recaptured if re-enabled
+    self._viewerOriginalPoint = nil
 
     if self.InnerFrame then
         self.InnerFrame:Hide()

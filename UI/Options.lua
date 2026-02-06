@@ -1465,11 +1465,11 @@ ColoursOptionsTable = function()
 end
 
 
-local function TrinketIconsOptionsTable()
+local function ItemIconsOptionsTable()
     local db = ECM.db
     return {
         type = "group",
-        name = "Trinket Icons",
+        name = "Item Icons",
         order = 6,
         args = {
             basicSettings = {
@@ -1480,18 +1480,18 @@ local function TrinketIconsOptionsTable()
                 args = {
                     desc = {
                         type = "description",
-                        name = "Displays icons for equipped trinkets with on-use effects next to the Utility Cooldown Viewer. Icon size automatically matches the viewer's Edit Mode settings.",
+                        name = "Displays icons for equipped trinkets with on-use effects and combat consumables next to the Utility Cooldown Viewer. Icon size automatically matches the viewer's Edit Mode settings.",
                         order = 1,
                         fontSize = "medium",
                     },
                     enabled = {
                         type = "toggle",
-                        name = "Enable trinket icons",
+                        name = "Enable item icons",
                         order = 2,
                         width = "full",
-                        get = function() return db.profile.trinketIcons.enabled end,
+                        get = function() return db.profile.itemIcons.enabled end,
                         set = function(_, val)
-                            db.profile.trinketIcons.enabled = val
+                            db.profile.itemIcons.enabled = val
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1513,9 +1513,9 @@ local function TrinketIconsOptionsTable()
                         name = "Show Trinket 1 (top slot)",
                         order = 2,
                         width = "full",
-                        get = function() return db.profile.trinketIcons.showTrinket1 end,
+                        get = function() return db.profile.itemIcons.showTrinket1 end,
                         set = function(_, val)
-                            db.profile.trinketIcons.showTrinket1 = val
+                            db.profile.itemIcons.showTrinket1 = val
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1524,9 +1524,55 @@ local function TrinketIconsOptionsTable()
                         name = "Show Trinket 2 (bottom slot)",
                         order = 3,
                         width = "full",
-                        get = function() return db.profile.trinketIcons.showTrinket2 end,
+                        get = function() return db.profile.itemIcons.showTrinket2 end,
                         set = function(_, val)
-                            db.profile.trinketIcons.showTrinket2 = val
+                            db.profile.itemIcons.showTrinket2 = val
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
+                    },
+                },
+            },
+            consumableSettings = {
+                type = "group",
+                name = "Consumables",
+                inline = true,
+                order = 3,
+                args = {
+                    consumableDesc = {
+                        type = "description",
+                        name = "Display combat consumables you have in your bags. Only the best quality of each type is shown.",
+                        order = 1,
+                    },
+                    showCombatPotion = {
+                        type = "toggle",
+                        name = "Show Combat Potion (Tempered Potion)",
+                        order = 2,
+                        width = "full",
+                        get = function() return db.profile.itemIcons.showCombatPotion end,
+                        set = function(_, val)
+                            db.profile.itemIcons.showCombatPotion = val
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
+                    },
+                    showHealthPotion = {
+                        type = "toggle",
+                        name = "Show Health Potion (Algari/Cavedweller's)",
+                        order = 3,
+                        width = "full",
+                        get = function() return db.profile.itemIcons.showHealthPotion end,
+                        set = function(_, val)
+                            db.profile.itemIcons.showHealthPotion = val
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
+                    },
+                    showHealthstone = {
+                        type = "toggle",
+                        name = "Show Healthstone",
+                        order = 4,
+                        width = "full",
+                        get = function() return db.profile.itemIcons.showHealthstone end,
+                        set = function(_, val)
+                            db.profile.itemIcons.showHealthstone = val
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -2041,7 +2087,7 @@ local function GetOptionsTable()
             resourceBar = ResourceBarOptionsTable(),
             runeBar = RuneBarOptionsTable(),
             auraBars = AuraBarsOptionsTable(),
-            trinketIcons = TrinketIconsOptionsTable(),
+            itemIcons = ItemIconsOptionsTable(),
             profile = ProfileOptionsTable(),
             about = AboutOptionsTable(),
         },

@@ -482,6 +482,7 @@ function ECM:OnEnable()
         "ResourceBar",
         "RuneBar",
         "BuffBars",
+        "ItemIcons",
     }
 
     for _, moduleName in ipairs(moduleOrder) do
