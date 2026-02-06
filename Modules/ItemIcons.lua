@@ -12,6 +12,7 @@ local ECMFrame = ns.Mixins.ECMFrame
 
 local ItemIcons = ECM:NewModule("ItemIcons", "AceEvent-3.0")
 ECM.ItemIcons = ItemIcons
+ItemIcons:SetEnabledState(false)
 
 ---@class ECM_ItemIconsModule : ECMFrame
 
@@ -481,7 +482,11 @@ end
 --------------------------------------------------------------------------------
 
 function ItemIcons:OnEnable()
-    ECMFrame.AddMixin(self, "ItemIcons")
+    if not self.IsECMFrame then
+        ECMFrame.AddMixin(self, "ItemIcons")
+    elseif ECM.RegisterFrame then
+        ECM.RegisterFrame(self)
+    end
 
     -- Register events
     self:RegisterEvent("BAG_UPDATE_COOLDOWN", "OnBagUpdateCooldown")
@@ -500,6 +505,10 @@ end
 
 function ItemIcons:OnDisable()
     self:UnregisterAllEvents()
+
+    if self.IsECMFrame and ECM.UnregisterFrame then
+        ECM.UnregisterFrame(self)
+    end
 
     RestoreViewerPosition(self)
 

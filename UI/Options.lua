@@ -36,6 +36,23 @@ local function IsAnchorModeFree(cfg)
     return cfg and cfg.anchorMode == C.ANCHORMODE_FREE
 end
 
+local function SetModuleEnabled(moduleName, enabled)
+    local module = ECM:GetModule(moduleName, true)
+    if not module then
+        return
+    end
+
+    if enabled then
+        if not module:IsEnabled() then
+            ECM:EnableModule(moduleName)
+        end
+    else
+        if module:IsEnabled() then
+            ECM:DisableModule(moduleName)
+        end
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Utility: Deep compare for detecting changes from defaults
 --------------------------------------------------------------------------------
@@ -551,6 +568,7 @@ local function PowerBarOptionsTable()
                         get = function() return db.profile.powerBar.enabled end,
                         set = function(_, val)
                             db.profile.powerBar.enabled = val
+                            SetModuleEnabled("PowerBar", val)
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -740,6 +758,7 @@ local function ResourceBarOptionsTable()
                         get = function() return db.profile.resourceBar.enabled end,
                         set = function(_, val)
                             db.profile.resourceBar.enabled = val
+                            SetModuleEnabled("ResourceBar", val)
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1079,6 +1098,7 @@ local function RuneBarOptionsTable()
                         get = function() return db.profile.runeBar.enabled end,
                         set = function(_, val)
                             db.profile.runeBar.enabled = val
+                            SetModuleEnabled("RuneBar", val)
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
@@ -1211,6 +1231,18 @@ local function AuraBarsOptionsTable()
                         name = "Styles and repositions Blizzard's aura duration bars that are part of the Cooldown Manager.",
                         order = 1,
                         fontSize = "medium",
+                    },
+                    enabled = {
+                        type = "toggle",
+                        name = "Enable aura bars",
+                        order = 2,
+                        width = "full",
+                        get = function() return db.profile.buffBars.enabled end,
+                        set = function(_, val)
+                            db.profile.buffBars.enabled = val
+                            SetModuleEnabled("BuffBars", val)
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
                     },
                     showIcon = {
                         type = "toggle",
@@ -1490,6 +1522,16 @@ local function ItemIconsOptionsTable()
                         get = function() return db.profile.itemIcons.enabled end,
                         set = function(_, val)
                             db.profile.itemIcons.enabled = val
+                            local module = ECM:GetModule("ItemIcons", true)
+                            if val then
+                                if module and not module:IsEnabled() then
+                                    ECM:EnableModule("ItemIcons")
+                                end
+                            else
+                                if module and module:IsEnabled() then
+                                    ECM:DisableModule("ItemIcons")
+                                end
+                            end
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },

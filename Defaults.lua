@@ -65,7 +65,6 @@ local C = ns.Constants
 ---@field perBar table<number, table<number, table<number, ECM_Color>>> Per-bar colors by class/spec/index.
 ---@field cache table<number, table<number, table<number, ECM_BarCacheEntry>>> Cached bar metadata by class/spec/index.
 ---@field defaultColor ECM_Color Default color for buff bars.
----@field selectedPalette string|nil Name of the currently selected palette.
 
 ---@class ECM_BuffBarsConfig Buff bars configuration.
 ---@field anchor C.ANCHORMODE_CHAIN|C.ANCHORMODE_FREE|nil Anchor behavior for buff bars.
@@ -125,7 +124,7 @@ powerBarTickMappings[C.DEMONHUNTER_CLASS_ID] = {
 local defaults = {
     profile = {
         debug = false,
-        schemaVersion = 4,
+        schemaVersion = 5,
         global = {
             hideWhenMounted = true,
             hideOutOfCombatInRestAreas = false,
@@ -227,7 +226,6 @@ local defaults = {
                 perBar = {},
                 cache = {},
                 defaultColor = { r = 228 / 255, g = 233 / 255, b = 235 / 255, a = 1 },
-                selectedPalette = nil,
             },
         },
         itemIcons = {

@@ -101,12 +101,15 @@ When a derived class calls a parent mixin method, it must call the immediate par
 MANDATORY: Modules that derive from ECMFrame, must use the config fields and never `ECM.db` or `ECM.db.profile` directly. NEVER create an intermediate table for profile/config.
 - `self.GlobalConfig` for the `global` config block
 - `self.ModuleConfig` for the module's specific block
+- Module `enabled` config should drive module lifecycle (enable/disable), not just visibility, so disabled modules are unregistered from Layout.
 
 MANDATORY: Modules should call methods in the immediate parent's mixin, if present. For example, `PowerBar:Refresh` must call `BarFrame.Refresh(self)` and never `ECMFrame.Refresh(self)`
 
 MANDATORY: Any and all layout updates MUST be triggered from a call to `UpdateLayout()`. No cheeky workarounds, no funny business. MUST. Any change that modifies the layout outside of this function will be rejected.
 
 MANDATORY: Any and all value-related updates should be triggered from a call to `Refresh()`.
+
+MANDATORY: Use WoW's built-in `strtrim(...)` for string trimming. Do not use `:trim()` or custom trim helpers.
 
 MANDATORY: Files should have section headings to organize code. Use these headings in order as applicable (skip sections that don't apply):
 - "Helpers" (or "Helper Methods" for non-static helpers)
@@ -122,6 +125,7 @@ Not all files will have all sections. For example, mixins don't have event handl
 - Tells ECMFrames when to show/hide themselves, or when to refresh in response to global events.
 - Managing both ECMFrames and Blizzard cooldown viewer frames.
 - Global hidden state based on mount, rest area, and CVar conditions.
+- Registering and unregistering ECMFrames via `ECM.RegisterFrame(frame)` / `ECM.UnregisterFrame(frame)` so module-level enable/disable can fully opt frames in/out.
 
 ## Secret Values
 

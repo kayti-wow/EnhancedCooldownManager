@@ -59,7 +59,6 @@ local function EnsureColorStorage(cfg)
             perBar = {},
             cache = {},
             defaultColor = C.BUFFBARS_DEFAULT_COLOR,
-            selectedPalette = nil,
         }
     end
 
@@ -87,21 +86,6 @@ local function GetColorContext(module)
     return cfg, classID, specID
 end
 
---- Gets color from palette for the given bar index.
----@param barIndex number
----@param paletteName string
----@return ECM_Color
-local function GetPaletteColor(barIndex, paletteName)
-    local palette = PALETTES[paletteName]
-    if not palette or #palette == 0 then
-        return C.BUFFBARS_DEFAULT_COLOR
-    end
-
-    local colorIndex = ((barIndex - 1) % #palette) + 1
-    return palette[colorIndex]
-end
-
-
 --- Returns color for bar at index for current class/spec, or palette/default if not set.
 ---@param barIndex number 1-based index in layout order
 ---@param cfg table|nil
@@ -118,11 +102,6 @@ local function GetBarColor(barIndex, cfg)
         if c then
             return c
         end
-    end
-
-    local selectedPalette = cfg.colors.selectedPalette
-    if selectedPalette and PALETTES[selectedPalette] then
-        return GetPaletteColor(barIndex, selectedPalette)
     end
 
     return cfg.colors.defaultColor or C.BUFFBARS_DEFAULT_COLOR
@@ -669,49 +648,6 @@ function BuffBars:HasCustomBarColor(barIndex)
     return colors[classID] and colors[classID][specID] and colors[classID][specID][barIndex] ~= nil
 end
 
---- Returns all available palette names.
----@return table<string, string>
-function BuffBars:GetPaletteNames()
-    local names = {}
-    for name in pairs(PALETTES) do
-        names[name] = name
-    end
-    return names
-end
-
---- Sets the selected palette and optionally applies it to all bars.
----@param paletteName string|nil
----@param applyToAllBars boolean
-function BuffBars:SetSelectedPalette(paletteName, applyToAllBars)
-    local cfg, classID, specID = GetColorContext(self)
-    if not cfg then
-        return
-    end
-    cfg.colors.selectedPalette = paletteName
-
-    if applyToAllBars and classID and specID then
-        local colors = cfg.colors.perBar
-        if colors[classID] and colors[classID][specID] then
-            colors[classID][specID] = {}
-        end
-    end
-
-    Util.Log("BuffBars", "SetSelectedPalette", { palette = paletteName, applyToAll = applyToAllBars })
-
-    self:ResetStyledMarkers()
-    self:ScheduleLayoutUpdate()
-end
-
---- Gets the currently selected palette name.
----@return string|nil
-function BuffBars:GetSelectedPalette()
-    local cfg = GetColorContext(self)
-    if not cfg then
-        return nil
-    end
-    return cfg.colors.selectedPalette
-end
-
 --------------------------------------------------------------------------------
 -- Event Handlers
 --------------------------------------------------------------------------------
@@ -727,7 +663,11 @@ end
 --------------------------------------------------------------------------------
 
 function BuffBars:OnEnable()
-    ECMFrame.AddMixin(self, "BuffBars")
+    if not self.IsECMFrame then
+        ECMFrame.AddMixin(self, "BuffBars")
+    elseif ECM.RegisterFrame then
+        ECM.RegisterFrame(self)
+    end
 
     -- Register events with dedicated handlers
     self:RegisterEvent("UNIT_AURA", "OnUnitAura")
@@ -745,5 +685,8 @@ end
 
 function BuffBars:OnDisable()
     self:UnregisterAllEvents()
+    if self.IsECMFrame and ECM.UnregisterFrame then
+        ECM.UnregisterFrame(self)
+    end
     Util.Log("BuffBars", "Disabled")
 end

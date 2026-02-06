@@ -202,6 +202,13 @@ This separation allows:
 - Prevents visual flickering
 **Trade-off:** More memory, more complex code, but significant performance gain
 
+### Module Lifecycle From Config
+**Decision:** Module `enabled` flags now map to actual module enable/disable, not only `ShouldShow()` visibility checks.
+**Rationale:**
+- Disabled modules unregister their ECMFrames from Layout event fanout.
+- Removes unnecessary event handlers and refresh/layout work when a feature is disabled.
+**Trade-off:** Slightly more lifecycle complexity (must support re-register on re-enable).
+
 ### Debouncing vs Throttling
 **Decision:** Use debouncing for layout, throttling for refresh
 **Rationale:**
@@ -222,6 +229,7 @@ This separation allows:
 1. **Extract color management** - BuffBars color system could be generalized for other modules
 2. **Tick system refinement** - Consider separating tick layout from BarFrame into a dedicated helper
 3. **Layout.lua integration** - Ensure Layout.lua properly coordinates all ECMFrames
+   - Includes lifecycle registration and unregistration (`ECM.RegisterFrame` / `ECM.UnregisterFrame`) for modules that are toggled on/off at runtime.
 4. **PositionStrategy removal** - Verify no dependencies before deleting
 5. **Error handling** - Add more defensive nil checks in hooks
 6. **Documentation** - Add inline examples for complex methods (e.g., GetNextChainAnchor)

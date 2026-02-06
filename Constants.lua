@@ -14,6 +14,7 @@ local constants = {
     VIEWER = "EssentialCooldownViewer",
     VIEWER_BUFFBAR = "BuffBarCooldownViewer",
     VIEWER_UTILITY = "UtilityCooldownViewer",
+    ADDON_ICON_TEXTURE = "Interface\\AddOns\\EnhancedCooldownManager\\Media\\icon",
 
     -- Default or fallback values for configuration
     DEFAULT_REFRESH_FREQUENCY = 0.066,

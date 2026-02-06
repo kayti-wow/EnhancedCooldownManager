@@ -92,7 +92,7 @@ local function SetAlpha(alpha)
     end)
 
     for _, ecmFrame in pairs(_ecmFrames) do
-        ecmFrame:SetAlpha(alpha)
+        ecmFrame.InnerFrame:SetAlpha(alpha)
     end
 
     _lastAlpha = alpha
@@ -137,7 +137,7 @@ local function UpdateFadeAndHiddenStates()
             end
         end
 
-        if not shouldSkipFade and fadeConfig.exceptIfTargetCanBeAttacked and UnitExists("target") and UnitCanAttack("player", "target") then
+        if not shouldSkipFade and fadeConfig.exceptIfTargetCanBeAttacked and UnitExists("target") and not UnitIsDead("target") and UnitCanAttack("player", "target") then
             shouldSkipFade = true
         end
 
@@ -154,12 +154,6 @@ end
 local function UpdateAllLayouts()
     for _, ecmFrame in pairs(_ecmFrames) do
         ecmFrame:UpdateLayout()
-    end
-
-    -- BuffBars may need to update after other bars reposition
-    local BuffBars = ECM.BuffBars
-    if BuffBars and BuffBars.UpdateLayout then
-        BuffBars:UpdateLayout()
     end
 end
 
@@ -189,6 +183,22 @@ local function RegisterFrame(frame)
     assert(_ecmFrames[frame.Name] == nil, "RegisterFrame: frame with name '" .. frame.Name .. "' is already registered")
     _ecmFrames[frame.Name] = frame
     ECM.Log("Layout", "Frame registered", frame.Name)
+end
+
+--- Unregisters an ECMFrame from layout update events.
+--- @param frame ECMFrame The frame to unregister
+local function UnregisterFrame(frame)
+    if not frame or type(frame) ~= "table" then
+        return
+    end
+
+    local name = frame.Name
+    if not name or _ecmFrames[name] ~= frame then
+        return
+    end
+
+    _ecmFrames[name] = nil
+    ECM.Log("Layout", "Frame unregistered", name)
 end
 
 --------------------------------------------------------------------------------
@@ -239,4 +249,5 @@ end)
 --------------------------------------------------------------------------------
 
 ECM.RegisterFrame = RegisterFrame
+ECM.UnregisterFrame = UnregisterFrame
 ECM.ScheduleLayoutUpdate = ScheduleLayoutUpdate
