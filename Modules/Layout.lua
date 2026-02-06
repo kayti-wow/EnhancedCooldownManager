@@ -99,7 +99,12 @@ local function SetAlpha(alpha)
 end
 
 --- Checks all fade and hide conditions and updates global state.
-local function UpdateFadeAndHiddenStates(module)
+local function UpdateFadeAndHiddenStates()
+    local globalConfig = ECM.db and ECM.db.profile and ECM.db.profile.global
+    if not globalConfig then
+        return
+    end
+
     -- Check CVar first
     if not C_CVar.GetCVarBool("cooldownViewerEnabled") then
         SetGloballyHidden(true, "cvar")
@@ -107,43 +112,42 @@ local function UpdateFadeAndHiddenStates(module)
     end
 
     -- Check mounted
-    if module.hideWhenMounted and IsMounted() then
+    if globalConfig.hideWhenMounted and IsMounted() then
         SetGloballyHidden(true, "mounted")
         return
     end
 
-    if not _inCombat then
-        if module.hideOutOfCombatInRestAreas and IsResting() then
-            SetGloballyHidden(true, "rest")
-            return
-        end
-
-        if not module.outOfCombatFade.enable then
-            SetAlpha(1)
-            return
-        end
-
-        -- TODO finish the logic in all thhits function
-        if module.outOfCombatFade.exceptInInstance then
-            local inInstance, instanceType = IsInInstance()
-            if inInstance and C.GROUP_INSTANCE_TYPES[instanceType] then
-                SetAlpha(module.outOfCombatFade.opacity / 100 or 1)
-                return
-            end
-        end
-
-        if module.outOfCombatFade.exceptIfTargetCanBeAttacked and UnitExists("target") and UnitCanAttack("player", "target") then
-            SetAlpha(module.outOfCombatFade.opacity / 100 or 1)
-            return
-        end
+    if not _inCombat and globalConfig.hideOutOfCombatInRestAreas and IsResting() then
+        SetGloballyHidden(true, "rest")
+        return
     end
-
-
-
 
     -- No hide reason, show everything
     SetGloballyHidden(false, nil)
-    SetAlpha(1)
+
+    local alpha = 1
+    local fadeConfig = globalConfig.outOfCombatFade
+    if not _inCombat and fadeConfig and fadeConfig.enabled then
+        local shouldSkipFade = false
+
+        if fadeConfig.exceptInInstance then
+            local inInstance, instanceType = IsInInstance()
+            if inInstance and C.GROUP_INSTANCE_TYPES[instanceType] then
+                shouldSkipFade = true
+            end
+        end
+
+        if not shouldSkipFade and fadeConfig.exceptIfTargetCanBeAttacked and UnitExists("target") and UnitCanAttack("player", "target") then
+            shouldSkipFade = true
+        end
+
+        if not shouldSkipFade then
+            local opacity = fadeConfig.opacity or 100
+            alpha = math.max(0, math.min(1, opacity / 100))
+        end
+    end
+
+    SetAlpha(alpha)
 end
 
 --- Calls UpdateLayout on all registered ECMFrames.
@@ -202,7 +206,7 @@ eventFrame:RegisterEvent("CVAR_UPDATE")
 eventFrame:SetScript("OnEvent", function(self, event, arg1, ...)
     -- Handle CVAR_UPDATE specially
     if event == "CVAR_UPDATE" then
-        if arg1 == "cooldownManager" then
+        if arg1 == "cooldownViewerEnabled" then
             ScheduleLayoutUpdate(0)
         end
         return

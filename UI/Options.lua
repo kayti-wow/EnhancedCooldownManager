@@ -446,10 +446,10 @@ local function GeneralOptionsTable()
                         name = "Fade when out of combat",
                         order = 2,
                         width = "full",
-                        get = function() return db.profile.combatFade.enabled end,
+                        get = function() return db.profile.global.outOfCombatFade.enabled end,
                         set = function(_, val)
-                            db.profile.combatFade.enabled = val
-                            -- TODO: Combat fade not yet migrated to Layout.lua
+                            db.profile.global.outOfCombatFade.enabled = val
+                            ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
                     combatFadeOpacityDesc = {
@@ -465,11 +465,11 @@ local function GeneralOptionsTable()
                         min = 0,
                         max = 100,
                         step = 5,
-                        disabled = function() return not db.profile.combatFade.enabled end,
-                        get = function() return db.profile.combatFade.opacity end,
+                        disabled = function() return not db.profile.global.outOfCombatFade.enabled end,
+                        get = function() return db.profile.global.outOfCombatFade.opacity end,
                         set = function(_, val)
-                            db.profile.combatFade.opacity = val
-                            -- TODO: Combat fade not yet migrated to Layout.lua
+                            db.profile.global.outOfCombatFade.opacity = val
+                            ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
                     combatFadeOpacityReset = {
@@ -477,11 +477,9 @@ local function GeneralOptionsTable()
                         name = "X",
                         order = 5,
                         width = 0.3,
-                        hidden = function() return not IsValueChanged("combatFade.opacity") end,
-                        disabled = function() return not db.profile.combatFade.enabled end,
-                        func = MakeResetHandler("combatFade.opacity", function()
-                            -- TODO: Combat fade not yet migrated to Layout.lua
-                        end),
+                        hidden = function() return not IsValueChanged("global.outOfCombatFade.opacity") end,
+                        disabled = function() return not db.profile.global.outOfCombatFade.enabled end,
+                        func = MakeResetHandler("global.outOfCombatFade.opacity"),
                     },
                     spacer2 = {
                         type = "description",
@@ -498,11 +496,11 @@ local function GeneralOptionsTable()
                         name = "Except inside instances",
                         order = 8,
                         width = "full",
-                        disabled = function() return not db.profile.combatFade.enabled end,
-                        get = function() return db.profile.combatFade.exceptInInstance end,
+                        disabled = function() return not db.profile.global.outOfCombatFade.enabled end,
+                        get = function() return db.profile.global.outOfCombatFade.exceptInInstance end,
                         set = function(_, val)
-                            db.profile.combatFade.exceptInInstance = val
-                            -- TODO: Combat fade not yet migrated to Layout.lua
+                            db.profile.global.outOfCombatFade.exceptInInstance = val
+                            ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
                     exceptIfTargetCanBeAttackedEnabled ={
@@ -510,11 +508,11 @@ local function GeneralOptionsTable()
                         name = "Except if current target can be attacked",
                         order = 9,
                         width = "full",
-                        disabled = function() return not db.profile.combatFade.enabled end,
-                        get = function() return db.profile.combatFade.exceptIfTargetCanBeAttacked end,
+                        disabled = function() return not db.profile.global.outOfCombatFade.enabled end,
+                        get = function() return db.profile.global.outOfCombatFade.exceptIfTargetCanBeAttacked end,
                         set = function(_, val)
-                            db.profile.combatFade.exceptIfTargetCanBeAttacked = val
-                            -- TODO: Combat fade not yet migrated to Layout.lua
+                            db.profile.global.outOfCombatFade.exceptIfTargetCanBeAttacked = val
+                            ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
                 },

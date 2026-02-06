@@ -453,6 +453,33 @@ function ECM:RunMigrations(profile)
 
         profile.schemaVersion = 4
     end
+
+    if profile.schemaVersion < 5 then
+        -- Migration: combatFade -> global.outOfCombatFade
+        local legacyCombatFade = profile.combatFade
+        if legacyCombatFade then
+            profile.global = profile.global or {}
+            profile.global.outOfCombatFade = profile.global.outOfCombatFade or {}
+
+            local fadeConfig = profile.global.outOfCombatFade
+            if legacyCombatFade.enabled ~= nil then
+                fadeConfig.enabled = legacyCombatFade.enabled
+            end
+            if legacyCombatFade.opacity ~= nil then
+                fadeConfig.opacity = legacyCombatFade.opacity
+            end
+            if legacyCombatFade.exceptInInstance ~= nil then
+                fadeConfig.exceptInInstance = legacyCombatFade.exceptInInstance
+            end
+            if legacyCombatFade.exceptIfTargetCanBeAttacked ~= nil then
+                fadeConfig.exceptIfTargetCanBeAttacked = legacyCombatFade.exceptIfTargetCanBeAttacked
+            end
+
+            profile.combatFade = nil
+        end
+
+        profile.schemaVersion = 5
+    end
 end
 
 function ECM:OnInitialize()
