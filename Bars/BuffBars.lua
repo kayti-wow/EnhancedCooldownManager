@@ -146,12 +146,7 @@ local function GetSpellColor(spellName, cfg)
         end
     end
 
-    local selectedPalette = cfg.colors.selectedPalette
-    if selectedPalette and PALETTES[selectedPalette] then
-        return GetPaletteColor(barIndex, selectedPalette)
-    end
-
-    return cfg.colors.defaultColor or C.BUFFBARS_DEFAULT_COLOR
+    return nil
 end
 
 --- Updates bar cache with current bar metadata for Options UI.
@@ -697,7 +692,8 @@ end
 ---@return number r, number g, number b
 function BuffBars:GetSpellColor(spellName)
     local cfg = self.ModuleConfig
-    local color = GetSpellColor(spellName, cfg)
+    local color = GetSpellColor(spellName, cfg) or cfg.colors.defaultColor or C.BUFFBARS_DEFAULT_COLOR
+
     return color.r, color.g, color.b
 end
 
