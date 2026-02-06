@@ -69,6 +69,7 @@ BarFrame should work with any bar-style frame the addon is responsible for drawi
 - Concrete implementations of GetStatusBarValues
 - Custom ShouldShow logic
 - Class/spec-specific behavior (ticks, colors, visibility rules)
+- BuffBars icon handling is deterministic: use `child.Icon` only (no `IconFrame`/`IconButton` fallback probing, no dynamic atlas/region discovery loops).
 
 These responsibilities can change over time so update this document if so however responsibilities should not cross mixins by reaching into the internals of another. Always use public interfaces. Internal fields are prefixed by an underscore.
 

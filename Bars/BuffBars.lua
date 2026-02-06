@@ -154,6 +154,41 @@ local function GetBuffBarBackground(statusBar)
     return nil
 end
 
+--- Gets a deterministic icon region by index.
+---@param iconFrame Frame|nil
+---@param index number
+---@return Texture|nil
+local function GetIconRegion(iconFrame, index)
+    if not iconFrame or not iconFrame.GetRegions then
+        return nil
+    end
+
+    local region = select(index, iconFrame:GetRegions())
+    if region and region.IsObjectType and region:IsObjectType("Texture") then
+        return region
+    end
+
+    return nil
+end
+
+---@param iconFrame Frame|nil
+---@return Texture|nil
+local function GetBuffBarIconTexture(iconFrame)
+    return GetIconRegion(iconFrame, C.BUFFBARS_ICON_TEXTURE_REGION_INDEX)
+end
+
+---@param iconFrame Frame|nil
+---@return Texture|nil
+local function GetBuffBarIconOverlay(iconFrame)
+    return GetIconRegion(iconFrame, C.BUFFBARS_ICON_OVERLAY_REGION_INDEX)
+end
+
+---@param child ECM_BuffBarChild
+---@return Frame|nil
+local function GetBuffBarIconFrame(child)
+    return child and child.Icon or nil
+end
+
 --- Returns visible bar children sorted by Y position (top to bottom) to preserve edit mode order.
 --- GetChildren() returns in creation order, not visual order, so we must sort by position.
 ---@param viewer Frame The BuffBarCooldownViewer frame
@@ -214,23 +249,125 @@ end
 --- This must be called frequently because Blizzard resets these when cooldowns update.
 ---@param child ECM_BuffBarChild
 ---@param moduleConfig table
+local function HideIconGlows(child)
+    if not child then
+        return
+    end
+
+    local iconFrame = GetBuffBarIconFrame(child)
+    local function HideFrame(frame)
+        if frame and frame.Hide then
+            frame:Hide()
+        end
+    end
+
+    -- Keep this list explicit and ordered for deterministic behavior.
+    HideFrame(child.PandemicGlow)
+    HideFrame(child.IconGlow)
+    HideFrame(child.Glow)
+    HideFrame(child.SpellActivationAlert)
+    HideFrame(child.spellActivationAlert)
+
+    if iconFrame then
+        HideFrame(iconFrame.PandemicGlow)
+        HideFrame(iconFrame.IconGlow)
+        HideFrame(iconFrame.Glow)
+        HideFrame(iconFrame.SpellActivationAlert)
+        HideFrame(iconFrame.spellActivationAlert)
+
+        local overlay = GetBuffBarIconOverlay(iconFrame)
+        if overlay and overlay.Hide then
+            overlay:Hide()
+        end
+    end
+end
+
+---@param child ECM_BuffBarChild
+---@param moduleConfig table
+local ApplyStatusBarAnchors
+local ApplyBarNameInset
+
+---@param child ECM_BuffBarChild
+---@param moduleConfig table
 local function ApplyVisibilitySettings(child, moduleConfig)
     if not (child and child.Bar) then
         return
     end
 
-    local bar = child.Bar
-    local iconFrame = child.Icon or child.IconFrame or child.IconButton
-
     -- Apply visibility settings from buffBars config (default to shown)
+    local showIcon = moduleConfig and moduleConfig.showIcon ~= false
+    local iconFrame = GetBuffBarIconFrame(child)
     if iconFrame then
-        iconFrame:SetShown(moduleConfig and moduleConfig.showIcon ~= false)
+        iconFrame:SetShown(showIcon)
+        local iconTexture = GetBuffBarIconTexture(iconFrame)
+        if iconTexture and iconTexture.SetShown then
+            iconTexture:SetShown(showIcon)
+        end
+
+        local iconOverlay = GetBuffBarIconOverlay(iconFrame)
+        if iconOverlay and iconOverlay.SetShown then
+            iconOverlay:SetShown(showIcon)
+        end
     end
+
+    if not showIcon then
+        HideIconGlows(child)
+    end
+
+    local bar = child.Bar
     if bar.Name then
         bar.Name:SetShown(moduleConfig and moduleConfig.showSpellName ~= false)
     end
     if bar.Duration then
         bar.Duration:SetShown(moduleConfig and moduleConfig.showDuration ~= false)
+    end
+
+    ApplyStatusBarAnchors(child, iconFrame, nil)
+    ApplyBarNameInset(child, iconFrame, nil)
+end
+
+---@param child ECM_BuffBarChild
+---@param iconFrame Frame|nil
+---@param iconHeight number|nil
+ApplyStatusBarAnchors = function(child, iconFrame, iconHeight)
+    local bar = child and child.Bar
+    if not (bar and child) then
+        return
+    end
+
+    bar:ClearAllPoints()
+    if iconFrame and iconFrame:IsShown() then
+        bar:SetPoint("TOPLEFT", iconFrame, "TOPRIGHT", 0, 0)
+    else
+        bar:SetPoint("TOPLEFT", child, "TOPLEFT", 0, 0)
+    end
+    bar:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, 0)
+end
+
+---@param child ECM_BuffBarChild
+---@param iconFrame Frame|nil
+---@param iconHeight number|nil
+ApplyBarNameInset = function(child, iconFrame, iconHeight)
+    local bar = child and child.Bar
+    if not (bar and bar.Name) then
+        return
+    end
+
+    local leftInset = C.BUFFBARS_TEXT_PADDING
+    if iconFrame and iconFrame:IsShown() then
+        local resolvedIconHeight = iconHeight
+        if not resolvedIconHeight or resolvedIconHeight <= 0 then
+            resolvedIconHeight = iconFrame:GetHeight() or 0
+        end
+        leftInset = resolvedIconHeight + C.BUFFBARS_TEXT_PADDING
+    end
+
+    bar.Name:ClearAllPoints()
+    bar.Name:SetPoint("LEFT", bar, "LEFT", leftInset, 0)
+    if bar.Duration and bar.Duration:IsShown() then
+        bar.Name:SetPoint("RIGHT", bar.Duration, "LEFT", -C.BUFFBARS_TEXT_PADDING, 0)
+    else
+        bar.Name:SetPoint("RIGHT", bar, "RIGHT", -C.BUFFBARS_TEXT_PADDING, 0)
     end
 end
 
@@ -279,8 +416,8 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
         barBG:SetTexture(C.FALLBACK_TEXTURE)
         barBG:SetVertexColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a)
         barBG:ClearAllPoints()
-        barBG:SetPoint("TOPLEFT", bar, "TOPLEFT")
-        barBG:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
+        barBG:SetPoint("TOPLEFT", child, "TOPLEFT")
+        barBG:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT")
         barBG:SetDrawLayer("BACKGROUND", 0)
     end
 
@@ -295,7 +432,7 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
         child:SetHeight(height)
     end
 
-    local iconFrame = child.Icon or child.IconFrame or child.IconButton
+    local iconFrame = GetBuffBarIconFrame(child)
 
     -- Apply visibility settings (extracted to separate function for frequent reapplication)
     ApplyVisibilitySettings(child, moduleConfig)
@@ -312,13 +449,10 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
         iconFrame:SetPoint("TOPLEFT", child, "TOPLEFT", 0, 0)
     end
 
-    bar:ClearAllPoints()
-    if iconFrame and iconFrame:IsShown() then
-        bar:SetPoint("TOPLEFT", iconFrame, "TOPRIGHT", 0, 0)
-    else
-        bar:SetPoint("TOPLEFT", child, "TOPLEFT", 0, 0)
-    end
-    bar:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, 0)
+    ApplyStatusBarAnchors(child, iconFrame, height)
+
+    -- Keep the bar/background full-width (under icon), but inset spell text when icon is shown.
+    ApplyBarNameInset(child, iconFrame, height)
 
     -- Mark as styled
     child.__ecmStyled = true

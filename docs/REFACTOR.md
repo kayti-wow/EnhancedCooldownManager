@@ -98,9 +98,9 @@ The addon is undergoing a significant refactor to introduce a mixin-based archit
 - Does NOT use BarFrame because it manages Blizzard-created child bars, not a single StatusBar
 - Override `CreateFrame()` to return existing Blizzard viewer
 - Override `UpdateLayout()` to position viewer and style all visible children
+- BuffBars icon container is treated as deterministic (`child.Icon`); no cross-object fallback probing
 - Color system supports:
   - Per-bar custom colors (stored per class/spec)
-  - Palette-based coloring
   - Default fallback color
 
 **Known Issues:**

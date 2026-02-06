@@ -189,6 +189,46 @@ local function UpdateIconCooldown(icon)
     end
 end
 
+--- Gets cooldown number font info from a Blizzard utility cooldown icon.
+--- @param utilityViewer Frame
+--- @return string|nil fontPath, number|nil fontSize, string|nil fontFlags
+local function GetSiblingCooldownNumberFont(utilityViewer)
+    if not utilityViewer then
+        return nil, nil, nil
+    end
+
+    for _, child in ipairs({ utilityViewer:GetChildren() }) do
+        local cooldown = child and child.Cooldown
+        if cooldown and cooldown.GetRegions then
+            local region = select(1, cooldown:GetRegions())
+            if region and region.IsObjectType and region:IsObjectType("FontString") and region.GetFont then
+                local fontPath, fontSize, fontFlags = region:GetFont()
+                if fontPath and fontSize then
+                    return fontPath, fontSize, fontFlags
+                end
+            end
+        end
+    end
+
+    return nil, nil, nil
+end
+
+--- Applies cooldown number font settings to one icon cooldown.
+--- @param icon ECM_ItemIcon
+--- @param fontPath string
+--- @param fontSize number
+--- @param fontFlags string|nil
+local function ApplyCooldownNumberFont(icon, fontPath, fontSize, fontFlags)
+    if not (icon and icon.Cooldown and icon.Cooldown.GetRegions) then
+        return
+    end
+
+    local region = select(1, icon.Cooldown:GetRegions())
+    if region and region.IsObjectType and region:IsObjectType("FontString") and region.SetFont then
+        region:SetFont(fontPath, fontSize, fontFlags)
+    end
+end
+
 --- Restores UtilityCooldownViewer to its original position.
 ---@param self ECM_ItemIconsModule The module instance.
 local function RestoreViewerPosition(self)
@@ -213,48 +253,112 @@ end
 ---@return number iconSize The base icon size in pixels (unscaled).
 ---@return number spacing The base spacing between icons in pixels (unscaled).
 ---@return number scale The icon scale factor from Edit Mode (applied to individual icons).
+---@return boolean isStable True when spacing was measured from valid live geometry.
+---@return table debugInfo Measurement debug payload for logs.
 local function GetUtilityViewerLayout()
     local viewer = _G[C.VIEWER_UTILITY]
     if not viewer or not viewer:IsShown() then
-        return C.DEFAULT_ITEM_ICON_SIZE, C.DEFAULT_ITEM_ICON_SPACING, 1.0
+        return C.DEFAULT_ITEM_ICON_SIZE, C.DEFAULT_ITEM_ICON_SPACING, 1.0, false, {
+            reason = "viewer_hidden_or_missing",
+            measuredSpacing = nil,
+            gap = nil,
+            left = nil,
+            right = nil,
+        }
     end
 
     local children = { viewer:GetChildren() }
-    local iconSize = nil
+    local iconSize = C.DEFAULT_ITEM_ICON_SIZE
     local iconScale = 1.0
     local spacing = C.DEFAULT_ITEM_ICON_SPACING
+    local isStable = false
+    local debugInfo = {
+        reason = "no_pair",
+        measuredSpacing = nil,
+        gap = nil,
+        left = nil,
+        right = nil,
+        childScale = nil,
+        maxSpacing = nil,
+    }
 
     -- Find first cooldown icon to get size and scale
     -- Edit Mode "Icon Size" applies scale to individual icons, not the viewer
     for _, child in ipairs(children) do
         if child and child:IsShown() and child.GetSpellID then
-            iconSize = child:GetWidth()    -- base size (unaffected by child scale)
+            iconSize = child:GetWidth() or iconSize -- base size (unaffected by child scale)
             iconScale = child:GetScale() or 1.0
             break
         end
     end
 
-    -- Calculate spacing by measuring screen-space gap between two visible icons
-    local prev = nil
+    -- Calculate spacing from adjacent icons sorted by screen position.
+    -- GetChildren() order is not guaranteed to be visual order.
+    local measuredIcons = {}
     for _, child in ipairs(children) do
         if child and child:IsShown() and child.GetSpellID then
-            if prev then
-                local gap = child:GetLeft() - prev:GetRight()
-                if gap > 0 then
-                    -- Convert screen-space gap to icon-local coords.
-                    -- Using effective scale here over-inflates spacing due to UI/root scale.
-                    local iconScale = child:GetScale() or 1.0
-                    if iconScale > 0 then
-                        spacing = gap / iconScale
-                    end
-                end
-                break
+            local left = child:GetLeft()
+            local right = child:GetRight()
+            if left and right then
+                measuredIcons[#measuredIcons + 1] = {
+                    left = left,
+                    right = right,
+                    scale = child:GetScale() or 1.0,
+                }
             end
-            prev = child
         end
     end
 
-    return iconSize or C.DEFAULT_ITEM_ICON_SIZE, spacing, iconScale
+    if #measuredIcons < 2 then
+        debugInfo.reason = "no_pair"
+        return iconSize or C.DEFAULT_ITEM_ICON_SIZE, spacing, iconScale, isStable, debugInfo
+    end
+
+    table.sort(measuredIcons, function(a, b)
+        return a.left < b.left
+    end)
+
+    local maxSpacing = iconSize * C.ITEM_ICON_MAX_SPACING_FACTOR
+    debugInfo.maxSpacing = maxSpacing
+
+    local bestSpacing = nil
+    local bestGap = nil
+    local bestLeft = nil
+    local bestRight = nil
+    local bestScale = nil
+
+    for i = 2, #measuredIcons do
+        local prev = measuredIcons[i - 1]
+        local curr = measuredIcons[i]
+        local gap = curr.left - prev.right
+        if gap >= 0 and curr.scale > 0 then
+            local measuredSpacing = gap / curr.scale
+            if measuredSpacing >= 0 and measuredSpacing <= maxSpacing then
+                if not bestSpacing or measuredSpacing < bestSpacing then
+                    bestSpacing = measuredSpacing
+                    bestGap = gap
+                    bestLeft = curr.left
+                    bestRight = prev.right
+                    bestScale = curr.scale
+                end
+            end
+        end
+    end
+
+    if bestSpacing then
+        spacing = bestSpacing
+        isStable = true
+        debugInfo.reason = "measured_ok_adjacent"
+        debugInfo.measuredSpacing = bestSpacing
+        debugInfo.gap = bestGap
+        debugInfo.left = bestLeft
+        debugInfo.right = bestRight
+        debugInfo.childScale = bestScale
+    else
+        debugInfo.reason = "no_valid_adjacent_gap"
+    end
+
+    return iconSize or C.DEFAULT_ITEM_ICON_SIZE, spacing, iconScale, isStable, debugInfo
 end
 
 --------------------------------------------------------------------------------
@@ -319,10 +423,12 @@ function ItemIcons:UpdateLayout()
         return false
     end
 
+    local siblingFontPath, siblingFontSize, siblingFontFlags = GetSiblingCooldownNumberFont(utilityViewer)
+
     -- Get display items
     local items = GetDisplayItems(moduleConfig)
     local numItems = #items
-    local iconSize, spacing, viewerScale = GetUtilityViewerLayout()
+    local iconSize, spacing, viewerScale, layoutStable, layoutDebug = GetUtilityViewerLayout()
 
     -- Apply the same scale as the viewer to match Edit Mode settings
     frame:SetScale(viewerScale)
@@ -344,9 +450,11 @@ function ItemIcons:UpdateLayout()
     local totalHeight = iconSize
     frame:SetSize(totalWidth, totalHeight)
 
-    -- Calculate offset to keep visual midpoint centered
-    -- The item container width plus the gap between viewer and first icon
-    local itemContainerWidth = totalWidth + spacing
+    -- Calculate offset to keep visual midpoint centered.
+    -- The icon frame is scaled, so midpoint math must use the scaled width.
+    -- The anchor gap between viewer and first icon remains in parent-space pixels.
+    local scaledContainerWidth = totalWidth * viewerScale
+    local itemContainerWidth = scaledContainerWidth + spacing
     local viewerOffsetX = -(itemContainerWidth / 2)
 
     -- Store original viewer position on first call, then apply offset
@@ -382,6 +490,10 @@ function ItemIcons:UpdateLayout()
         icon:SetPoint("LEFT", frame, "LEFT", xOffset, 0)
         icon:Show()
 
+        if siblingFontPath and siblingFontSize then
+            ApplyCooldownNumberFont(icon, siblingFontPath, siblingFontSize, siblingFontFlags)
+        end
+
         xOffset = xOffset + iconSize + spacing
     end
 
@@ -394,8 +506,24 @@ function ItemIcons:UpdateLayout()
         numItems = numItems,
         iconSize = iconSize,
         spacing = spacing,
+        layoutStable = layoutStable,
         totalWidth = totalWidth,
+        layoutDebug = layoutDebug,
     })
+
+    -- TODO: there really must be a better way to handling this. I doubt this level of shit-hackery is required.
+    if layoutStable then
+        self._layoutRetryCount = 0
+    elseif not self._layoutRetryPending and (self._layoutRetryCount or 0) < C.ITEM_ICON_LAYOUT_REMEASURE_ATTEMPTS then
+        self._layoutRetryPending = true
+        self._layoutRetryCount = (self._layoutRetryCount or 0) + 1
+        C_Timer.After(C.ITEM_ICON_LAYOUT_REMEASURE_DELAY, function()
+            self._layoutRetryPending = nil
+            if self:IsEnabled() then
+                self:ScheduleLayoutUpdate()
+            end
+        end)
+    end
 
     -- Update cooldowns after layout is complete (CLAUDE.md mandate)
     self:ThrottledRefresh()
@@ -514,6 +642,8 @@ function ItemIcons:OnDisable()
 
     -- Clear stale position state so it's recaptured if re-enabled
     self._viewerOriginalPoint = nil
+    self._layoutRetryPending = nil
+    self._layoutRetryCount = 0
 
     if self.InnerFrame then
         self.InnerFrame:Hide()

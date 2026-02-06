@@ -229,7 +229,7 @@ local defaults = {
             },
         },
         itemIcons = {
-            enabled = false,
+            enabled = true,
             showTrinket1 = true,
             showTrinket2 = true,
             showCombatPotion = true,

@@ -37,6 +37,9 @@ local constants = {
     RESOURCEBAR_VENGEANCE_SOULS_MAX = 6 ,
     RUNEBAR_MAX_RUNES = 6,
     BUFFBARS_DEFAULT_COLOR = { r = 0.9, g = 0.9, b = 0.9, a = 1 },
+    BUFFBARS_ICON_TEXTURE_REGION_INDEX = 1,  -- TODO: this and the following line might need to go.
+    BUFFBARS_ICON_OVERLAY_REGION_INDEX = 3,
+    BUFFBARS_TEXT_PADDING = 4,
     GROUP_INSTANCE_TYPES = { party = true, raid = true, arena = true, pvp = true, delve = true }, -- keyed by IsInInstance()[2]
 
     DEMONHUNTER_CLASS_ID = 12,
@@ -58,6 +61,12 @@ local constants = {
     DEFAULT_ITEM_ICON_SIZE = 32,
     DEFAULT_ITEM_ICON_SPACING = 2,
     ITEM_ICON_BORDER_SCALE = 1.35,
+
+    -- Guardrail for measured utility icon spacing (as a factor of icon width)
+    -- TODO: this has to go. it's gross.
+    ITEM_ICON_MAX_SPACING_FACTOR = 0.6,
+    ITEM_ICON_LAYOUT_REMEASURE_DELAY = 0.1,
+    ITEM_ICON_LAYOUT_REMEASURE_ATTEMPTS = 2,
 
     -- Configuration section names
     CONFIG_SECTION_GLOBAL = "global",
