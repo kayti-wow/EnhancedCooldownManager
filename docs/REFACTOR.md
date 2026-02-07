@@ -227,12 +227,12 @@ This separation allows:
 **Trade-off:** Hook reliability issues, requires defensive coding
 
 ### ItemIcons Viewer Positioning
-**Decision:** ItemIcons no longer re-anchors `UtilityCooldownViewer`; it anchors only its own icon container relative to the viewer.
+**Decision:** ItemIcons applies a temporary midpoint-preserving X offset to `UtilityCooldownViewer` while ItemIcons are visible, and restores the original viewer anchor when hidden.
 **Rationale:**
-- Avoids persistent anchor state and snap-back behavior when leaving Blizzard Edit Mode.
-- Keeps Blizzard-owned frame placement fully owned by Blizzard/Edit Mode.
-- Simplifies layout logic by removing restore/original-position bookkeeping.
-**Trade-off:** Viewer + icons no longer attempt midpoint recentering as a combined block.
+- Maintains visual midpoint of the combined `UtilityCooldownViewer + ItemIcons` block.
+- Preserves Blizzard/Edit Mode ownership by restoring original anchor before/while editing.
+- Supports recapturing the viewer baseline after Edit Mode repositioning.
+**Trade-off:** Requires careful restore/recapture bookkeeping around Edit Mode transitions.
 
 ## Future Considerations
 

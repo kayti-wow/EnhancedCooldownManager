@@ -230,6 +230,48 @@ local function ApplyCooldownNumberFont(icon, fontPath, fontSize, fontFlags)
     end
 end
 
+--- Restores UtilityCooldownViewer to its original position.
+---@param self ECM_ItemIconsModule
+local function RestoreViewerPosition(self)
+    if not self._viewerOriginalPoint then
+        return
+    end
+
+    local utilityViewer = _G[C.VIEWER_UTILITY]
+    if not utilityViewer then
+        return
+    end
+
+    local orig = self._viewerOriginalPoint
+    utilityViewer:ClearAllPoints()
+    utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4], orig[5])
+end
+
+--- Applies midpoint-preserving X offset to UtilityCooldownViewer for added item icons.
+---@param self ECM_ItemIconsModule
+---@param utilityViewer Frame
+---@param totalWidth number Container width (unscaled) for visible item icons.
+---@param spacing number Gap between viewer and item icons (unscaled).
+---@param viewerScale number Scale applied to UtilityCooldownViewer icons.
+local function ApplyViewerMidpointOffset(self, utilityViewer, totalWidth, spacing, viewerScale)
+    if not utilityViewer then
+        return
+    end
+
+    if not self._viewerOriginalPoint then
+        local point, relativeTo, relativePoint, x, y = utilityViewer:GetPoint()
+        self._viewerOriginalPoint = { point, relativeTo, relativePoint, x or 0, y or 0 }
+    end
+
+    local scaledContainerWidth = totalWidth * viewerScale
+    local itemBlockWidth = scaledContainerWidth + spacing
+    local viewerOffsetX = -(itemBlockWidth / 2)
+    local orig = self._viewerOriginalPoint
+
+    utilityViewer:ClearAllPoints()
+    utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4] + viewerOffsetX, orig[5])
+end
+
 --- Returns whether Blizzard Edit Mode is currently active.
 ---@param self ECM_ItemIconsModule|nil
 ---@return boolean
@@ -418,7 +460,7 @@ local function EnsurePreviewControlRegistered()
         local frame = CreateFrame("Frame", nil, UIParent)
         frame:Hide()
         local image = frame:CreateTexture(nil, "BACKGROUND")
-        image:SetPoint("CENTER")
+        image:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
 
         local widget = {
             frame = frame,
@@ -500,17 +542,89 @@ local function GetItemPreviewTexture(itemId)
     return C.ITEM_ICONS_OPTIONS_FALLBACK_TEXTURE
 end
 
+--- Gets alpha value for a potion preview icon.
+---@param itemId number
+---@param activeItemId number|nil
+---@return number
+local function GetPotionIconAlpha(itemId, activeItemId)
+    if itemId == activeItemId then
+        return 1
+    end
+
+    return C.ITEM_ICONS_OPTIONS_INACTIVE_ALPHA
+end
+
+--- Returns potion item IDs that are enabled for options display.
+---@param optionsList table[]|nil
+---@return number[]
+local function GetOptionsPreviewItemIds(optionsList)
+    local itemIds = {}
+    if not optionsList then
+        return itemIds
+    end
+
+    for _, entry in ipairs(optionsList) do
+        if entry and entry.showInOptions and entry.itemId then
+            itemIds[#itemIds + 1] = entry.itemId
+        end
+    end
+
+    return itemIds
+end
+
 --- Builds Item Icons options UI args.
 ---@return table args AceConfig args for Item Icons options.
 function ItemIcons:GetOptionsArgs()
     EnsurePreviewControlRegistered()
+
+    local orderStep = C.ITEM_ICONS_OPTIONS_ROW_SPACER_ORDER_STEP
+    local rowWidth = C.ITEM_ICONS_OPTIONS_ROW_WIDTH
+    local toggleWidth = C.ITEM_ICONS_OPTIONS_TOGGLE_WIDTH
+    local previewWidth = C.ITEM_ICONS_OPTIONS_PREVIEW_WIDTH
+    local staticPreviewWidth = C.ITEM_ICONS_OPTIONS_STATIC_PREVIEW_WIDTH
+    local arrowWidth = C.ITEM_ICONS_OPTIONS_ARROW_WIDTH
+
+    local function BuildRowSpacer(order)
+        return {
+            type = "description",
+            name = " ",
+            order = order,
+            width = "full",
+        }
+    end
+
+    local function BuildRowFiller(order, width)
+        if width <= 0 then
+            return nil
+        end
+
+        return {
+            type = "description",
+            name = " ",
+            order = order,
+            width = width,
+        }
+    end
+
+    local function BuildArrow(order)
+        return {
+            type = "description",
+            name = C.ITEM_ICONS_OPTIONS_ARROW_TEXT,
+            order = order,
+            width = arrowWidth,
+            fontSize = "medium",
+            disabled = function()
+                return IsOptionsDisabled(self)
+            end,
+        }
+    end
 
     local function BuildStaticPreview(order, textureProvider)
         return {
             type = "description",
             name = " ",
             order = order,
-            width = 0.3,
+            width = staticPreviewWidth,
             dialogControl = PREVIEW_CONTROL_TYPE,
             image = function()
                 return textureProvider()
@@ -523,12 +637,12 @@ function ItemIcons:GetOptionsArgs()
         }
     end
 
-    local function BuildPriorityPreview(order, itemId, priorityList)
+    local function BuildPriorityPreview(order, itemId, runtimePriorityList)
         return {
             type = "description",
             name = " ",
             order = order,
-            width = 0.25,
+            width = previewWidth,
             dialogControl = PREVIEW_CONTROL_TYPE,
             image = function()
                 return GetItemPreviewTexture(itemId)
@@ -540,13 +654,14 @@ function ItemIcons:GetOptionsArgs()
                     return true
                 end
 
-                local activeItemId = GetActivePriorityItemId(priorityList)
-                return activeItemId ~= itemId
+                local activeItemId = GetActivePriorityItemId(runtimePriorityList)
+                return GetPotionIconAlpha(itemId, activeItemId) < 1
             end,
         }
     end
 
-    return {
+    local staticFillerWidth = math.max(0, rowWidth - toggleWidth - staticPreviewWidth)
+    local args = {
         description = {
             type = "description",
             name = "Displays icons for equipped on-use trinkets and selected consumables next to the Utility Cooldown Viewer.",
@@ -584,7 +699,7 @@ function ItemIcons:GetOptionsArgs()
             type = "toggle",
             name = "Show first trinket",
             order = 2,
-            width = 1.7,
+            width = toggleWidth,
             disabled = function()
                 return IsOptionsDisabled(self)
             end,
@@ -599,6 +714,7 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        showTrinket1Filler = BuildRowFiller(2 + orderStep, staticFillerWidth),
         showTrinket1Preview = BuildStaticPreview(2.1, function()
             return GetItemPreviewTexture(C.ITEM_ICONS_OPTIONS_TRINKET1_ICON_ID)
         end),
@@ -606,7 +722,7 @@ function ItemIcons:GetOptionsArgs()
             type = "toggle",
             name = "Show second trinket",
             order = 3,
-            width = 1.7,
+            width = toggleWidth,
             disabled = function()
                 return IsOptionsDisabled(self)
             end,
@@ -621,14 +737,16 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        showTrinket2Filler = BuildRowFiller(3 + orderStep, staticFillerWidth),
         showTrinket2Preview = BuildStaticPreview(3.1, function()
             return GetItemPreviewTexture(C.ITEM_ICONS_OPTIONS_TRINKET2_ICON_ID)
         end),
+        trinketSpacer = BuildRowSpacer(3.2),
         showHealthPotion = {
             type = "toggle",
             name = "Show health potions",
             order = 4,
-            width = "full",
+            width = toggleWidth,
             disabled = function()
                 return IsOptionsDisabled(self)
             end,
@@ -643,17 +761,11 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
-        healthPotionPreview1 = BuildPriorityPreview(4.1, C.HEALTH_POTIONS[1], C.HEALTH_POTIONS),
-        healthPotionPreview2 = BuildPriorityPreview(4.2, C.HEALTH_POTIONS[2], C.HEALTH_POTIONS),
-        healthPotionPreview3 = BuildPriorityPreview(4.3, C.HEALTH_POTIONS[3], C.HEALTH_POTIONS),
-        healthPotionPreview4 = BuildPriorityPreview(4.4, C.HEALTH_POTIONS[4], C.HEALTH_POTIONS),
-        healthPotionPreview5 = BuildPriorityPreview(4.5, C.HEALTH_POTIONS[5], C.HEALTH_POTIONS),
-        healthPotionPreview6 = BuildPriorityPreview(4.6, C.HEALTH_POTIONS[6], C.HEALTH_POTIONS),
         showCombatPotion = {
             type = "toggle",
             name = "Show combat potions",
             order = 5,
-            width = "full",
+            width = toggleWidth,
             disabled = function()
                 return IsOptionsDisabled(self)
             end,
@@ -668,14 +780,12 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
-        combatPotionPreview1 = BuildPriorityPreview(5.1, C.COMBAT_POTIONS[1], C.COMBAT_POTIONS),
-        combatPotionPreview2 = BuildPriorityPreview(5.2, C.COMBAT_POTIONS[2], C.COMBAT_POTIONS),
-        combatPotionPreview3 = BuildPriorityPreview(5.3, C.COMBAT_POTIONS[3], C.COMBAT_POTIONS),
+        combatSpacer = BuildRowSpacer(5.9),
         showHealthstone = {
             type = "toggle",
             name = "Show healthstone",
             order = 6,
-            width = 1.7,
+            width = toggleWidth,
             disabled = function()
                 return IsOptionsDisabled(self)
             end,
@@ -690,10 +800,40 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        showHealthstoneFiller = BuildRowFiller(6 + orderStep, staticFillerWidth),
         showHealthstonePreview = BuildStaticPreview(6.1, function()
             return GetItemPreviewTexture(C.HEALTHSTONE_ITEM_ID)
         end),
     }
+
+    local function AddPotionPreviewRow(prefix, baseOrder, runtimePriorityList, optionsList)
+        local shownItemIds = GetOptionsPreviewItemIds(optionsList)
+        local shownCount = #shownItemIds
+        local chainWidth = (shownCount * previewWidth) + (math.max(0, shownCount - 1) * arrowWidth)
+        local fillerWidth = math.max(0, rowWidth - toggleWidth - chainWidth)
+        local order = baseOrder + orderStep
+
+        local filler = BuildRowFiller(order, fillerWidth)
+        if filler then
+            args[prefix .. "PreviewFiller"] = filler
+            order = order + orderStep
+        end
+
+        for index, itemId in ipairs(shownItemIds) do
+            args[prefix .. "Preview" .. index] = BuildPriorityPreview(order, itemId, runtimePriorityList)
+            order = order + orderStep
+
+            if index < shownCount then
+                args[prefix .. "Arrow" .. index] = BuildArrow(order)
+                order = order + orderStep
+            end
+        end
+    end
+
+    AddPotionPreviewRow("healthPotion", 4, C.HEALTH_POTIONS, C.HEALTH_POTIONS_OPTIONS)
+    AddPotionPreviewRow("combatPotion", 5, C.COMBAT_POTIONS, C.COMBAT_POTIONS_OPTIONS)
+
+    return args
 end
 
 --- Builds the Item Icons options group.
@@ -762,22 +902,27 @@ function ItemIcons:UpdateLayout()
 
     local moduleConfig = self.ModuleConfig
     if not moduleConfig then
+        RestoreViewerPosition(self)
         return false
     end
 
     if IsEditModeActive(self) then
+        RestoreViewerPosition(self)
+        self._viewerOriginalPoint = nil
         frame:Hide()
         return false
     end
 
     -- Check visibility
     if not self:ShouldShow() then
+        RestoreViewerPosition(self)
         frame:Hide()
         return false
     end
 
     local utilityViewer = _G[C.VIEWER_UTILITY]
     if not utilityViewer then
+        RestoreViewerPosition(self)
         frame:Hide()
         return false
     end
@@ -799,6 +944,7 @@ function ItemIcons:UpdateLayout()
 
     -- If no items, hide container
     if numItems == 0 then
+        RestoreViewerPosition(self)
         frame:Hide()
         return false
     end
@@ -807,6 +953,7 @@ function ItemIcons:UpdateLayout()
     local totalWidth = (numItems * iconSize) + ((numItems - 1) * spacing)
     local totalHeight = iconSize
     frame:SetSize(totalWidth, totalHeight)
+    ApplyViewerMidpointOffset(self, utilityViewer, totalWidth, spacing, viewerScale)
 
     -- Position and configure each icon
     local xOffset = 0
@@ -934,6 +1081,9 @@ function ItemIcons:HookEditMode()
         if self.InnerFrame then
             self.InnerFrame:Hide()
         end
+        if self:IsEnabled() then
+            self:ScheduleLayoutUpdate()
+        end
     end)
 
     editModeManager:HookScript("OnHide", function()
@@ -960,6 +1110,9 @@ function ItemIcons:HookUtilityViewer()
     utilityViewer:HookScript("OnHide", function()
         if self.InnerFrame then
             self.InnerFrame:Hide()
+        end
+        if self:IsEnabled() then
+            self:ScheduleLayoutUpdate()
         end
     end)
 
@@ -1000,10 +1153,13 @@ end
 function ItemIcons:OnDisable()
     self:UnregisterAllEvents()
 
+    self:UpdateLayout()
+
     if self.IsECMFrame and ECM.UnregisterFrame then
         ECM.UnregisterFrame(self)
     end
 
+    self._viewerOriginalPoint = nil
     self._isEditModeActive = nil
     self._layoutRetryPending = nil
     self._layoutRetryCount = 0
