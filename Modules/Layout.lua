@@ -219,6 +219,21 @@ local function UnregisterFrame(frame)
     ECM.Log("Layout", "Frame unregistered", name)
 end
 
+--- Rebinds config references for all registered ECMFrames.
+--- @param configRoot table|nil Active profile root
+local function RebindAllFrameConfigs(configRoot)
+    local root = configRoot or (ECM.db and ECM.db.profile)
+    if not root then
+        return
+    end
+
+    for _, ecmFrame in pairs(_ecmFrames) do
+        if ecmFrame and ecmFrame.SetConfig then
+            ecmFrame:SetConfig(root)
+        end
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Event Handling
 --------------------------------------------------------------------------------
@@ -273,3 +288,4 @@ end)
 ECM.RegisterFrame = RegisterFrame
 ECM.UnregisterFrame = UnregisterFrame
 ECM.ScheduleLayoutUpdate = ScheduleLayoutUpdate
+ECM.RebindAllFrameConfigs = RebindAllFrameConfigs

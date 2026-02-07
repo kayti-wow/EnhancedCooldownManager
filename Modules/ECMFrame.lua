@@ -389,8 +389,7 @@ function ECMFrame.AddMixin(target, name)
     target.IsHidden = false
     target.InnerFrame = target:CreateFrame()
     target.IsECMFrame = true
-    target.GlobalConfig = configRoot and configRoot[C.CONFIG_SECTION_GLOBAL]
-    target.ModuleConfig = configRoot and configRoot[target._configKey]
+    target:SetConfig(configRoot)
 
     -- Registering this frame allows us to receive layout update events such as global hideWhenMounted.
     ECM.RegisterFrame(target)

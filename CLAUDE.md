@@ -24,8 +24,8 @@ The intention is to use mixins as a kind of class hierarchy:
 | IsHidden      | boolean\|nil      | Whether the frame is currently hidden. |
 | IsECMFrame    | boolean           | True to identify this as an ECMFrame mixin instance. |
 | InnerFrame    | Frame\|nil        | Inner WoW frame owned by this mixin. |
-| GlobalConfig  | table\|nil        | Direct reference to the global config section. Access via `self.GlobalConfig`. |
-| ModuleConfig  | table\|nil        | Direct reference to this module's config section. Access via `self.ModuleConfig`. |
+| GlobalConfig  | table\|nil        | Current global config section reference. Access via `self.GlobalConfig`. Rebound on profile changes via `SetConfig`. |
+| ModuleConfig  | table\|nil        | Current module config section reference. Access via `self.ModuleConfig`. Rebound on profile changes via `SetConfig`. |
 | Name          | string            | Name of the frame. |
 | GetNextChainAnchor | fun(self: ECMFrame, frameName: string\|nil): Frame, boolean | Gets the next valid anchor in the chain. |
 | ShouldShow    | fun(self: ECMFrame): boolean | Determines whether the frame should be shown at this moment. |

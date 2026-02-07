@@ -18,7 +18,7 @@ The addon is undergoing a significant refactor to introduce a mixin-based archit
 - Throttling and debouncing for layout updates
 
 **Key Design Decisions:**
-- Uses direct field access (`self.GlobalConfig`, `self.ModuleConfig`) rather than getter methods for simplicity
+- Uses direct field access (`self.GlobalConfig`, `self.ModuleConfig`) for simplicity, with references rebound via `SetConfig()` on profile lifecycle changes
 - Layout caching in `_layoutCache` prevents redundant frame operations
 - `UpdateLayout()` is the single entry point for all layout changes
 - Supports two anchor modes: CHAIN (auto-stacking) and FREE (manual positioning)
