@@ -7,6 +7,7 @@ local _, ns = ...
 local ECM = ns.Addon
 local Util = ns.Util
 local C = ns.Constants
+local AceGUI = LibStub("AceGUI-3.0", true)
 
 local ECMFrame = ns.Mixins.ECMFrame
 
@@ -229,21 +230,16 @@ local function ApplyCooldownNumberFont(icon, fontPath, fontSize, fontFlags)
     end
 end
 
---- Restores UtilityCooldownViewer to its original position.
----@param self ECM_ItemIconsModule The module instance.
-local function RestoreViewerPosition(self)
-    if not self._viewerOriginalPoint then
-        return
+--- Returns whether Blizzard Edit Mode is currently active.
+---@param self ECM_ItemIconsModule|nil
+---@return boolean
+local function IsEditModeActive(self)
+    if self and self._isEditModeActive ~= nil then
+        return self._isEditModeActive
     end
 
-    local utilityViewer = _G[C.VIEWER_UTILITY]
-    if not utilityViewer then
-        return
-    end
-
-    local orig = self._viewerOriginalPoint
-    utilityViewer:ClearAllPoints()
-    utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4], orig[5])
+    local editModeManager = _G.EditModeManagerFrame
+    return editModeManager and editModeManager:IsShown() or false
 end
 
 --- Gets the icon size, spacing, and scale from UtilityCooldownViewer.
@@ -365,6 +361,82 @@ end
 -- Options UI
 --------------------------------------------------------------------------------
 
+local PREVIEW_CONTROL_TYPE = "ECM_ItemIconPreview"
+local PREVIEW_CONTROL_VERSION = 1
+local _previewControlRegistered = false
+
+--- Registers a lightweight icon-only AceGUI control for options previews.
+local function EnsurePreviewControlRegistered()
+    if _previewControlRegistered or not AceGUI then
+        return
+    end
+
+    local currentVersion = AceGUI:GetWidgetVersion(PREVIEW_CONTROL_TYPE) or 0
+    if currentVersion >= PREVIEW_CONTROL_VERSION then
+        _previewControlRegistered = true
+        return
+    end
+
+    local methods = {
+        OnAcquire = function(widget)
+            local size = C.ITEM_ICONS_OPTIONS_PREVIEW_SIZE
+            widget.frame:SetHeight(size)
+            widget.frame.height = size
+            widget:SetImage(nil)
+            widget:SetImageSize(size, size)
+            widget:SetDisabled(false)
+        end,
+        SetText = function()
+        end,
+        SetFontObject = function()
+        end,
+        SetImage = function(widget, texture, ...)
+            local image = widget.image
+            image:SetTexture(texture)
+            local n = select("#", ...)
+            if n == 4 or n == 8 then
+                image:SetTexCoord(...)
+            else
+                image:SetTexCoord(0, 1, 0, 1)
+            end
+        end,
+        SetImageSize = function(widget, width, height)
+            widget.image:SetSize(width, height)
+            widget.frame:SetHeight(height)
+            widget.frame.height = height
+        end,
+        SetDisabled = function(widget, disabled)
+            if disabled then
+                widget.image:SetAlpha(C.ITEM_ICONS_OPTIONS_INACTIVE_ALPHA)
+            else
+                widget.image:SetAlpha(1)
+            end
+        end,
+    }
+
+    local function Constructor()
+        local frame = CreateFrame("Frame", nil, UIParent)
+        frame:Hide()
+        local image = frame:CreateTexture(nil, "BACKGROUND")
+        image:SetPoint("CENTER")
+
+        local widget = {
+            frame = frame,
+            image = image,
+            type = PREVIEW_CONTROL_TYPE,
+        }
+
+        for method, func in pairs(methods) do
+            widget[method] = func
+        end
+
+        return AceGUI:RegisterAsWidget(widget)
+    end
+
+    AceGUI:RegisterWidgetType(PREVIEW_CONTROL_TYPE, Constructor, PREVIEW_CONTROL_VERSION)
+    _previewControlRegistered = true
+end
+
 --- Gets a module config value for options with a fallback default.
 ---@param self ECM_ItemIconsModule
 ---@param key string
@@ -389,9 +461,91 @@ local function RequestLayoutUpdate(self)
     end
 end
 
+--- Returns true when non-enable options should be disabled.
+---@param self ECM_ItemIconsModule
+---@return boolean
+local function IsOptionsDisabled(self)
+    return not GetOptionValue(self, "enabled", true)
+end
+
+--- Gets the first currently-owned item from a priority list, falling back to top priority.
+---@param priorityList number[]
+---@return number|nil
+local function GetActivePriorityItemId(priorityList)
+    local firstItemId = priorityList and priorityList[1]
+    if not priorityList then
+        return nil
+    end
+
+    for _, itemId in ipairs(priorityList) do
+        if C_Item.GetItemCount(itemId) > 0 then
+            return itemId
+        end
+    end
+
+    return firstItemId
+end
+
+--- Gets a display texture for an item icon preview.
+---@param itemId number|nil
+---@return string|number
+local function GetItemPreviewTexture(itemId)
+    if itemId then
+        local texture = C_Item.GetItemIconByID(itemId)
+        if texture then
+            return texture
+        end
+    end
+
+    return C.ITEM_ICONS_OPTIONS_FALLBACK_TEXTURE
+end
+
 --- Builds Item Icons options UI args.
 ---@return table args AceConfig args for Item Icons options.
 function ItemIcons:GetOptionsArgs()
+    EnsurePreviewControlRegistered()
+
+    local function BuildStaticPreview(order, textureProvider)
+        return {
+            type = "description",
+            name = " ",
+            order = order,
+            width = 0.3,
+            dialogControl = PREVIEW_CONTROL_TYPE,
+            image = function()
+                return textureProvider()
+            end,
+            imageWidth = C.ITEM_ICONS_OPTIONS_PREVIEW_SIZE,
+            imageHeight = C.ITEM_ICONS_OPTIONS_PREVIEW_SIZE,
+            disabled = function()
+                return IsOptionsDisabled(self)
+            end,
+        }
+    end
+
+    local function BuildPriorityPreview(order, itemId, priorityList)
+        return {
+            type = "description",
+            name = " ",
+            order = order,
+            width = 0.25,
+            dialogControl = PREVIEW_CONTROL_TYPE,
+            image = function()
+                return GetItemPreviewTexture(itemId)
+            end,
+            imageWidth = C.ITEM_ICONS_OPTIONS_PREVIEW_SIZE,
+            imageHeight = C.ITEM_ICONS_OPTIONS_PREVIEW_SIZE,
+            disabled = function()
+                if IsOptionsDisabled(self) then
+                    return true
+                end
+
+                local activeItemId = GetActivePriorityItemId(priorityList)
+                return activeItemId ~= itemId
+            end,
+        }
+    end
+
     return {
         description = {
             type = "description",
@@ -430,7 +584,10 @@ function ItemIcons:GetOptionsArgs()
             type = "toggle",
             name = "Show first trinket",
             order = 2,
-            width = "full",
+            width = 1.7,
+            disabled = function()
+                return IsOptionsDisabled(self)
+            end,
             get = function()
                 return GetOptionValue(self, "showTrinket1", true)
             end,
@@ -442,11 +599,17 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        showTrinket1Preview = BuildStaticPreview(2.1, function()
+            return GetItemPreviewTexture(C.ITEM_ICONS_OPTIONS_TRINKET1_ICON_ID)
+        end),
         showTrinket2 = {
             type = "toggle",
             name = "Show second trinket",
             order = 3,
-            width = "full",
+            width = 1.7,
+            disabled = function()
+                return IsOptionsDisabled(self)
+            end,
             get = function()
                 return GetOptionValue(self, "showTrinket2", true)
             end,
@@ -458,11 +621,17 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        showTrinket2Preview = BuildStaticPreview(3.1, function()
+            return GetItemPreviewTexture(C.ITEM_ICONS_OPTIONS_TRINKET2_ICON_ID)
+        end),
         showHealthPotion = {
             type = "toggle",
             name = "Show health potions",
             order = 4,
             width = "full",
+            disabled = function()
+                return IsOptionsDisabled(self)
+            end,
             get = function()
                 return GetOptionValue(self, "showHealthPotion", true)
             end,
@@ -474,11 +643,20 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        healthPotionPreview1 = BuildPriorityPreview(4.1, C.HEALTH_POTIONS[1], C.HEALTH_POTIONS),
+        healthPotionPreview2 = BuildPriorityPreview(4.2, C.HEALTH_POTIONS[2], C.HEALTH_POTIONS),
+        healthPotionPreview3 = BuildPriorityPreview(4.3, C.HEALTH_POTIONS[3], C.HEALTH_POTIONS),
+        healthPotionPreview4 = BuildPriorityPreview(4.4, C.HEALTH_POTIONS[4], C.HEALTH_POTIONS),
+        healthPotionPreview5 = BuildPriorityPreview(4.5, C.HEALTH_POTIONS[5], C.HEALTH_POTIONS),
+        healthPotionPreview6 = BuildPriorityPreview(4.6, C.HEALTH_POTIONS[6], C.HEALTH_POTIONS),
         showCombatPotion = {
             type = "toggle",
             name = "Show combat potions",
             order = 5,
             width = "full",
+            disabled = function()
+                return IsOptionsDisabled(self)
+            end,
             get = function()
                 return GetOptionValue(self, "showCombatPotion", true)
             end,
@@ -490,11 +668,17 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        combatPotionPreview1 = BuildPriorityPreview(5.1, C.COMBAT_POTIONS[1], C.COMBAT_POTIONS),
+        combatPotionPreview2 = BuildPriorityPreview(5.2, C.COMBAT_POTIONS[2], C.COMBAT_POTIONS),
+        combatPotionPreview3 = BuildPriorityPreview(5.3, C.COMBAT_POTIONS[3], C.COMBAT_POTIONS),
         showHealthstone = {
             type = "toggle",
             name = "Show healthstone",
             order = 6,
-            width = "full",
+            width = 1.7,
+            disabled = function()
+                return IsOptionsDisabled(self)
+            end,
             get = function()
                 return GetOptionValue(self, "showHealthstone", true)
             end,
@@ -506,6 +690,9 @@ function ItemIcons:GetOptionsArgs()
                 RequestLayoutUpdate(self)
             end,
         },
+        showHealthstonePreview = BuildStaticPreview(6.1, function()
+            return GetItemPreviewTexture(C.HEALTHSTONE_ITEM_ID)
+        end),
     }
 end
 
@@ -578,6 +765,11 @@ function ItemIcons:UpdateLayout()
         return false
     end
 
+    if IsEditModeActive(self) then
+        frame:Hide()
+        return false
+    end
+
     -- Check visibility
     if not self:ShouldShow() then
         frame:Hide()
@@ -605,9 +797,8 @@ function ItemIcons:UpdateLayout()
         icon:Hide()
     end
 
-    -- If no items, restore viewer position and hide container
+    -- If no items, hide container
     if numItems == 0 then
-        RestoreViewerPosition(self)
         frame:Hide()
         return false
     end
@@ -616,23 +807,6 @@ function ItemIcons:UpdateLayout()
     local totalWidth = (numItems * iconSize) + ((numItems - 1) * spacing)
     local totalHeight = iconSize
     frame:SetSize(totalWidth, totalHeight)
-
-    -- Calculate offset to keep visual midpoint centered.
-    -- The icon frame is scaled, so midpoint math must use the scaled width.
-    -- The anchor gap between viewer and first icon remains in parent-space pixels.
-    local scaledContainerWidth = totalWidth * viewerScale
-    local itemContainerWidth = scaledContainerWidth + spacing
-    local viewerOffsetX = -(itemContainerWidth / 2)
-
-    -- Store original viewer position on first call, then apply offset
-    if not self._viewerOriginalPoint then
-        local point, relativeTo, relativePoint, x, y = utilityViewer:GetPoint()
-        self._viewerOriginalPoint = { point, relativeTo, relativePoint, x or 0, y or 0 }
-    end
-
-    local orig = self._viewerOriginalPoint
-    utilityViewer:ClearAllPoints()
-    utilityViewer:SetPoint(orig[1], orig[2], orig[3], orig[4] + viewerOffsetX, orig[5])
 
     -- Position and configure each icon
     local xOffset = 0
@@ -745,6 +919,31 @@ function ItemIcons:OnPlayerEnteringWorld()
     self:ScheduleLayoutUpdate()
 end
 
+--- Hook EditModeManagerFrame to pause ItemIcons layout while edit mode is active.
+function ItemIcons:HookEditMode()
+    local editModeManager = _G.EditModeManagerFrame
+    if not editModeManager or self._editModeHooked then
+        return
+    end
+
+    self._editModeHooked = true
+    self._isEditModeActive = editModeManager:IsShown()
+
+    editModeManager:HookScript("OnShow", function()
+        self._isEditModeActive = true
+        if self.InnerFrame then
+            self.InnerFrame:Hide()
+        end
+    end)
+
+    editModeManager:HookScript("OnHide", function()
+        self._isEditModeActive = false
+        if self:IsEnabled() then
+            self:ScheduleLayoutUpdate()
+        end
+    end)
+end
+
 --- Hook the UtilityCooldownViewer to update when it shows/hides or resizes.
 function ItemIcons:HookUtilityViewer()
     local utilityViewer = _G[C.VIEWER_UTILITY]
@@ -759,7 +958,6 @@ function ItemIcons:HookUtilityViewer()
     end)
 
     utilityViewer:HookScript("OnHide", function()
-        RestoreViewerPosition(self)
         if self.InnerFrame then
             self.InnerFrame:Hide()
         end
@@ -791,6 +989,7 @@ function ItemIcons:OnEnable()
 
     -- Hook the utility viewer after a short delay to ensure Blizzard frames are loaded
     C_Timer.After(0.1, function()
+        self:HookEditMode()
         self:HookUtilityViewer()
         self:ScheduleLayoutUpdate()
     end)
@@ -805,10 +1004,7 @@ function ItemIcons:OnDisable()
         ECM.UnregisterFrame(self)
     end
 
-    RestoreViewerPosition(self)
-
-    -- Clear stale position state so it's recaptured if re-enabled
-    self._viewerOriginalPoint = nil
+    self._isEditModeActive = nil
     self._layoutRetryPending = nil
     self._layoutRetryCount = 0
 

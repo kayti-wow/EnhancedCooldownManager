@@ -226,6 +226,14 @@ This separation allows:
 - Respects user's edit mode configuration
 **Trade-off:** Hook reliability issues, requires defensive coding
 
+### ItemIcons Viewer Positioning
+**Decision:** ItemIcons no longer re-anchors `UtilityCooldownViewer`; it anchors only its own icon container relative to the viewer.
+**Rationale:**
+- Avoids persistent anchor state and snap-back behavior when leaving Blizzard Edit Mode.
+- Keeps Blizzard-owned frame placement fully owned by Blizzard/Edit Mode.
+- Simplifies layout logic by removing restore/original-position bookkeeping.
+**Trade-off:** Viewer + icons no longer attempt midpoint recentering as a combined block.
+
 ## Future Considerations
 
 1. **Extract color management** - BuffBars color system could be generalized for other modules

@@ -60,6 +60,17 @@ local function ResourceBarOptionsTable() ... end
 -- Item Icons options are built in Modules/ItemIcons.lua:
 -- ItemIcons:GetOptionsTable(db.profile.itemIcons)
 
+-- Item Icons options behavior:
+-- - "Enable item icons" disables/enables all other controls in the section.
+-- - Trinket 1/2 and Healthstone rows include right-side 48x48 preview icons.
+-- - Trinket preview icon IDs are fixed:
+--   - Trinket 1: 7137585 (inv_112_raidtrinkets_trinkettechnomancer_ritualengine)
+--   - Trinket 2: 7137586 (inv_112_raidtrinkets_voidprism)
+-- - Health/Combat potion rows show one preview icon per item ID in priority order.
+-- - Active potion icon uses full opacity; non-active previews use 0.7 opacity.
+-- - If no potion is owned, the top-priority icon is treated as active.
+-- - Failed icon lookups fall back to "Interface\\Icons\\INV_Misc_QuestionMark".
+
 -- 5. Main Options Table
 local function GetOptionsTable() ... end
 

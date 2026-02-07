@@ -78,6 +78,8 @@ These responsibilities can change over time so update this document if so howeve
 - Displaying combat consumables (combat potions, health potions, healthstones) from bags
 - Priority-based consumable selection (best quality per type)
 - Positioning relative to UtilityCooldownViewer (right side)
+- Anchoring only ItemIcons-owned frames; it must not re-anchor UtilityCooldownViewer itself
+- Pausing ItemIcons layout while Blizzard Edit Mode is active, then resuming after edit mode closes
 - Cooldown sweep display using CooldownFrameTemplate
 - Icon creation and pooling
 
