@@ -1,69 +1,49 @@
-# EnhancedCooldownManager
+# Enhanced Cooldown Manager by Solär
 
-EnhancedCooldownManager builds a cleaner combat HUD around Blizzard's built-in Cooldown Manager.
+Enhanced Cooldown Manager creates a clean combat HUD around Blizzard's built-in cooldown manager that **looks and works great out of the box** and is **straightforward to customise.**
 
-## Key Benefits
+Made with ❤️, with little features you didn't know you needed and won't be able to live without.
 
-- Looks and works great out of the box.
-- Straightforward to configure, powerful when you want to customize.
+##  Features
 
-## Features
+### ⚔️ Inline Resources
 
-### ⚔️ Build a Real Combat HUD
-
-Create a focused HUD by extending Blizzard's Cooldown Manager with essential combat bars directly below it.
+Adds essential combat bars directly below Blizzard's cooldown manager.
 
 - `Power Bar` for mana, rage, energy, focus, and runic power
 - `Resource Bar` for class resources
 - `Rune Bar` for Death Knight rune tracking
-- `Buff Bars` with custom style and color control
+- `Aura Bars` with unified style and color control
 
 ![Combat HUD screenshot placeholder](docs/images/feature-combat-hud.png)
 
----
+### 🎨 Aura Bars
 
-### 🧊 Death Knight Rune Clarity
-
-Track each rune independently as it recharges so timing your next ability is immediate and readable at a glance.
-
-- Independent rune recharge progress
-- Clean visual rhythm for rune availability
-- Integrated into the same HUD flow as your other bars
-
-![Rune Bar screenshot placeholder](docs/images/feature-rune-bar.png)
-
----
-
-### 🎨 Custom Buff Bar Styling
-
-Make Buff Bars match your UI style instead of fighting it.
-
-- Tune colors to fit your profile
-- Keep icon bars consistent with your overall HUD look
-- Improve readability without sacrificing style
+Make the built-in aura bars snap into position perfectly and match the styling of the HUD. The colour of each bar can be customised independently per spec so you can see the duration of specific auras at a glance.
 
 ![Buff Bars screenshot placeholder](docs/images/feature-buff-bars.png)
 
----
+### 🙈 Smart Visibility and Fade Rules
 
-### 👁️ Smart Visibility and Fade Rules
+Reduce screen clutter automatically based on gameplay context:
 
-Control clutter automatically based on gameplay context.
-
-- Hide while mounted
-- Hide while in a vehicle
+- Hide while mounted or in a vehicle
 - Hide in rest areas
-- Fade out of combat
-- Optionally stay visible in instances
+- Fade when out of combat
+- Optionally stay visible in instances (raids, M+, PVP)
 - Optionally stay visible when you have an attackable target
 
 ![Visibility rules screenshot placeholder](docs/images/feature-visibility-fade.png)
 
----
+### 🟥 Death Knight Runes
 
-### 🧪 Utility Cooldown Icons Beside Your HUD
+Track each rune independently as it recharges inline with other resources and cooldowns.
 
-Surface practical cooldowns right where your eyes already are.
+![Rune Bar screenshot placeholder](docs/images/feature-rune-bar.png)
+
+### 🧪 Add Icons for Trinkets, Potions, and Healthstones
+
+Extend the utility cooldown bar with essential combat icons to save you a glance at the action bar.
 
 - Equipped trinket cooldowns
 - Health potion cooldown
@@ -72,15 +52,13 @@ Surface practical cooldowns right where your eyes already are.
 
 ![Item icons screenshot placeholder](docs/images/feature-item-icons.png)
 
----
+### 📌 Automatic positioning or free movement
 
-### 📌 Anchor Automatically or Move Freely
-
-Use the layout mode that fits your setup without reworking everything.
+Use the layout mode that fits your setup.
 
 - Auto-position directly under Blizzard's Cooldown Manager
 - Detach modules and move them independently
-- Mix chained and free layouts depending on preference
+- Mix and match layouts depending on preference
 
 ![Layout mode screenshot placeholder](docs/images/feature-layout-modes.png)
 
@@ -93,6 +71,10 @@ Use the layout mode that fits your setup without reworking everything.
 
 - Use `/ecm` in game to open options.
 - You can also open it from the AddOn compartment menu near the minimap.
+
+## Troubleshooting
+
+If you run in a problem, enable debug tracing with the command `/ecm debug` and reload your UI. When the issue occurs again, type `/ecm bug`, copy the trace log and please include it when you open an issue.
 
 ## License
 
