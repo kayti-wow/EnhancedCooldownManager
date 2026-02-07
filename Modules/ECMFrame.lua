@@ -247,8 +247,6 @@ function ECMFrame:UpdateLayout()
         layoutCache.width = nil
     end
 
-    local layoutChanged = heightChanged or widthChanged
-
     local borderChanged = nil
     if borderConfig then
         borderChanged = borderConfig.enabled ~= layoutCache.borderEnabled
@@ -258,10 +256,10 @@ function ECMFrame:UpdateLayout()
         -- Update the border (nil-safe for frames without borders)
         local border = frame.Border
         if border and borderChanged then
+            local thickness = borderConfig.thickness or 1
             if borderConfig.enabled then
                 border:Show()
                 ECM.DebugAssert(borderConfig.thickness, "border thickness required when enabled")
-                local thickness = borderConfig.thickness or 1
                 if layoutCache.borderThickness ~= thickness then
                     border:SetBackdrop({
                         edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -273,14 +271,14 @@ function ECMFrame:UpdateLayout()
                 border:SetPoint("BOTTOMRIGHT", thickness, -thickness)
                 border:SetBackdropBorderColor(borderConfig.color.r, borderConfig.color.g, borderConfig.color.b, borderConfig.color.a)
                 border:Show()
-
-                -- Update cached avlues
-                layoutCache.borderEnabled = true
-                layoutCache.borderThickness = thickness
-                layoutCache.borderColor = borderConfig.color
             else
                 border:Hide()
             end
+
+            -- Update cached value
+            layoutCache.borderEnabled = borderConfig.enabled
+            layoutCache.borderThickness = thickness
+            layoutCache.borderColor = borderConfig.color
         end
     end
 

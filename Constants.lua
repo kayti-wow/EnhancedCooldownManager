@@ -74,6 +74,9 @@ local constants = {
 
     ANCHORMODE_CHAIN = "chain",
     ANCHORMODE_FREE = "free",
+
+    ADDON_NAME = "Enhanced Cooldown Manager",
+    ME = "Solar"
 }
 
 local BLIZZARD_FRAMES = {

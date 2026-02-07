@@ -20,6 +20,7 @@ local POPUP_IMPORT_PROFILE = "ECM_IMPORT_PROFILE"
 assert(ns.defaults, "Defaults.lua must be loaded before ECM.lua")
 assert(ns.AddToTraceLog and ns.GetTraceLog, "TraceLog.lua must be loaded before ECM.lua")
 assert(ns.ShowBugReportPopup, "BugReports.lua must be loaded before ECM.lua")
+assert(ns.Constants, "Constants.lua must be loaded before ECM.lua")
 
 local function RegisterAddonCompartmentEntry()
     if ECM._addonCompartmentRegistered then
@@ -30,7 +31,7 @@ local function RegisterAddonCompartmentEntry()
         return
     end
 
-    local text = ADDON_NAME
+    local text = C.ADDON_NAME
     local sparkle = ns.SparkleUtil
     if sparkle and sparkle.GetText then
         text = sparkle.GetText(text)

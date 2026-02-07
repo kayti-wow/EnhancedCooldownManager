@@ -2,11 +2,12 @@
 -- Author: Solär
 -- Licensed under the GNU General Public License v3.0
 
-local _, ns = ...
+local ADDON_NAME, ns = ...
 
 local ECM = ns.Addon
 local Util = ns.Util
 local C = ns.Constants
+local Sparkle = ns.SparkleUtil
 local Options = ECM:NewModule("Options")
 
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
@@ -161,10 +162,10 @@ end
 
 
 --- Gets the current player's class and specialization information.
---- @return classID number The player's class ID (e.g., 1 for Warrior, 2 for Paladin, etc.)
---- @return specIndex number The player's current specialization index (1-based), or nil if not applicable
---- @return localisedClassName string The localized name of the player's class (e.g., "Warrior", "Paladin")
---- @return specName string The name of the player's current specialization (e.g., "Arms", "Holy"), or "None" if not applicable
+--- @return number classID The player's class ID (e.g., 1 for Warrior, 2 for Paladin, etc.)
+--- @return number specIndex The player's current specialization index (1-based), or nil if not applicable
+--- @return string localisedClassName The player's localized class name (e.g., "Warrior", "Paladin", etc.)
+--- @return string specName The player's current specialization name (e.g., "Arms", "Fury", etc.), or "None" if not applicable
 local function GetCurrentClassSpec()
     local localisedClassName, className, classID = UnitClass("player")
     local specIndex = GetSpecialization()
@@ -1472,9 +1473,8 @@ ColoursOptionsTable = function()
                     local buffBars = ECM.BuffBars
                     if buffBars then
                         buffBars:ResetStyledMarkers()
-                        buffBars:UpdateLayout()
                     end
-                    AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
+                    ECM.ScheduleLayoutUpdate(0)
                 end,
             },
             barColorsGroup = {
@@ -1554,7 +1554,7 @@ local function GenerateSpellColorArgs()
                 end,
                 func = function()
                     buffBars:ResetSpellColor(spellName)
-                    AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
+                    ECM.ScheduleLayoutUpdate(0)
                 end,
             }
 
@@ -1664,8 +1664,7 @@ local function ProfileOptionsTable()
         args = {
             description = {
                 type = "description",
-                name = "Export your current profile to share or back up. Import will replace all current settings and require a UI reload.\n\n" ..
-                       "|cffff6666Note:|r The buff bar cache (spell names) is not included in exports.",
+                name = "Export your current profile to share or back up. Import will replace all current settings and require a UI reload.\n\n",
                 order = 1,
                 fontSize = "medium",
             },
@@ -1897,7 +1896,6 @@ TickMarksOptionsTable = function()
                 func = function()
                     RemoveTick(i)
                     ECM.ScheduleLayoutUpdate(0)
-                    AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
                 end,
             }
         end
@@ -1986,7 +1984,6 @@ TickMarksOptionsTable = function()
                 func = function()
                     AddTick(50, nil, nil)
                     ECM.ScheduleLayoutUpdate(0)
-                    AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
                 end,
             },
             spacer3 = {
@@ -2020,7 +2017,6 @@ TickMarksOptionsTable = function()
                 func = function()
                     SetCurrentTicks({})
                     ECM.ScheduleLayoutUpdate(0)
-                    AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
                 end,
             },
         },
@@ -2037,31 +2033,28 @@ local function AboutOptionsTable()
         name = "About",
         order = 8,
         args = {
-            info = {
-                type = "group",
-                name = "Addon Information",
-                inline = true,
+            author = {
+                type = "description",
+                name = "An addon by " .. authorColored,
                 order = 1,
-                args = {
-                    author = {
-                        type = "description",
-                        name = "An addon by " .. authorColored,
-                        order = 1,
-                        fontSize = "medium",
-                    },
-                    version = {
-                        type = "description",
-                        name = "\nVersion: " .. version,
-                        order = 2,
-                        fontSize = "medium",
-                    },
-                },
+                fontSize = "medium",
+            },
+            version = {
+                type = "description",
+                name = "\nVersion: |cff67dbf8" .. version .. "|r",
+                order = 2,
+                fontSize = "medium",
+            },
+            spacer1 = {
+                type = "description",
+                name = " ",
+                order = 2.5,
             },
             troubleshooting = {
                 type = "group",
                 name = "Troubleshooting",
                 inline = true,
-                order = 2,
+                order = 3,
                 args = {
                     debugDesc = {
                         type = "description",
@@ -2142,10 +2135,11 @@ end
 --------------------------------------------------------------------------------
 -- Main options table (combines all sections with tree navigation)
 --------------------------------------------------------------------------------
+
 local function GetOptionsTable()
     return {
         type = "group",
-        name = "Enhanced Cooldown Manager",
+        name = Sparkle.GetText(C.ADDON_NAME),
         childGroups = "tree",
         args = {
             general = GeneralOptionsTable(),
@@ -2181,11 +2175,7 @@ function Options:OnInitialize()
 end
 
 function Options:OnProfileChanged()
-    if ECM.RebindAllFrameConfigs then
-        ECM.RebindAllFrameConfigs(ECM.db and ECM.db.profile)
-    end
-    ECM.ScheduleLayoutUpdate(0)
-    AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
+    ECM.SetAllConfigs(ECM.db and ECM.db.profile)
 end
 
 function Options:OnEnable()

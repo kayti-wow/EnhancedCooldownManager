@@ -221,7 +221,7 @@ end
 
 --- Rebinds config references for all registered ECMFrames.
 --- @param configRoot table|nil Active profile root
-local function RebindAllFrameConfigs(configRoot)
+local function SetAllConfigs(configRoot)
     local root = configRoot or (ECM.db and ECM.db.profile)
     if not root then
         return
@@ -232,6 +232,8 @@ local function RebindAllFrameConfigs(configRoot)
             ecmFrame:SetConfig(root)
         end
     end
+
+    ECM.ScheduleLayoutUpdate(0)
 end
 
 --------------------------------------------------------------------------------
@@ -288,4 +290,4 @@ end)
 ECM.RegisterFrame = RegisterFrame
 ECM.UnregisterFrame = UnregisterFrame
 ECM.ScheduleLayoutUpdate = ScheduleLayoutUpdate
-ECM.RebindAllFrameConfigs = RebindAllFrameConfigs
+ECM.SetAllConfigs = SetAllConfigs

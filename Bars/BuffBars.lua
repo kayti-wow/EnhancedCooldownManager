@@ -17,6 +17,7 @@ ECM.BuffBars = BuffBars
 
 ---@class ECM_BuffBarChild : Frame
 ---@field __ecmAnchorHooked boolean
+---@field __ecmStyled boolean
 
 -- Helper functions for accessing texture/color utilities
 local BarHelpers = {
