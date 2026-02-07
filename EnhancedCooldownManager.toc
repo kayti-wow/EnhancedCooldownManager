@@ -35,9 +35,6 @@ UI\BugReports.lua
 EnhancedCooldownManager.lua
 Modules\Layout.lua
 
-UI\Widgets\PositionModeSelector.lua
-UI\Options.lua
-
 Modules\ECMFrame.lua
 Modules\BarFrame.lua
 Bars\PowerBar.lua
@@ -45,3 +42,8 @@ Bars\ResourceBar.lua
 Bars\RuneBar.lua
 Bars\BuffBars.lua
 Modules\ItemIcons.lua
+
+Options\Widgets\PositionModeSelector.lua
+Options\OptionHelpers.lua
+Options\ItemIconsOptions.lua
+UI\Options.lua
