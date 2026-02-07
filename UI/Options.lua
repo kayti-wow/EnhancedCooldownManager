@@ -1283,6 +1283,33 @@ local function AuraBarsOptionsTable()
                             ECM.ScheduleLayoutUpdate(0)
                         end,
                     },
+                    heightDesc = {
+                        type = "description",
+                        name = "\nOverride the default bar height. Set to 0 to use the global default.",
+                        order = 8,
+                    },
+                    height = {
+                        type = "range",
+                        name = "Height Override",
+                        order = 9,
+                        width = "double",
+                        min = 0,
+                        max = 40,
+                        step = 1,
+                        get = function() return db.profile.buffBars.height or 0 end,
+                        set = function(_, val)
+                            db.profile.buffBars.height = val > 0 and val or nil
+                            ECM.ScheduleLayoutUpdate(0)
+                        end,
+                    },
+                    heightReset = {
+                        type = "execute",
+                        name = "X",
+                        order = 10,
+                        width = 0.3,
+                        hidden = function() return not IsValueChanged("buffBars.height") end,
+                        func = MakeResetHandler("buffBars.height"),
+                    },
                 },
             },
             positioningSettings = (function()
