@@ -1473,8 +1473,9 @@ ColoursOptionsTable = function()
                     local buffBars = ECM.BuffBars
                     if buffBars then
                         buffBars:ResetStyledMarkers()
+                        buffBars:UpdateLayout()
                     end
-                    ECM.ScheduleLayoutUpdate(0)
+                    AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
                 end,
             },
             barColorsGroup = {
