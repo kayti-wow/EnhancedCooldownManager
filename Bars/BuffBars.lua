@@ -122,6 +122,20 @@ local function GetChildSpellName(child)
     return text
 end
 
+--- Returns the color lookup key for a bar: spell name if known, or "Bar n" fallback.
+--- Blizzard can temporarily mark spell names as secret (via `canaccessvalue`), causing
+--- GetChildSpellName to return nil. The synthetic "Bar n" key allows color customization
+--- even before the real name is available. Colors stored under synthetic keys are
+--- automatically migrated to the real spell name key in RefreshBarCache once the name
+--- becomes accessible. The same key format is used in the Options UI (GenerateSpellColorArgs)
+--- and in ApplyCooldownBarStyle for runtime color lookup.
+---@param index number 1-based bar index
+---@param spellName string|nil
+---@return string
+local function GetColorKey(index, spellName)
+    return spellName or ("Bar " .. index)
+end
+
 --- Returns color for spell with name spellName for current class/spec, or nil if not set.
 ---@param spellName string|nil
 ---@param cfg table|nil
@@ -162,13 +176,18 @@ local function BuildBarCacheSnapshot(viewer, cfg)
     local nextCache = {}
     local validCount = 0
 
+    -- Store all entries, including those with nil spellName (secret/unavailable names).
+    -- This ensures the cache reflects all bar positions, which is needed for:
+    -- 1. Synthetic color key lookups ("Bar n") in ApplyCooldownBarStyle
+    -- 2. Options UI display of bars with unknown names
+    -- 3. Color migration when names become available in RefreshBarCache
     for index, entry in ipairs(children) do
         local spellName = GetChildSpellName(entry.frame)
+        nextCache[index] = {
+            spellName = spellName,  -- nil is allowed
+            lastSeen = GetTime(),
+        }
         if spellName then
-            nextCache[index] = {
-                spellName = spellName,
-                lastSeen = GetTime(),
-            }
             validCount = validCount + 1
         end
     end
@@ -197,9 +216,9 @@ local function RefreshBarCache(viewer, moduleConfig)
         return false
     end
 
-    if snapshot.validCount <= 0 then
+    if not next(snapshot.cache) then
         Util.Log("BuffBars", "RefreshBarCache", {
-            message = "No valid bars found; preserving existing cache",
+            message = "No children at all; preserving existing cache",
             classID = snapshot.classID,
             specID = snapshot.specID,
         })
@@ -208,6 +227,30 @@ local function RefreshBarCache(viewer, moduleConfig)
 
     local cache = moduleConfig.colors.cache
     cache[snapshot.classID] = cache[snapshot.classID] or {}
+
+    -- Synthetic color key migration: When a bar's spell name transitions from
+    -- nil (secret) to a real name, migrate any custom color the user set under
+    -- the "Bar n" synthetic key to the real spell name key. This ensures colors
+    -- set while the name was unavailable carry over seamlessly once Blizzard
+    -- makes the name accessible. The synthetic key is removed after migration.
+    local oldCache = cache[snapshot.classID] and cache[snapshot.classID][snapshot.specID]
+    if oldCache then
+        local perSpell = moduleConfig.colors.perSpell
+        local classSpells = perSpell and perSpell[snapshot.classID]
+        local specSpells = classSpells and classSpells[snapshot.specID]
+        if specSpells then
+            for index, newEntry in pairs(snapshot.cache) do
+                local oldEntry = oldCache[index]
+                if oldEntry and not oldEntry.spellName and newEntry.spellName then
+                    local syntheticKey = GetColorKey(index, nil)  -- "Bar n"
+                    if specSpells[syntheticKey] and specSpells[newEntry.spellName] == nil then
+                        specSpells[newEntry.spellName] = specSpells[syntheticKey]
+                    end
+                    specSpells[syntheticKey] = nil
+                end
+            end
+        end
+    end
 
     Util.Log("BuffBars", "RefreshBarCache", {
         message = "Updating bar cache with new snapshot",
@@ -457,10 +500,14 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
     local tex = BarHelpers.GetTexture(texKey)
     bar:SetStatusBarTexture(tex)
 
-    -- Apply bar color from per-spell settings or default
+    -- Use GetColorKey to resolve the color lookup key: if the spell name is
+    -- available, use it directly; otherwise fall back to the synthetic "Bar n"
+    -- key. This allows bars with secret/unavailable names to use custom colors
+    -- set via the Options UI under their positional placeholder name.
     if bar.SetStatusBarColor and barIndex then
         local spellName = GetChildSpellName(child)
-        local color = GetSpellColor(spellName, moduleConfig) or moduleConfig.colors.defaultColor or C.BUFFBARS_DEFAULT_COLOR
+        local colorKey = GetColorKey(barIndex, spellName)
+        local color = GetSpellColor(colorKey, moduleConfig) or moduleConfig.colors.defaultColor or C.BUFFBARS_DEFAULT_COLOR
         bar:SetStatusBarColor(color.r, color.g, color.b, 1.0)
     end
 

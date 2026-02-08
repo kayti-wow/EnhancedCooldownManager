@@ -1467,10 +1467,16 @@ local function GenerateSpellColorArgs()
         end
         table.sort(cacheIndices)
 
+        -- Use the spell name if available, otherwise use a synthetic "Bar n" key.
+        -- This allows users to customize colors for bars whose spell names are
+        -- temporarily secret (via canaccessvalue). The same key is used in
+        -- ApplyCooldownBarStyle for runtime lookup, and RefreshBarCache will
+        -- migrate colors to the real spell name once it becomes available.
         for _, index in ipairs(cacheIndices) do
             local c = cachedBars[index]
-            if c and c.spellName then
-                spells[c.spellName] = {}
+            if c then
+                local key = c.spellName or ("Bar " .. index)
+                spells[key] = {}
             end
         end
 
