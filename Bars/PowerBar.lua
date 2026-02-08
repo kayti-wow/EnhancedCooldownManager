@@ -47,7 +47,7 @@ function PowerBar:UpdateTicks(frame, resource, max)
 
     local config = self.ModuleConfig
     local ticksCfg = config and config.ticks
-    local defaultColor = ticksCfg and ticksCfg.defaultColor or { r = 1, g = 1, b = 1, a = 0.8 }
+    local defaultColor = ticksCfg and ticksCfg.defaultColor or C.POWERBAR_DEFAULT_TICK_COLOR
     local defaultWidth = ticksCfg and ticksCfg.defaultWidth or 1
 
     -- Create tick textures on TicksFrame, but position them relative to StatusBar

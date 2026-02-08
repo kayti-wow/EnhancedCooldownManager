@@ -156,7 +156,7 @@ local defaults = {
             showText          = true,
             ticks             = {
                 mappings = powerBarTickMappings, -- [classID][specID] = { { value = 50, color = {r,g,b,a}, width = 1 }, ... }
-                defaultColor = { r = 1, g = 1, b = 1, a = 0.8 },
+                defaultColor = C.POWERBAR_DEFAULT_TICK_COLOR,
                 defaultWidth = 1,
             },
             showManaAsPercent = true,

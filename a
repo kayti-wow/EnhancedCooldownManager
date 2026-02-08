@@ -1,0 +1,16 @@
+• Findings
+
+  1. Medium: Refresh Bar List can show stale/empty data after click due to async ordering regression.
+     UI/Options.lua:1473 clears BuffBars cache via buffBars:ResetStyledMarkers(), then UI/Options.lua:1474 schedules layout asynchronously (ECM.ScheduleLayoutUpdate(0)),
+     but UI/Options.lua:1476 calls NotifyChange immediately. Since cache rebuild happens during the later layout pass, the options regeneration often runs first and sees
+     an empty cache.
+     Bars/BuffBars.lua:666 confirms ResetStyledMarkers() explicitly clears the current class/spec cache.
+
+  Open questions / assumptions
+
+  - Assumed current UX expectation is that pressing Refresh Bar List repopulates the list immediately in the same options session (which the prior synchronous
+    UpdateLayout() path provided).
+
+  Testing gaps
+
+  - I did not run in-game validation, so this is static-flow analysis of the pending diff only.

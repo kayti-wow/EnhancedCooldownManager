@@ -28,6 +28,7 @@ local constants = {
     -- Color constants
     COLOR_BLACK = { r = 0, g = 0, b = 0, a = 1 },
     COLOR_WHITE = { r = 1, g = 1, b = 1, a = 1 },
+    POWERBAR_DEFAULT_TICK_COLOR = { r = 1, g = 1, b = 1, a = 0.8 },
 
     -- Module-specific constants and configuration
     POWERBAR_SHOW_MANABAR = { MAGE = true, WARLOCK = true, DRUID = true },

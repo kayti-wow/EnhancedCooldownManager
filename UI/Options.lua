@@ -1471,10 +1471,7 @@ ColoursOptionsTable = function()
                     local buffBars = ECM.BuffBars
                     if buffBars then
                         buffBars:ResetStyledMarkers()
-                        buffBars:UpdateLayout()
-                        if not next(buffBars:GetCachedBars()) then
-                            buffBars:RebuildCacheFromViewer()
-                        end
+                        ECM.ScheduleLayoutUpdate(0)
                     end
                     AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
                 end,
@@ -1750,7 +1747,7 @@ local function SetCurrentTicks(ticks)
 
     local ticksCfg = powerBarCfg.ticks
     if not ticksCfg then
-        powerBarCfg.ticks = { mappings = {}, defaultColor = { r = 0, g = 0, b = 0, a = 0.5 }, defaultWidth = 1 }
+        powerBarCfg.ticks = { mappings = {}, defaultColor = C.POWERBAR_DEFAULT_TICK_COLOR, defaultWidth = 1 }
         ticksCfg = powerBarCfg.ticks
     end
     if not ticksCfg.mappings then
@@ -1778,7 +1775,7 @@ local function AddTick(value, color, width)
 
     local ticksCfg = powerBarCfg.ticks
     if not ticksCfg then
-        powerBarCfg.ticks = { mappings = {}, defaultColor = { r = 0, g = 0, b = 0, a = 0.5 }, defaultWidth = 1 }
+        powerBarCfg.ticks = { mappings = {}, defaultColor = C.POWERBAR_DEFAULT_TICK_COLOR, defaultWidth = 1 }
         ticksCfg = powerBarCfg.ticks
     end
 
@@ -1944,7 +1941,7 @@ TickMarksOptionsTable = function()
                 hasAlpha = true,
                 get = function()
                     local ticksCfg = db.profile.powerBar and db.profile.powerBar.ticks
-                    local c = (ticksCfg and ticksCfg.defaultColor) or { r = 0, g = 0, b = 0, a = 0.5 }
+                    local c = ticksCfg and ticksCfg.defaultColor or C.POWERBAR_DEFAULT_TICK_COLOR
                     return c.r or 0, c.g or 0, c.b or 0, c.a or 0.5
                 end,
                 set = function(_, r, g, b, a)
@@ -1955,7 +1952,7 @@ TickMarksOptionsTable = function()
                     end
                     local ticksCfg = powerBarCfg.ticks
                     if not ticksCfg then
-                        powerBarCfg.ticks = { mappings = {}, defaultColor = { r = 0, g = 0, b = 0, a = 0.5 }, defaultWidth = 1 }
+                        powerBarCfg.ticks = { mappings = {}, defaultColor = C.POWERBAR_DEFAULT_TICK_COLOR, defaultWidth = 1 }
                         ticksCfg = powerBarCfg.ticks
                     end
                     ticksCfg.defaultColor = { r = r, g = g, b = b, a = a }
@@ -1982,7 +1979,7 @@ TickMarksOptionsTable = function()
                     end
                     local ticksCfg = powerBarCfg.ticks
                     if not ticksCfg then
-                        powerBarCfg.ticks = { mappings = {}, defaultColor = { r = 0, g = 0, b = 0, a = 0.5 }, defaultWidth = 1 }
+                        powerBarCfg.ticks = { mappings = {}, defaultColor = C.POWERBAR_DEFAULT_TICK_COLOR, defaultWidth = 1 }
                         ticksCfg = powerBarCfg.ticks
                     end
                     ticksCfg.defaultWidth = val
