@@ -1471,7 +1471,9 @@ ColoursOptionsTable = function()
                     local buffBars = ECM.BuffBars
                     if buffBars then
                         buffBars:ResetStyledMarkers()
-                        ECM.ScheduleLayoutUpdate(0)
+
+                        -- Must syncrhonously update layout here to ensure the options UI doesn't receive an empty bar list
+                        buffBars:UpdateLayout()
                     end
                     AceConfigRegistry:NotifyChange("EnhancedCooldownManager")
                 end,
@@ -1553,7 +1555,6 @@ local function GenerateSpellColorArgs()
                 end,
                 func = function()
                     buffBars:ResetSpellColor(spellName)
-                    ECM.ScheduleLayoutUpdate(0)
                 end,
             }
 
