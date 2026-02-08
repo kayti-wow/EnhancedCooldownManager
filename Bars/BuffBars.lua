@@ -97,6 +97,7 @@ end
 ---@return ECM_Color
 local function GetCachedBarColor(barIndex, cfg)
     if not cfg then
+        Util.DebugAssert(false, "GetCachedBarColor called with nil cfg")
         return C.BUFFBARS_DEFAULT_COLOR
     end
 
@@ -105,6 +106,13 @@ local function GetCachedBarColor(barIndex, cfg)
     if classID and specID and cache[classID] and cache[classID][specID] and cache[classID][specID][barIndex] then
         local c = cache[classID][specID][barIndex].color
         if c then
+            Util.Log("BuffBars", "GetCachedBarColor", {
+                hit = true,
+                barIndex = barIndex,
+                classID = classID,
+                specID = specID,
+                color = c,
+            })
             return c
         end
     end
@@ -118,6 +126,7 @@ end
 ---@return ECM_Color
 local function GetSpellColor(spellName, cfg)
     if not cfg or not cfg.colors.perSpell then
+        Util.DebugAssert(false, "GetSpellColor called with nil cfg or missing perSpell colors")
         return C.BUFFBARS_DEFAULT_COLOR
     end
 
@@ -138,32 +147,42 @@ end
 ---@param spellName string|nil
 ---@param cfg table|nil
 local function UpdateBarCache(barIndex, spellName, cfg)
+    if not spellName then
+        Util.Log("BuffBars", "UpdateBarCache",  {
+            message = "spellName is nil",
+            barIndex = barIndex,
+        })
+    end
+
     if not cfg or not barIndex or barIndex < 1 then
+        Util.DebugAssert(false, "UpdateBarCache called with invalid parameters")
         return
     end
 
     local classID, specID = GetCurrentClassSpec()
     if not classID or not specID then
+        Util.DebugAssert(false, "UpdateBarCache called but classID or specID is nil")
         return
     end
 
     local cache = cfg.colors.cache
 
-    if cache[classID] and cache[classID][specID] and cache[classID][specID][barIndex] and not spellName then
-        -- if this bar is already cached and we aren't able to get the spellName then exit
-        -- we don't want to overwrite a value by mistake
-        return
-    end
-
     cache[classID] = cache[classID] or {}
     cache[classID][specID] = cache[classID][specID] or {}
 
-    local spellColor = GetSpellColor(spellName or C.BUFFBARS_DEFAULT_SPELLNAME, cfg)
+    local spellColor = GetSpellColor(spellName, cfg)
     cache[classID][specID][barIndex] = {
         color = spellColor,
-        spellName = spellName or C.BUFFBARS_DEFAULT_SPELLNAME,
+        spellName = spellName,
         lastSeen = GetTime(),
     }
+
+    Util.Log("BuffBars", "UpdateBarCache", {
+        barIndex = barIndex,
+        spellName = spellName,
+        classID = classID,
+        specID = specID,
+    })
 end
 
 local function GetBuffBarBackground(statusBar)
@@ -227,12 +246,13 @@ end
 --- Returns visible bar children sorted by Y position (top to bottom) to preserve edit mode order.
 --- GetChildren() returns in creation order, not visual order, so we must sort by position.
 ---@param viewer Frame The BuffBarCooldownViewer frame
+---@param onlyVisible boolean|nil If true, only include visible children
 ---@return table[] Array of {frame, top, order} sorted top-to-bottom
-local function GetSortedVisibleChildren(viewer)
+local function GetSortedChildren(viewer, onlyVisible)
     local result = {}
 
     for insertOrder, child in ipairs({ viewer:GetChildren() }) do
-        if child and child.Bar and child:IsShown() then
+        if child and child.Bar and (not onlyVisible or child:IsShown()) then
             local top = child.GetTop and child:GetTop()
             result[#result + 1] = { frame = child, top = top, order = insertOrder }
         end
@@ -406,6 +426,31 @@ ApplyBarNameInset = function(child, iconFrame, iconHeight)
     end
 end
 
+--- Rebuilds the bar cache for the Options UI.
+--- @param viewer Frame
+--- @param moduleConfig table
+local function RehydrateCache(viewer, moduleConfig)
+    local children = GetSortedChildren(viewer, false)
+    for index, entry in ipairs(children) do
+        local bar = entry.frame and entry.frame.Bar or nil
+        local spellName = nil
+        if bar and bar.Name and bar.Name.GetText then
+            local text = bar.Name:GetText()
+            if (type(canaccessvalue) ~= "function" or canaccessvalue(text)) then
+                spellName = text
+            end
+
+            if spellName ~= nil then
+                Util.Log("BuffBars", "RehydrateCache", {
+                    barIndex = index,
+                    spellName = spellName or "nil",
+                })
+                UpdateBarCache(index, spellName, moduleConfig)
+            end
+        end
+    end
+end
+
 --- Applies styling to a single cooldown bar child.
 ---@param child ECM_BuffBarChild
 ---@param moduleConfig table
@@ -424,21 +469,6 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
     local texKey = globalConfig and globalConfig.texture
     local tex = BarHelpers.GetTexture(texKey)
     bar:SetStatusBarTexture(tex)
-
-    -- Update bar cache for Options UI (extract spell name safely)
-    -- NOTE: Spell names from GetText() can be secret values - cannot compare them
-    if barIndex then
-        local spellName = nil
-        if bar.Name and bar.Name.GetText then
-            local ok, text = pcall(bar.Name.GetText, bar.Name)
-            -- Check if we can access the value before using it
-            if ok and text and (type(canaccessvalue) ~= "function" or canaccessvalue(text)) then
-                spellName = text
-            end
-
-            UpdateBarCache(barIndex, spellName, moduleConfig)
-        end
-    end
 
     -- Apply bar color from per-bar settings or default
     if bar.SetStatusBarColor and barIndex then
@@ -559,6 +589,10 @@ function BuffBars:UpdateLayout()
     local globalConfig = self.GlobalConfig
     local cfg = self.ModuleConfig
 
+    -- Add new bars to the cache for the options UI. Note that the HUD can be hidden due to settings
+    -- but we still want them to be visible in the UI.
+    RehydrateCache(viewer, cfg)
+
     -- Check visibility first
     if not self:ShouldShow() then
         -- Util.Log(self.Name, "BuffBars:UpdateLayout", "ShouldShow returned false, hiding viewer")
@@ -582,7 +616,7 @@ function BuffBars:UpdateLayout()
     end
 
     -- Style all visible children (skip already-styled unless markers were reset)
-    local visibleChildren = GetSortedVisibleChildren(viewer)
+    local visibleChildren = GetSortedChildren(viewer, true)
     for barIndex, entry in ipairs(visibleChildren) do
         if not entry.frame.__ecmStyled then
             ApplyCooldownBarStyle(entry.frame, cfg, globalConfig, barIndex)
@@ -624,7 +658,7 @@ function BuffBars:LayoutBars()
 
     self._layoutRunning = true
 
-    local visibleChildren = GetSortedVisibleChildren(viewer)
+    local visibleChildren = GetSortedChildren(viewer, true)
     local prev
 
     for _, entry in ipairs(visibleChildren) do
@@ -658,7 +692,11 @@ function BuffBars:ResetStyledMarkers()
     -- Clear styled markers on all children
     local children = { viewer:GetChildren() }
     for _, child in ipairs(children) do
-        if child then
+        if child and child.__ecmStyled then
+            Util.Log("BuffBars", "ResetStyledMarkers", {
+                message = "Clearing styled marker for child",
+                childName = child:GetName() or "nil",
+            })
             child.__ecmStyled = nil
         end
     end
@@ -671,6 +709,11 @@ function BuffBars:ResetStyledMarkers()
         if classID and specID then
             local cache = cfg.colors.cache
             if cache[classID] then
+                Util.Log("BuffBars", "ResetStyledMarkers", {
+                    message = "Clearing bar color cache for class/spec",
+                    classID = classID,
+                    specID = specID,
+                })
                 cache[classID][specID] = {}
             end
         end
