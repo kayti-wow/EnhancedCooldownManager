@@ -20,6 +20,7 @@ ECM.BuffBars = BuffBars
 ---@field __ecmStyled boolean
 
 local GetSortedChildren
+local GetChildTextureFileID
 
 -- Helper functions for accessing texture/color utilities
 local BarHelpers = {
@@ -79,6 +80,9 @@ local function EnsureColorStorage(cfg)
     if not colors.defaultColor then
         colors.defaultColor = C.BUFFBARS_DEFAULT_COLOR
     end
+    if not colors.textureMap then
+        colors.textureMap = {}
+    end
 end
 
 --- Gets color context for current class/spec.
@@ -122,18 +126,15 @@ local function GetChildSpellName(child)
     return text
 end
 
---- Returns the color lookup key for a bar: spell name if known, or "Bar n" fallback.
---- Blizzard can temporarily mark spell names as secret (via `canaccessvalue`), causing
---- GetChildSpellName to return nil. The synthetic "Bar n" key allows color customization
---- even before the real name is available. Colors stored under synthetic keys are
---- automatically migrated to the real spell name key in RefreshBarCache once the name
---- becomes accessible. The same key format is used in the Options UI (GenerateSpellColorArgs)
---- and in ApplyCooldownBarStyle for runtime color lookup.
----@param index number 1-based bar index
+--- Returns the color lookup key for a bar: spell name if known, or textureFileID fallback.
+--- When Blizzard marks spell names as secret (via `canaccessvalue`), the icon texture file ID
+--- serves as a stable identifier for color customization. textureFileID is a number, creating
+--- natural key-type separation from string spell names in perSpell storage.
 ---@param spellName string|nil
----@return string
-local function GetColorKey(index, spellName)
-    return spellName or ("Bar " .. index)
+---@param textureFileID number|nil
+---@return string|number|nil
+local function GetColorKey(spellName, textureFileID)
+    return spellName or textureFileID
 end
 
 --- Returns color for spell with name spellName for current class/spec, or nil if not set.
@@ -177,16 +178,16 @@ local function BuildBarCacheSnapshot(viewer, cfg)
     local validCount = 0
 
     -- Store all entries, including those with nil spellName (secret/unavailable names).
-    -- This ensures the cache reflects all bar positions, which is needed for:
-    -- 1. Synthetic color key lookups ("Bar n") in ApplyCooldownBarStyle
-    -- 2. Options UI display of bars with unknown names
-    -- 3. Color migration when names become available in RefreshBarCache
+    -- textureFileIDs are stored in a separate table (not in cache entries) to prevent
+    -- taint propagation from secret spell names to texture IDs.
+    local nextTextures = {}
     for index, entry in ipairs(children) do
         local spellName = GetChildSpellName(entry.frame)
         nextCache[index] = {
             spellName = spellName,  -- nil is allowed
             lastSeen = GetTime(),
         }
+        nextTextures[index] = GetChildTextureFileID(entry.frame)
         if spellName then
             validCount = validCount + 1
         end
@@ -201,6 +202,7 @@ local function BuildBarCacheSnapshot(viewer, cfg)
         classID = classID,
         specID = specID,
         cache = nextCache,
+        textures = nextTextures,
         validCount = validCount,
     }
 end
@@ -228,26 +230,60 @@ local function RefreshBarCache(viewer, moduleConfig)
     local cache = moduleConfig.colors.cache
     cache[snapshot.classID] = cache[snapshot.classID] or {}
 
-    -- Synthetic color key migration: When a bar's spell name transitions from
-    -- nil (secret) to a real name, migrate any custom color the user set under
-    -- the "Bar n" synthetic key to the real spell name key. This ensures colors
-    -- set while the name was unavailable carry over seamlessly once Blizzard
-    -- makes the name accessible. The synthetic key is removed after migration.
-    local oldCache = cache[snapshot.classID] and cache[snapshot.classID][snapshot.specID]
-    if oldCache then
+    local textureMap = moduleConfig.colors.textureMap
+    textureMap[snapshot.classID] = textureMap[snapshot.classID] or {}
+
+    -- Texture file ID resolution and color migration:
+    -- textureFileIDs are stored in a separate table (textureMap) from cache entries
+    -- to prevent taint propagation from secret spell names to texture IDs.
+    -- 1. Build textureFileID → spellName mapping from old textureMap + old cache
+    -- 2. Resolve nil spellNames in new cache via textureFileID lookup
+    -- 3. Migrate perSpell colors from textureFileID (number) key to resolved spell name
+    local oldCache = cache[snapshot.classID][snapshot.specID]
+    local oldTextures = textureMap[snapshot.classID] and textureMap[snapshot.classID][snapshot.specID]
+    if oldCache and oldTextures then
+        local texIdToName = {}
+        for index, entry in pairs(oldCache) do
+            local texId = oldTextures[index]
+            if entry.spellName and texId then
+                texIdToName[texId] = entry.spellName
+            end
+        end
+        Util.Log("BuffBars", "RefreshBarCache", {
+            message = "Built textureFileID to spellName mapping from old cache",
+            mappingCount = #texIdToName,
+            map = texIdToName,
+        })
+
         local perSpell = moduleConfig.colors.perSpell
         local classSpells = perSpell and perSpell[snapshot.classID]
         local specSpells = classSpells and classSpells[snapshot.specID]
-        if specSpells then
-            for index, newEntry in pairs(snapshot.cache) do
-                local oldEntry = oldCache[index]
-                if oldEntry and not oldEntry.spellName and newEntry.spellName then
-                    local syntheticKey = GetColorKey(index, nil)  -- "Bar n"
-                    if specSpells[syntheticKey] and specSpells[newEntry.spellName] == nil then
-                        specSpells[newEntry.spellName] = specSpells[syntheticKey]
-                    end
-                    specSpells[syntheticKey] = nil
+
+        for index, newEntry in pairs(snapshot.cache) do
+            local newTexId = snapshot.textures[index]
+            if not newEntry.spellName and newTexId then
+                local resolvedName = texIdToName[newTexId]
+                if resolvedName then
+                    Util.Log("BuffBars", "RefreshBarCache", {
+                        message = "Resolved spell name from texture ID",
+                        resolvedName = resolvedName,
+                        textureFileID = newTexId,
+                    })
+                    newEntry.spellName = resolvedName
                 end
+            end
+
+            -- Migrate colors from textureFileID key to real spell name
+            if specSpells and newEntry.spellName and newTexId then
+                if specSpells[newTexId] and specSpells[newEntry.spellName] == nil then
+                    Util.Log("BuffBars", "RefreshBarCache", {
+                        message = "Migrating color from texture ID to resolved spell name",
+                        spellName = newEntry.spellName,
+                        textureFileID = newTexId,
+                    })
+                    specSpells[newEntry.spellName] = specSpells[newTexId]
+                end
+                specSpells[newTexId] = nil
             end
         end
     end
@@ -259,6 +295,7 @@ local function RefreshBarCache(viewer, moduleConfig)
     })
 
     cache[snapshot.classID][snapshot.specID] = snapshot.cache
+    textureMap[snapshot.classID][snapshot.specID] = snapshot.textures
     return true
 end
 
@@ -318,6 +355,22 @@ end
 ---@return Frame|nil
 local function GetBuffBarIconFrame(child)
     return child and child.Icon or nil
+end
+
+--- Returns the icon texture file ID for a buff bar child, or nil if unavailable.
+--- Used as a stable secondary identifier when the spell name is secret.
+---@param child ECM_BuffBarChild|nil
+---@return number|nil
+GetChildTextureFileID = function(child)
+    local iconFrame = GetBuffBarIconFrame(child)
+    if not iconFrame then
+        return nil
+    end
+    local iconTexture = GetBuffBarIconTexture(iconFrame)
+    if not (iconTexture and iconTexture.GetTextureFileID) then
+        return nil
+    end
+    return iconTexture:GetTextureFileID()
 end
 
 --- Returns visible bar children sorted by Y position (top to bottom) to preserve edit mode order.
@@ -410,6 +463,7 @@ local function ApplyVisibilitySettings(child, moduleConfig)
     if iconFrame then
         iconFrame:SetShown(showIcon)
         local iconTexture = GetBuffBarIconTexture(iconFrame)
+
         if iconTexture and iconTexture.SetShown then
             iconTexture:SetShown(showIcon)
         end
@@ -500,13 +554,11 @@ local function ApplyCooldownBarStyle(child, moduleConfig, globalConfig, barIndex
     local tex = BarHelpers.GetTexture(texKey)
     bar:SetStatusBarTexture(tex)
 
-    -- Use GetColorKey to resolve the color lookup key: if the spell name is
-    -- available, use it directly; otherwise fall back to the synthetic "Bar n"
-    -- key. This allows bars with secret/unavailable names to use custom colors
-    -- set via the Options UI under their positional placeholder name.
-    if bar.SetStatusBarColor and barIndex then
+    -- Resolve the color lookup key: spell name if available, otherwise the icon
+    -- texture file ID as a stable fallback for bars with secret/unavailable names.
+    if bar.SetStatusBarColor then
         local spellName = GetChildSpellName(child)
-        local colorKey = GetColorKey(barIndex, spellName)
+        local colorKey = GetColorKey(spellName, GetChildTextureFileID(child))
         local color = GetSpellColor(colorKey, moduleConfig) or moduleConfig.colors.defaultColor or C.BUFFBARS_DEFAULT_COLOR
         bar:SetStatusBarColor(color.r, color.g, color.b, 1.0)
     end
@@ -826,6 +878,23 @@ function BuffBars:GetCachedBars()
     local cache = cfg.colors.cache
     if cache[classID] and cache[classID][specID] then
         return cache[classID][specID]
+    end
+
+    return {}
+end
+
+--- Returns cached texture file IDs for current class/spec for Options UI.
+--- Stored separately from cache entries to avoid taint propagation.
+---@return table<number, number> textures Indexed by bar position, values are texture file IDs
+function BuffBars:GetCachedTextures()
+    local cfg, classID, specID = GetColorContext(self)
+    if not cfg or not classID or not specID then
+        return {}
+    end
+
+    local textureMap = cfg.colors.textureMap
+    if textureMap and textureMap[classID] and textureMap[classID][specID] then
+        return textureMap[classID][specID]
     end
 
     return {}

@@ -1442,6 +1442,7 @@ local function GenerateSpellColorArgs()
     end
 
     local cachedBars = buffBars:GetCachedBars()
+    local cachedTextures = buffBars:GetCachedTextures()
     if not cachedBars or not next(cachedBars) then
         args.noData = {
             type = "description",
@@ -1467,35 +1468,36 @@ local function GenerateSpellColorArgs()
         end
         table.sort(cacheIndices)
 
-        -- Use the spell name if available, otherwise use a synthetic "Bar n" key.
-        -- This allows users to customize colors for bars whose spell names are
-        -- temporarily secret (via canaccessvalue). The same key is used in
-        -- ApplyCooldownBarStyle for runtime lookup, and RefreshBarCache will
-        -- migrate colors to the real spell name once it becomes available.
+        -- Use the spell name if available; fall back to the icon texture file ID
+        -- (from the separate textureMap) as a stable identifier for bars whose names
+        -- are secret. Bars with neither are skipped entirely.
         for _, index in ipairs(cacheIndices) do
             local c = cachedBars[index]
             if c then
-                local key = c.spellName or ("Bar " .. index)
-                spells[key] = {}
+                local key = c.spellName or cachedTextures[index]
+                if key then
+                    spells[key] = {}
+                end
             end
         end
 
         local i = 1
-        for spellName, v in pairs(spells) do
-            local colorKey = "spellColor" .. i
+        for colorKey, v in pairs(spells) do
+            local optKey = "spellColor" .. i
             local resetKey = "spellColor" .. i .. "Reset"
+            local displayName = type(colorKey) == "string" and colorKey or "Bar"
 
-            args[colorKey] = {
+            args[optKey] = {
                 type = "color",
-                name = spellName,
-                desc = "Color for " .. spellName,
+                name = displayName,
+                desc = "Color for " .. displayName,
                 order = i * 10,
                 width = "double",
                 get = function()
-                    return buffBars:GetSpellColor(spellName)
+                    return buffBars:GetSpellColor(colorKey)
                 end,
                 set = function(_, r, g, b)
-                    buffBars:SetSpellColor(spellName, r, g, b)
+                    buffBars:SetSpellColor(colorKey, r, g, b)
                 end,
             }
 
@@ -1506,10 +1508,10 @@ local function GenerateSpellColorArgs()
                 order = i * 10 + 1,
                 width = 0.3,
                 hidden = function()
-                    return not buffBars:HasCustomSpellColor(spellName)
+                    return not buffBars:HasCustomSpellColor(colorKey)
                 end,
                 func = function()
-                    buffBars:ResetSpellColor(spellName)
+                    buffBars:ResetSpellColor(colorKey)
                 end,
             }
 

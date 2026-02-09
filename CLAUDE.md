@@ -70,11 +70,13 @@ BarFrame should work with any bar-style frame the addon is responsible for drawi
 - Custom ShouldShow logic
 - Class/spec-specific behavior (ticks, colors, visibility rules)
 - BuffBars icon handling is deterministic: use `child.Icon` only (no `IconFrame`/`IconButton` fallback probing, no dynamic atlas/region discovery loops).
-- BuffBars uses synthetic color keys ("Bar 1", "Bar 2", etc.) for bars whose spell names
-  are temporarily secret (via `canaccessvalue`). These keys are stored in `perSpell` alongside
-  real spell names and are automatically migrated to the real name in `RefreshBarCache` when it
-  becomes available. The same key format is shared across `GetColorKey`, `ApplyCooldownBarStyle`,
-  `GenerateSpellColorArgs`, and the Options UI.
+- BuffBars uses the icon texture file ID (`GetTextureFileID()`) as a stable secondary identifier
+  for bars whose spell names are temporarily secret (via `canaccessvalue`). When a spell name is
+  unavailable, the texture file ID is used as the color key in `perSpell` (number key, naturally
+  separated from string spell name keys). `RefreshBarCache` resolves secret names by matching
+  texture file IDs against previously cached entries, and migrates colors from texture file ID
+  keys to real spell name keys when the name becomes available. The same key resolution is shared
+  across `GetColorKey`, `ApplyCooldownBarStyle`, `GenerateSpellColorArgs`, and the Options UI.
 
 These responsibilities can change over time so update this document if so however responsibilities should not cross mixins by reaching into the internals of another. Always use public interfaces. Internal fields are prefixed by an underscore.
 
