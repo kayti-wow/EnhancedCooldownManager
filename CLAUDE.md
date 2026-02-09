@@ -137,6 +137,14 @@ Not all files will have all sections. For example, mixins don't have event handl
 - Registering and unregistering ECMFrames via `ECM.RegisterFrame(frame)` / `ECM.UnregisterFrame(frame)` so module-level enable/disable can fully opt frames in/out.
 - Running deterministic layout passes: chain modules in `C.CHAIN_ORDER` first, then remaining modules.
 
+[Modules\Migration.lua](Modules\Migration.lua) owns:
+- Versioned SavedVariable namespacing for rollback-safe schema upgrades within a single SV (`EnhancedCooldownManagerDB`).
+- Per-version AceDB data is stored in `EnhancedCooldownManagerDB._versions[schemaVersion]`. The top-level `profiles`/`profileKeys` are legacy data (never touched by new code), so old addon versions still work. AceDB uses a temporary global (`_ECM_DB`) that references the current version's sub-table — writes flow through to the persisted SV automatically.
+- `Migration.PrepareDatabase()` sets up the versioned store. Must be called **before** `AceDB:New()`. It seeds the current version's slot by copying from the best prior version in `_versions`, or from the legacy top-level data for pre-versioning builds.
+- Running incremental schema migrations (V2 → V7) via `Migration.Run(profile)`.
+- Rollback between any two versioned builds works seamlessly — each version's data is isolated in its own `_versions` sub-table. The legacy top-level data is never modified, so pre-versioning builds also work.
+- The TOC never changes for schema bumps. Just increment `C.CURRENT_SCHEMA_VERSION` and add a new migration step in `Migration.Run`.
+
 ## Secret Values
 
 Do not perform any operations except nil checking (including reads) on the following secret values except for passing them into other built-in functions:

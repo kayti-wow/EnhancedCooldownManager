@@ -241,6 +241,12 @@ function ImportExport.ApplyImportData(data)
         db.profile.buffBars.colors.cache = existingCache
     end
 
+    -- Run migrations on imported data (it may be from an older schema)
+    local C = ns.Constants
+    if db.profile.schemaVersion and db.profile.schemaVersion < C.CURRENT_SCHEMA_VERSION then
+        ns.Migration.Run(db.profile)
+    end
+
     return true
 end
 

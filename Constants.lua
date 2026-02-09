@@ -75,6 +75,11 @@ local constants = {
     ANCHORMODE_CHAIN = "chain",
     ANCHORMODE_FREE = "free",
 
+    -- Schema migration
+    CURRENT_SCHEMA_VERSION = 8,
+    SV_NAME = "EnhancedCooldownManagerDB",
+    ACTIVE_SV_KEY = "_ECM_DB",
+
     ADDON_NAME = "Enhanced Cooldown Manager",
     ME = "Solar"
 }
